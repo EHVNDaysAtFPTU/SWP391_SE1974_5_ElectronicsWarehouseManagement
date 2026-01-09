@@ -1,0 +1,6 @@
+@ElectronicsWarehouseManagement_WebAPI_HostAddress = http://localhost:5267
+
+GET {{ElectronicsWarehouseManagement_WebAPI_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
