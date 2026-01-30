@@ -1,4 +1,7 @@
 
+using ElectronicsWarehouseManagement.Repositories.Entities;
+using Microsoft.EntityFrameworkCore;
+
 namespace ElectronicsWarehouseManagement.WebAPI
 {
     public class Program
@@ -6,6 +9,8 @@ namespace ElectronicsWarehouseManagement.WebAPI
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
+
+            builder.Services.AddDbContext<EWMDbCtx>(options => options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
             // Add services to the container.
 
