@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>Manager Dashboard</title>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+
+<body>
+
+<div class="d-flex">
+
+<!-- Sidebar -->
+
+<div class="sidebar">
+
+<div class="logo">Haravan</div>
+
+<a>Tổng quan</a>
+<a>Đơn hàng</a>
+<a>Vận chuyển</a>
+<a>Sản phẩm</a>
+<a>Khách hàng</a>
+<a>Báo cáo</a>
+
+</div>
+
+<!-- Main -->
+
+<div class="flex-fill">
+
+<!-- Header -->
+
+<div class="header d-flex align-items-center justify-content-between px-4">
+
+<div>
+<h6 class="mb-0">Tổng quan</h6>
+<small class="text-muted">Dashboard</small>
+</div>
+
+<div class="d-flex align-items-center gap-3">
+
+<input class="form-control form-control-sm search" placeholder="Tìm kiếm...">
+
+<span class="icon">🔔</span>
+
+<div class="user">
+<img src="https://i.pravatar.cc/40" />
+<span>Hoang anh store</span>
+</div>
+
+</div>
+
+</div>
+
+
+<div class="container-fluid p-4">
+
+<div class="row">
+
+<!-- Left -->
+
+<div class="col-md-9">
+    <div class="row mb-4">
+
+<div class="col-md-4">
+<div class="card my-card p-3">
+<h6>Đơn nhập</h6>
+<h3>25</h3>
+<small class="text-muted">Tháng này</small>
+</div>
+</div>
+
+<div class="col-md-4">
+<div class="card my-card p-3">
+<h6>Đơn xuất</h6>
+<h3>18</h3>
+<small class="text-muted">Tháng này</small>
+</div>
+</div>
+
+<div class="col-md-4">
+<div class="card my-card p-3">
+<h6>Tổng chi phí</h6>
+<h3>12.500.000đ</h3>
+<small class="text-muted">VNĐ</small>
+</div>
+</div>
+
+</div>
+<div class="card my-card p-3">
+
+<h5>Hoạt động gần đây</h5>
+
+<table class="table mt-3">
+<thead>
+<tr>
+<th>Ngày</th>
+<th>Loại</th>
+<th>Số đơn</th>
+<th>Chi phí</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td>02/02</td>
+<td>Nhập</td>
+<td>10</td>
+<td>5.000.000đ</td>
+</tr>
+
+<tr>
+<td>01/02</td>
+<td>Xuất</td>
+<td>8</td>
+<td>3.200.000đ</td>
+</tr>
+
+<tr>
+<td>30/01</td>
+<td>Xuất</td>
+<td>5</td>
+<td>2.300.000đ</td>
+</tr>
+</tbody>
+
+</table>
+
+</div>
+
+
+
+
+</div>
+
+<!-- Right -->
+
+<div class="col-md-3">
+
+<div class="card my-card p-3">
+
+<b>Tracking hàng hóa</b>
+
+<table class="table table-sm mt-3">
+
+<thead>
+<tr>
+<th>ID</th>
+<th>Item</th>
+<th>Status</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td>T01</td>
+<td>Koi A</td>
+<td><span class="badge bg-warning">In Transit</span></td>
+</tr>
+
+<tr>
+<td>T02</td>
+<td>Koi B</td>
+<td><span class="badge bg-success">Delivered</span></td>
+</tr>
+
+<tr>
+<td>T03</td>
+<td>Koi C</td>
+<td><span class="badge bg-danger">Pending</span></td>
+</tr>
+
+</tbody>
+
+</table>
+
+<hr>
+
+<b>Lịch sử giao dịch</b>
+
+<ul class="list-group list-group-flush mt-2">
+
+<li class="list-group-item">02/02 - Order #12 - Completed</li>
+<li class="list-group-item">01/02 - Order #11 - Pending</li>
+<li class="list-group-item">30/01 - Order #10 - Cancelled</li>
+
+</ul>
+<div class="card my-card mb-4 p-3">
+<b>Bạn cần hỗ trợ?</b>
+<p>Chat với Haravan để được tư vấn</p>
+<button class="btn btn-primary">Chat</button>
+</div>
+
+<div class="card my-card p-3">
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+
+</div>
+
+<script>
+
+new Chart(document.getElementById('chart'),{
+type:'line',
+data:{
+labels:['Yesterday','Today'],
+datasets:[{
+data:[0,0],
+borderColor:'#2563eb',
+fill:false
+}]
+},
+options:{
+plugins:{legend:{display:false}}
+}
+});
+
+</script>
+
+</body>
+</html>
