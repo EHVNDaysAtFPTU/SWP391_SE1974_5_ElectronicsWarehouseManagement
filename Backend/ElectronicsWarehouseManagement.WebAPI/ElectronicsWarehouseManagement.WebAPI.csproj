@@ -15,4 +15,8 @@
     <ProjectReference Include="..\ElectronicsWarehouseManagement.Services\ElectronicsWarehouseManagement.Services.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="DTO\" />
+  </ItemGroup>
+
 </Project>
