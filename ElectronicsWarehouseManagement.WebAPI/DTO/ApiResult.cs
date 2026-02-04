@@ -16,7 +16,6 @@ public class ApiResult<T>
         Data = data;
     }
 
-
     [JsonPropertyName("code")]
     public ApiResultCode ResultCode { get; }
     
@@ -43,7 +42,6 @@ public class ApiResult
         ResultCode = errorCode;
         Message = errorMessage;
     }
-
 
     [JsonPropertyName("success")]
     public bool Success { get; }
