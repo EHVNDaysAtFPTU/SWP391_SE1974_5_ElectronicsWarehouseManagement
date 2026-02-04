@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="ElectronicsWarehouseManagement.DTO/ElectronicsWarehouseManagement.DTO.csproj" Id="1fc938ce-6698-4573-a798-2f806ca9a917" />
+  <Project Path="ElectronicsWarehouseManagement.Repositories\ElectronicsWarehouseManagement.Repositories.csproj" />
+  <Project Path="ElectronicsWarehouseManagement.Services\ElectronicsWarehouseManagement.Services.csproj" />
+  <Project Path="ElectronicsWarehouseManagement.WebAPI/ElectronicsWarehouseManagement.WebAPI.csproj" Id="4aee8d3b-3054-4e2f-afa8-bc0df5435f1b" />
+</Solution>

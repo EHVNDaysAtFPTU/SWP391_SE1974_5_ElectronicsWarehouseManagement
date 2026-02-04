@@ -1,6 +1,0 @@
-<Solution>
-  <Project Path="ElectronicsWarehouseManagement.WebAPI/ElectronicsWarehouseManagement.WebAPI.csproj" Id="4aee8d3b-3054-4e2f-afa8-bc0df5435f1b" />
-  <Project Path="ElectronicsWarehouseManagement.Contracts\ElectronicsWarehouseManagement.Contracts.csproj" />
-  <Project Path="ElectronicsWarehouseManagement.Repositories\ElectronicsWarehouseManagement.Repositories.csproj" />
-  <Project Path="ElectronicsWarehouseManagement.Services\ElectronicsWarehouseManagement.Services.csproj" />
-</Solution>

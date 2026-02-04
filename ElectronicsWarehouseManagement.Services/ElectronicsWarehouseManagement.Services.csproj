@@ -7,7 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\ElectronicsWarehouseManagement.Contracts\ElectronicsWarehouseManagement.Contracts.csproj" />
     <ProjectReference Include="..\ElectronicsWarehouseManagement.Repositories\ElectronicsWarehouseManagement.Repositories.csproj" />
   </ItemGroup>
 
