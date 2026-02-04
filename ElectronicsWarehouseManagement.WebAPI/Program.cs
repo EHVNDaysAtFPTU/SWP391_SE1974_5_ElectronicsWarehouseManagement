@@ -68,6 +68,9 @@ namespace ElectronicsWarehouseManagement.WebAPI
 
             app.MapControllers();
 
+            app.UseDefaultFiles();
+            app.UseStaticFiles();
+            
             app.Run();
         }
     }

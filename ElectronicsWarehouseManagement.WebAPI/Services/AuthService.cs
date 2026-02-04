@@ -26,16 +26,16 @@ class AuthService : IAuthService
     public async Task<ApiResult> LoginAsync(LoginReq request)
     {
         if (!request.Verify())
-            return new ApiResult(1, "Invalid request");
+            return new ApiResult(ApiResultCode.InvalidRequest, "Invalid request");
         var user = await _dbCtx.Users
             .AsNoTracking()
             .Include(u => u.Roles)
             .FirstOrDefaultAsync(u => u.Username == request.UsernameOrEmail || u.Email == request.UsernameOrEmail);
         if (user is null)
-            return new ApiResult(2, "Username or email not found");
+            return new ApiResult(ApiResultCode.NotFound, "Username or email not found");
         var hash = SHA256.HashData(Encoding.UTF8.GetBytes(request.Password));
         if (!string.Equals(user.PasswordHash, Convert.ToBase64String(hash), StringComparison.Ordinal))
-            return new ApiResult(3, "Incorrect password");
+            return new ApiResult(ApiResultCode.IncorrectCred, "Incorrect password");
         return new ApiResult();
     }
 }

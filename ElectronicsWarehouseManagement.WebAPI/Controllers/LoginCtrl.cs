@@ -25,7 +25,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
         {
             if (HttpContext.Session.GetString("User") != null)
             {
-                return BadRequest(new ApiResult(3, "Already logged in."));
+                return BadRequest(new ApiResult(ApiResultCode.AlreadyLoggedIn, "Already logged in."));
             }
             var result = await _authService.LoginAsync(request);
             if (result.Success)
@@ -59,5 +59,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
             var sessionUser = HttpContext.Session.GetString("User");
             return Ok(new ApiResult<object>(new { User = User.Identity?.Name, SessionUser = sessionUser }));
         }
+
+        // TODO: change password, reset password, etc.
     }
 }
