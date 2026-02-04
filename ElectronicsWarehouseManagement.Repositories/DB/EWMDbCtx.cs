@@ -237,17 +237,15 @@ public partial class EWMDbCtx : DbContext
             entity.Property(e => e.Email)
                 .IsRequired()
                 .HasMaxLength(100)
-                .IsFixedLength()
                 .HasColumnName("email");
             entity.Property(e => e.PasswordHash)
                 .IsRequired()
                 .HasMaxLength(100)
-                .IsFixedLength()
                 .HasColumnName("password_hash");
+            entity.Property(e => e.Status).HasColumnName("status");
             entity.Property(e => e.Username)
                 .IsRequired()
-                .HasMaxLength(20)
-                .IsFixedLength()
+                .HasMaxLength(50)
                 .HasColumnName("username");
         });
 
@@ -261,7 +259,6 @@ public partial class EWMDbCtx : DbContext
                 .HasColumnName("description");
             entity.Property(e => e.ImageUrl)
                 .HasMaxLength(4000)
-                .IsFixedLength()
                 .HasColumnName("image_url");
             entity.Property(e => e.PhysicalLocation)
                 .IsRequired()

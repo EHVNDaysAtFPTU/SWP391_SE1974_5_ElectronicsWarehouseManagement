@@ -15,6 +15,8 @@ public partial class User
 
     public string PasswordHash { get; set; }
 
+    public int Status { get; set; }
+
     public virtual ICollection<InOutBoundReq> InOutBoundReqApprovers { get; set; } = new List<InOutBoundReq>();
 
     public virtual ICollection<InOutBoundReq> InOutBoundReqCreators { get; set; } = new List<InOutBoundReq>();
