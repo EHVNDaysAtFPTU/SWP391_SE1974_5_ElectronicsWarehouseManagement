@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Text.Json.Serialization;
 
 public class ApiResult<T>
@@ -36,11 +37,23 @@ public class ApiResult
         Success = true;
     }
 
-    public ApiResult(ApiResultCode errorCode, string errorMessage)
+    public ApiResult(ApiResultCode errorCode, string errorMessage = "")
     {
         Success = false;
         ResultCode = errorCode;
-        Message = errorMessage;
+        if (!string.IsNullOrEmpty(errorMessage))
+            Message = errorMessage;
+        else
+        {
+            string name = errorCode.ToString();
+            DescriptionAttribute? descriptionAttribute = typeof(ApiResultCode).GetMember(name)[0]
+                .GetCustomAttributes(typeof(DescriptionAttribute), false)
+                .FirstOrDefault() as DescriptionAttribute;
+            if (descriptionAttribute is not null)
+                Message = descriptionAttribute.Description;
+            else
+                Message = name;
+        }
     }
 
     [JsonPropertyName("success")]
@@ -56,9 +69,14 @@ public class ApiResult
 public enum ApiResultCode
 {
     Success,
+    [Description("Not found")]
     NotFound,
+    [Description("Already logged in")]
     AlreadyLoggedIn,
+    [Description("Invalid request")]
     InvalidRequest,
+    [Description("Incorrect credentials")]
     IncorrectCred,
+    [Description("Unknown error")]
     UnknownError = -1,
 }

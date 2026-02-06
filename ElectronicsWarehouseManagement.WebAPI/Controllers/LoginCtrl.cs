@@ -1,3 +1,4 @@
+using ElectronicsWarehouseManagement.WebAPI.DTO;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
@@ -24,9 +25,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
         public async Task<IActionResult> Login([FromBody] LoginReq request)
         {
             if (HttpContext.Session.GetString("User") != null)
-            {
-                return BadRequest(new ApiResult(ApiResultCode.AlreadyLoggedIn, "Already logged in."));
-            }
+                return BadRequest(new ApiResult(ApiResultCode.AlreadyLoggedIn));
             var result = await _authService.LoginAsync(request);
             if (result.Success)
             {
@@ -56,10 +55,24 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
         [HttpGet("me")]
         public IActionResult Me()
         {
-            var sessionUser = HttpContext.Session.GetString("User");
-            return Ok(new ApiResult<object>(new { User = User.Identity?.Name, SessionUser = sessionUser }));
+            //TODO: return user info
+            return Ok(new ApiResult<object>());
         }
 
-        // TODO: change password, reset password, etc.
+        [Authorize]
+        [HttpPost("change-password")]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordReq request)
+        {
+            string username = HttpContext.Session.GetString("User") ?? "";
+            ApiResult result = await _authService.ChangePasswordAsync(username, request);
+            if (result.Success)
+            {
+                HttpContext.Session.Remove("User");
+                return Ok(result);
+            }
+            return BadRequest(result);
+        }
+
+        // TODO: reset password, etc.
     }
 }
