@@ -1,6 +1,11 @@
+using System.Text.Json.Serialization;
+
 public class LoginReq
 {
+    [JsonPropertyName("user")]
     public string UsernameOrEmail { get; set; } = string.Empty;
+    
+    [JsonPropertyName("pass")]
     public string Password { get; set; } = string.Empty;
 
     public bool Verify()
