@@ -1,175 +1,151 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-    <meta charset="UTF-8">
-    <title>Login | Warehouse Management</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8">
+<title>Login | Warehouse Management</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <!-- Google Font -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 
-    <style>
-        * {
-            box-sizing: border-box;
-            font-family: 'Inter', sans-serif;
-        }
+<style>
+* {
+    box-sizing: border-box;
+    font-family: 'Inter', sans-serif;
+}
 
-        body {
-            margin: 0;
-            height: 100vh;
-            background: linear-gradient(135deg, #4f46e5, #3b82f6);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
+body {
+    margin: 0;
+    height: 100vh;
+    background: linear-gradient(135deg, #4f46e5, #3b82f6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
 
-        .login-container {
-            background: #fff;
-            width: 380px;
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
-        }
+.login-container {
+    background: #fff;
+    width: 380px;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+}
 
-        .login-header {
-            text-align: center;
-            margin-bottom: 25px;
-        }
+.login-header {
+    text-align: center;
+    margin-bottom: 25px;
+}
 
-        .login-header h2 {
-            margin: 0;
-            color: #111827;
-        }
+.form-group {
+    margin-bottom: 16px;
+}
 
-        .login-header p {
-            color: #6b7280;
-            font-size: 14px;
-            margin-top: 6px;
-        }
+.form-group input {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid #d1d5db;
+}
 
-        .form-group {
-            margin-bottom: 16px;
-        }
+.login-btn {
+    width: 100%;
+    padding: 12px;
+    background: #3b82f6;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+}
 
-        .form-group label {
-            font-size: 14px;
-            color: #374151;
-            margin-bottom: 6px;
-            display: block;
-        }
+.login-btn:hover {
+    background: #2563eb;
+}
 
-        .form-group input {
-            width: 100%;
-            padding: 10px 12px;
-            border-radius: 8px;
-            border: 1px solid #d1d5db;
-            font-size: 14px;
-        }
-
-        .form-group input:focus {
-            outline: none;
-            border-color: #3b82f6;
-            box-shadow: 0 0 0 2px rgba(59,130,246,0.2);
-        }
-
-        .options {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 13px;
-            margin-bottom: 18px;
-        }
-
-        .options label {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            color: #374151;
-        }
-
-        .options a {
-            text-decoration: none;
-            color: #3b82f6;
-        }
-
-        .options a:hover {
-            text-decoration: underline;
-        }
-
-        .login-btn {
-            width: 100%;
-            padding: 12px;
-            background: #3b82f6;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 15px;
-            font-weight: 500;
-            cursor: pointer;
-        }
-
-        .login-btn:hover {
-            background: #2563eb;
-        }
-
-        .footer-text {
-            text-align: center;
-            font-size: 12px;
-            color: #6b7280;
-            margin-top: 20px;
-        }
-    </style>
+#error {
+    color: red;
+    font-size: 13px;
+    margin-top: 10px;
+    text-align: center;
+}
+</style>
 </head>
 
 <body>
 
 <div class="login-container">
-    <div class="login-header">
-        <h2>Warehouse System</h2>
-        <p>Đăng nhập dành cho Storekeeper</p>
-    </div>
 
-    <form id="loginForm">
-        <div class="form-group">
-            <label>Email / Username</label>
-            <input type="text" id="username" placeholder="Nhập tài khoản" required>
-        </div>
+<div class="login-header">
+    <h2>Warehouse System</h2>
+    <p>Đăng nhập dành cho Storekeeper</p>
+</div>
 
-        <div class="form-group">
-            <label>Mật khẩu</label>
-            <input type="password" id="password" placeholder="Nhập mật khẩu" required>
-        </div>
+<div class="form-group">
+    <input type="text" id="username" placeholder="Tài khoản">
+</div>
 
-        <div class="options">
-            <label>
-                <input type="checkbox">
-                Ghi nhớ đăng nhập
-            </label>
-            <a href="#">Quên mật khẩu?</a>
-        </div>
+<div class="form-group">
+    <input type="password" id="password" placeholder="Mật khẩu">
+</div>
 
-        <button type="submit" class="login-btn">Đăng nhập</button>
-    </form>
+<!-- Submit button -->
+<button class="login-btn" id="submitBtn">Đăng nhập</button>
 
-    <div class="footer-text">
-        © 2026 Warehouse Management System
-    </div>
+<div id="error"></div>
+
 </div>
 
 <script>
-    document.getElementById("loginForm").addEventListener("submit", function(e) {
-        e.preventDefault();
 
-        // Demo login (sau này gọi API C#)
-        const user = document.getElementById("username").value;
-        const pass = document.getElementById("password").value;
+document.getElementById("submitBtn").addEventListener("click", login);
 
-        if(user === "storekeeper" && pass === "123456") {
+async function login() {
+
+    const user = document.getElementById("username").value.trim();
+    const pass = document.getElementById("password").value.trim();
+    const errorDiv = document.getElementById("error");
+
+    errorDiv.innerText = "";
+
+    if(!user || !pass){
+        errorDiv.innerText = "Vui lòng nhập đầy đủ thông tin";
+        return;
+    }
+
+    try {
+
+        const response = await fetch("/api/auth/login", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                user: user,
+                pass: pass
+            })
+        });
+
+        const result = await response.json();
+
+        // ===== CHECK RESULT =====
+        if(result.success === true){
+
+            // login thành công
             window.location.href = "home.html";
-        } else {
-            alert("Sai tài khoản hoặc mật khẩu");
+
+        }else{
+
+            // login thất bại
+            errorDiv.innerText = result.msg || "Đăng nhập thất bại";
+
         }
-    });
+
+    } catch (e){
+
+        console.error(e);
+        errorDiv.innerText = "Không kết nối được server";
+
+    }
+}
+
 </script>
 
 </body>
