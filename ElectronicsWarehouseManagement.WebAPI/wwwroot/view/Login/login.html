@@ -46,6 +46,19 @@
                 border: 1px solid #d1d5db;
             }
 
+        .options {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+            margin-bottom: 16px;
+        }
+
+            .options a {
+                color: #2563eb;
+                text-decoration: none;
+            }
+
         .login-btn {
             width: 100%;
             padding: 12px;
@@ -75,7 +88,6 @@
 
         <div class="login-header">
             <h2>Warehouse System</h2>
-            <p>Đăng nhập </p>
         </div>
 
         <div class="form-group">
@@ -86,66 +98,101 @@
             <input type="password" id="password" placeholder="Mật khẩu">
         </div>
 
-        <!-- Submit button -->
+        <div class="options">
+            <label>
+                <input type="checkbox" id="rememberMe"> Remember me
+            </label>
+            <a href="#">Quên mật khẩu?</a>
+        </div>
+
         <button class="login-btn" id="submitBtn">Đăng nhập</button>
 
         <div id="error"></div>
-
     </div>
 
     <script>
-
         document.getElementById("submitBtn").addEventListener("click", login);
 
         async function login() {
 
             const user = document.getElementById("username").value.trim();
             const pass = document.getElementById("password").value.trim();
+            const remember = document.getElementById("rememberMe").checked;
             const errorDiv = document.getElementById("error");
 
             errorDiv.innerText = "";
 
-            if (!user || !pass) {
-                errorDiv.innerText = "Vui lòng nhập đầy đủ thông tin";
-                return;
-            }
-
             try {
-
                 const response = await fetch("/api/auth/login", {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json"
                     },
+                    credentials: "include", // ⭐ RẤT QUAN TRỌNG
                     body: JSON.stringify({
                         user: user,
-                        pass: pass
+                        pass: pass,
+                        remember: remember
                     })
                 });
 
                 const result = await response.json();
+                console.log("LOGIN RESULT =", result);
 
-                // ===== CHECK RESULT =====
                 if (result.success === true) {
 
-                    // login thành công
-                    window.location.href = "home.html";
+                    // ===== LẤY ROLE ĐÚNG CÁCH =====
+                    let role = null;
 
-                } else {
+                    if (result.role) {
+                        role = result.role;
+                    }
+                    else if (result.data && result.data.role) {
+                        role = result.data.role;
+                    }
 
-                    // login thất bại
-                    errorDiv.innerText = result.msg || "Đăng nhập thất bại";
+                    console.log("FINAL ROLE =", role);
 
+                    if (!role) {
+                        alert("Không nhận được role từ server");
+                        return;
+                    }
+
+                    redirectByRole(role);
+                    return;
                 }
 
-            } catch (e) {
+                errorDiv.innerText = result.msg || "Đăng nhập thất bại";
 
+            } catch (e) {
                 console.error(e);
                 errorDiv.innerText = "Không kết nối được server";
-
             }
         }
 
+        function redirectByRole(role) {
+
+            const normalizedRole = role.toString().toLowerCase().trim();
+            console.log("REDIRECT ROLE =", normalizedRole);
+
+            switch (normalizedRole) {
+                case "storekeeper":
+                    window.location.href = "/view/storekeeper/home.html";
+                    break;
+
+                case "admin":
+                    window.location.href = "/view/admin/home.html";
+                    break;
+
+                case "manager":
+                    window.location.href = "/view/manager/home.html";
+                    break;
+
+                default:
+                    alert("Role không hợp lệ: " + normalizedRole);
+                    window.location.href = "/view/login/login.html";
+            }
+        }
     </script>
 
 </body>
