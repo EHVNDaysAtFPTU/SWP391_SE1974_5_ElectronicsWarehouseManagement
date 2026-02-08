@@ -125,41 +125,23 @@
             try {
                 const response = await fetch("/api/auth/login", {
                     method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-                    credentials: "include", // ⭐ RẤT QUAN TRỌNG
-                    body: JSON.stringify({
-                        user: user,
-                        pass: pass,
-                        remember: remember
-                    })
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "include",
+                    body: JSON.stringify({ user, pass, remember })
                 });
 
                 const result = await response.json();
-                console.log("LOGIN RESULT =", result);
+                console.log("LOGIN RESULT =", JSON.stringify(result, null, 2));
 
                 if (result.success === true) {
 
-                    // ===== LẤY ROLE ĐÚNG CÁCH =====
-                    let role = null;
-
-                    if (result.role) {
-                        role = result.role;
-                    }
-                    else if (result.data && result.data.role) {
-                        role = result.data.role;
-                    }
-
-                    console.log("FINAL ROLE =", role);
-
-                    if (!role) {
+                    if (!result.role) {
                         alert("Không nhận được role từ server");
+                        console.error("ROLE INVALID:", result);
                         return;
                     }
 
-                    redirectByRole(role);
-                    return;
+                    redirectByRole(result.role);
                 }
 
                 errorDiv.innerText = result.msg || "Đăng nhập thất bại";
@@ -170,12 +152,17 @@
             }
         }
 
+        // ===== HANDLE REDIRECT =====
         function redirectByRole(role) {
 
-            const normalizedRole = role.toString().toLowerCase().trim();
-            console.log("REDIRECT ROLE =", normalizedRole);
+            if (!role || typeof role !== "string") {
+                alert("Role không hợp lệ");
+                return;
+            }
 
-            switch (normalizedRole) {
+            const r = role.toLowerCase().trim();
+
+            switch (r) {
                 case "storekeeper":
                     window.location.href = "/view/storekeeper/home.html";
                     break;
@@ -189,10 +176,10 @@
                     break;
 
                 default:
-                    alert("Role không hợp lệ: " + normalizedRole);
-                    window.location.href = "/view/login/login.html";
+                    alert("Role không được hỗ trợ: " + r);
             }
         }
+
     </script>
 
 </body>
