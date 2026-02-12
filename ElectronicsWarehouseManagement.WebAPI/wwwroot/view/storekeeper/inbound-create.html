@@ -1,0 +1,139 @@
+﻿<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Đơn Nhập Kho</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f6fb;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 10px;
+        }
+
+        h2 {
+            margin-bottom: 15px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 8px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            border: 1px solid #ccc;
+            padding: 6px;
+            text-align: center;
+            vertical-align: middle; 
+        }
+
+
+        th {
+            background: #f0f0f0;
+        }
+
+        button {
+            padding: 8px 15px;
+            margin-top: 10px;
+            cursor: pointer;
+        }
+
+        .add-btn {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .remove-btn {
+            background: #f44336;
+            color: white;
+        }
+
+        .submit-btn {
+            background: #1976d2;
+            color: white;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>📥 ĐƠN NHẬP KHO</h2>
+
+        <div class="form-row">
+            <input placeholder="Mã đơn nhập">
+            <input type="date">
+            <input placeholder="Kho nhập">
+            <input placeholder="BIN">
+            <input placeholder="Nhà cung cấp">
+            <input placeholder="Nhân viên nhập">
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Product ID</th>
+                    <th>Tên sản phẩm</th>
+                    <th>Số lượng</th>
+                    <th>Đơn vị</th>
+                    <th>Hành động</th>
+                </tr>
+            </thead>
+            <tbody id="importBody">
+                <tr>
+                    <td><input></td>
+                    <td><input></td>
+                    <td><input type="number"></td>
+                    <td><input></td>
+                    <td><button class="remove-btn" onclick="removeRow(this)">X</button></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <button class="add-btn" onclick="addRow()">+ Thêm dòng</button>
+
+        <br><br>
+<textarea rows="3" placeholder="Ghi chú"></textarea>
+        <br>
+
+        <button class="submit-btn">Lưu đơn nhập kho</button>
+    </div>
+
+    <script>
+function addRow() {
+    const row = `
+    <tr>
+        <td><input></td>
+        <td><input></td>
+        <td><input type="number"></td>
+        <td><input></td>
+        <td><button class="remove-btn" onclick="removeRow(this)">X</button></td>
+    </tr>`;
+    document.getElementById("importBody").insertAdjacentHTML("beforeend", row);
+}
+function removeRow(btn) {
+    btn.closest("tr").remove();
+}
+    </script>
+
+</body>
+</html>
