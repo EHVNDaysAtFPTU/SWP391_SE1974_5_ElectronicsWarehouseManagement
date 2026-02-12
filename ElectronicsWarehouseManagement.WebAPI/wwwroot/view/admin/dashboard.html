@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin Dashboard</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="sidebar">
+    <h3>ADMIN</h3>
+    <a onclick="show('user')">User Management</a>
+    <a onclick="show('config')">System Configuration</a>
+    <a onclick="show('info')">System Information</a>
+    <a onclick="show('status')">User Account Status</a>
+</div>
+
+<div class="content">
+    <div id="user" class="panel">
+        <h2>User Management</h2>
+        <button>Add User</button>
+        <button>Update User</button>
+        <button>Disable User</button>
+    </div>
+
+    <div id="config" class="panel">
+        <h2>System Configuration</h2>
+        <ul>
+            <li>Warehouse Rules</li>
+            <li>Approval Policies</li>
+        </ul>
+    </div>
+
+    <div id="info" class="panel">
+        <h2>System Information</h2>
+        <p>System Status: Running</p>
+        <p>No errors detected</p>
+    </div>
+
+    <div id="status" class="panel">
+        <h2>User Account Status</h2>
+        <p>Admin: Active</p>
+        <p>Storekeeper: Active</p>
+    </div>
+</div>
+
+<script src="js/app.js"></script>
+
+</body>
+</html>
