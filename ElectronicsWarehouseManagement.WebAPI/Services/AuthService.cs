@@ -3,18 +3,13 @@ using ElectronicsWarehouseManagement.WebAPI.DTO;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Cryptography;
 using System.Text;
+using ElectronicsWarehouseManagement.Repositories.ExternalEntities;
 
 public interface IAuthService
 {
+    Task<ApiResult> ChangeLoginAsync(string username, ChangeLoginReq request);
     Task<ApiResult> ChangePasswordAsync(string username, ChangePasswordReq request);
-
-    //Task<ApiResult<Guid>> Register(RegisterRequest request);
-    Task<ApiResult> LoginAsync(LoginReq request);
-    //Task<ApiResult<TokenResponse>> LoginDashboard(LoginDashboardRequest request);
-    //Task<ApiResult<TokenResponse>> Refresh(RefreshRequest request);
-    //Task<ApiResult<bool>> Logout(LogoutRequest request);
-    //Task<ApiResult<bool>> ForgotPassword(ForgotPasswordRequest request);
-    //Task<ApiResult<bool>> ResetPassword(ResetPasswordRequest request);
+    Task<(ApiResult<LoginResp> resp, User? user)> LoginAsync(LoginReq request);
 }
 
 class AuthService : IAuthService
@@ -26,20 +21,31 @@ class AuthService : IAuthService
         _dbCtx = dbCtx;
     }
 
-    public async Task<ApiResult> LoginAsync(LoginReq request)
+    public async Task<(ApiResult<LoginResp> resp, User? user)> LoginAsync(LoginReq request)
     {
         if (!request.Verify())
-            return new ApiResult(ApiResultCode.InvalidRequest);
+            return (new ApiResult<LoginResp>(ApiResultCode.InvalidRequest), null);
         var user = await _dbCtx.Users
             .AsNoTracking()
             .Include(u => u.Roles)
             .FirstOrDefaultAsync(u => u.Username == request.UsernameOrEmail || u.Email == request.UsernameOrEmail);
         if (user is null)
-            return new ApiResult(ApiResultCode.NotFound);
+            return (new ApiResult<LoginResp>(ApiResultCode.NotFound), null);
         var hash = SHA256.HashData(Encoding.UTF8.GetBytes(request.Password));
         if (!string.Equals(user.PasswordHash, Convert.ToBase64String(hash), StringComparison.Ordinal))
-            return new ApiResult(ApiResultCode.IncorrectCred);
-        return new ApiResult();
+            return (new ApiResult<LoginResp>(ApiResultCode.IncorrectCred), null);
+        switch ((UserStatus)user.Status)
+        {
+            case UserStatus.Inactive:
+                return (new ApiResult<LoginResp>(ApiResultCode.InvalidRequest, "Account is inactive."), null);
+            case UserStatus.Suspended:
+                return (new ApiResult<LoginResp>(ApiResultCode.InvalidRequest, "Account is suspended."), null);
+            case UserStatus.Deleted:
+                return (new ApiResult<LoginResp>(ApiResultCode.NotFound), null);
+            case UserStatus.Uninitialized:
+                throw new NotImplementedException();
+        }
+        return (new ApiResult<LoginResp>(new LoginResp("")), user);
     }
 
     public async Task<ApiResult> ChangePasswordAsync(string username, ChangePasswordReq request)
@@ -56,6 +62,26 @@ class AuthService : IAuthService
             return new ApiResult(ApiResultCode.IncorrectCred);
         var newHash = SHA256.HashData(Encoding.UTF8.GetBytes(request.NewPassword));
         user.PasswordHash = Convert.ToBase64String(newHash);
+        await _dbCtx.SaveChangesAsync();
+        return new ApiResult();
+    }
+
+    public async Task<ApiResult> ChangeLoginAsync(string username, ChangeLoginReq request)
+    {
+        if (!request.Verify())
+            return new ApiResult(ApiResultCode.InvalidRequest);
+        var user = await _dbCtx.Users.FirstOrDefaultAsync(u => u.Username == username);
+        if (user is null)
+            return new ApiResult(ApiResultCode.NotFound);
+        // Check if new username or email already exists
+        bool usernameExists = await _dbCtx.Users.AnyAsync(u => u.Username == request.Username && u.UserId != user.UserId);
+        if (usernameExists)
+            return new ApiResult(ApiResultCode.InvalidRequest, "Username already exists.");
+        bool emailExists = await _dbCtx.Users.AnyAsync(u => u.Email == request.Email && u.UserId != user.UserId);
+        if (emailExists)
+            return new ApiResult(ApiResultCode.InvalidRequest, "Email already exists.");
+        user.Username = request.Username;
+        user.Email = request.Email;
         await _dbCtx.SaveChangesAsync();
         return new ApiResult();
     }

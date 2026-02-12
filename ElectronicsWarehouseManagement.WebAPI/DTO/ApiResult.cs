@@ -9,11 +9,23 @@ public class ApiResult<T>
         Data = data;
     }
 
-    public ApiResult(ApiResultCode errorCode, string errorMessage, T? data = default)
+    public ApiResult(ApiResultCode errorCode, string errorMessage = null, T? data = default)
     {
         Success = false;
         ResultCode = errorCode;
-        Message = errorMessage;
+        if (!string.IsNullOrEmpty(errorMessage))
+            Message = errorMessage;
+        else
+        {
+            string name = errorCode.ToString();
+            DescriptionAttribute? descriptionAttribute = typeof(ApiResultCode).GetMember(name)[0]
+                .GetCustomAttributes(typeof(DescriptionAttribute), false)
+                .FirstOrDefault() as DescriptionAttribute;
+            if (descriptionAttribute is not null)
+                Message = descriptionAttribute.Description;
+            else
+                Message = name;
+        }
         Data = data;
     }
 

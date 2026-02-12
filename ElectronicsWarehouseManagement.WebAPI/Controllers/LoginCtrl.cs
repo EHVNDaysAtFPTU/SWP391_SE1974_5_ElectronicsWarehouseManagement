@@ -27,19 +27,21 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
             if (HttpContext.Session.GetString("User") != null)
                 return BadRequest(new ApiResult(ApiResultCode.AlreadyLoggedIn));
             var result = await _authService.LoginAsync(request);
-            if (result.Success)
+            if (result.resp.Success && result.user != null)
             {
                 var claims = new List<Claim>
                 {
-                    new(ClaimTypes.Name, request.UsernameOrEmail),
-                    // You can add more claims here as needed
+                    new(ClaimTypes.Name, result.user.Username),
+                    new(ClaimTypes.Email, result.user.Email)
                 };
+                foreach (var role in result.user.Roles)
+                    claims.Add(new Claim(ClaimTypes.Role, role.RoleId.ToString()));
                 var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
                 await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(identity));
-                HttpContext.Session.SetString("User", request.UsernameOrEmail);
-                return Ok(result);
+                HttpContext.Session.SetString("User", result.user.Username);
+                return Ok(result.resp);
             }
-            return Unauthorized(result);
+            return Unauthorized(result.resp);
         }
 
         [Authorize]
@@ -49,14 +51,6 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
             HttpContext.Session.Remove("User");
             await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
             return Ok(new ApiResult());
-        }
-
-        [Authorize]
-        [HttpGet("me")]
-        public IActionResult Me()
-        {
-            //TODO: return user info
-            return Ok(new ApiResult<object>());
         }
 
         [Authorize]
@@ -73,6 +67,26 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
             return BadRequest(result);
         }
 
-        // TODO: reset password, etc.
+        [Authorize]
+        [HttpPost("change-login")]
+        public async Task<IActionResult> ChangeLogin([FromBody] ChangeLoginReq request)
+        {
+            string username = HttpContext.Session.GetString("User") ?? "";
+            ApiResult result = await _authService.ChangeLoginAsync(username, request);
+            if (result.Success)
+            {
+                HttpContext.Session.Remove("User");
+                return Ok(result);
+            }
+            return BadRequest(result);
+        }
+
+        //[Authorize]
+        //[HttpGet("me")]
+        //public IActionResult Me()
+        //{
+        //    //TODO: return user info
+        //    return Ok(new ApiResult<object>());
+        //}
     }
 }
