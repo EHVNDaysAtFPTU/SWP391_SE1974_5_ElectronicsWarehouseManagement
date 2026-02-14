@@ -1,0 +1,140 @@
+﻿<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Thông tin cá nhân</title>
+    <style>
+        body {
+            font-family: Arial;
+            margin: 0;
+            background: #f4f6f9;
+        }
+
+        .container {
+            max-width: 500px;
+            margin: 60px auto;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        h2 {
+            margin-top: 0;
+            text-align: center;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+        }
+
+        button {
+            padding: 10px;
+            width: 100%;
+            background: #1a73e8;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+            button:hover {
+                background: #1558b0;
+            }
+
+        .msg {
+            text-align: center;
+            margin-top: 10px;
+            color: green;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <h2>Thông tin cá nhân</h2>
+
+        <input type="text" id="username" disabled>
+        <input type="text" id="fullname" placeholder="Họ tên">
+        <input type="email" id="email" placeholder="Email">
+
+        <button onclick="updateProfile()">Cập nhật</button>
+
+        <hr>
+
+        <h3>Đổi mật khẩu</h3>
+        <input type="password" id="oldPass" placeholder="Mật khẩu cũ">
+        <input type="password" id="newPass" placeholder="Mật khẩu mới">
+
+        <button onclick="changePassword()">Đổi mật khẩu</button>
+
+        <div class="msg" id="msg"></div>
+    </div>
+
+    <script>
+
+async function loadProfile() {
+    try {
+
+        const res = await fetch("/api/auth/me", {
+            credentials: "include"
+        });
+
+        if (!res.ok) {
+            window.location.href = "/view/login/login.html";
+            return;
+        }
+
+        const data = await res.json();
+
+        document.getElementById("username").value = data.username;
+        document.getElementById("fullname").value = data.fullName;
+        document.getElementById("email").value = data.email;
+
+    } catch {
+        window.location.href = "/view/login/login.html";
+    }
+}
+
+async function updateProfile() {
+
+    const fullName = document.getElementById("fullname").value;
+    const email = document.getElementById("email").value;
+
+    const res = await fetch("/api/auth/update-profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ fullName, email })
+    });
+
+    const result = await res.json();
+
+    document.getElementById("msg").innerText = result.msg || "Cập nhật thành công";
+}
+
+async function changePassword() {
+
+    const oldPass = document.getElementById("oldPass").value;
+    const newPass = document.getElementById("newPass").value;
+
+    const res = await fetch("/api/auth/change-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ oldPass, newPass })
+    });
+
+    const result = await res.json();
+
+    document.getElementById("msg").innerText = result.msg || "Đổi mật khẩu thành công";
+}
+
+loadProfile();
+
+    </script>
+
+</body>
+</html>
