@@ -35,7 +35,7 @@ public class ApiResult<T>
     [JsonPropertyName("msg")]
     public string Message { get; } = "Success";
     
-    [JsonPropertyName("data")]
+    [JsonPropertyName("data"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public T? Data { get; }
 
     [JsonPropertyName("success")]
@@ -83,12 +83,16 @@ public enum ApiResultCode
     Success,
     [Description("Not found")]
     NotFound,
+    [Description("Unauthorized")]
+    Unauthorized,
     [Description("Already logged in")]
     AlreadyLoggedIn,
     [Description("Invalid request")]
     InvalidRequest,
     [Description("Incorrect credentials")]
     IncorrectCred,
+    [Description("Session Expired")]
+    SessionExpired,
     [Description("Unknown error")]
     UnknownError = -1,
 }
