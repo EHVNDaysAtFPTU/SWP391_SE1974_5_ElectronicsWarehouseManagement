@@ -9,7 +9,7 @@ public interface IAuthService
 {
     Task<ApiResult> ChangeLoginAsync(string username, ChangeLoginReq request);
     Task<ApiResult> ChangePasswordAsync(string username, ChangePasswordReq request);
-    Task<(ApiResult<LoginResp> resp, User? user)> LoginAsync(LoginReq request);
+    Task<(ApiResult resp, User? user)> LoginAsync(LoginReq request);
 }
 
 class AuthService : IAuthService
@@ -21,10 +21,10 @@ class AuthService : IAuthService
         _dbCtx = dbCtx;
     }
 
-    public async Task<(ApiResult<LoginResp> resp, User? user)> LoginAsync(LoginReq request)
+    public async Task<(ApiResult resp, User? user)> LoginAsync(LoginReq request)
     {
         if (!request.Verify())
-            return (new ApiResult<LoginResp>(ApiResultCode.InvalidRequest), null);
+            return (new ApiResult(ApiResultCode.InvalidRequest), null);
 
         var user = await _dbCtx.Users
             .Include(u => u.Roles)
@@ -33,36 +33,30 @@ class AuthService : IAuthService
                 u.Email == request.UsernameOrEmail);
 
         if (user is null)
-            return (new ApiResult<LoginResp>(ApiResultCode.NotFound), null);
+            return (new ApiResult(ApiResultCode.NotFound), null);
 
         var hash = SHA256.HashData(Encoding.UTF8.GetBytes(request.Password));
 
         if (!string.Equals(user.PasswordHash,
             Convert.ToBase64String(hash),
             StringComparison.Ordinal))
-            return (new ApiResult<LoginResp>(ApiResultCode.IncorrectCred), null);
+            return (new ApiResult(ApiResultCode.IncorrectCred), null);
 
         switch ((UserStatus)user.Status)
         {
             case UserStatus.Inactive:
-                return (new ApiResult<LoginResp>(ApiResultCode.InvalidRequest, "Account is inactive."), null);
+                return (new ApiResult(ApiResultCode.InvalidRequest, "Account is inactive."), null);
 
             case UserStatus.Suspended:
-                return (new ApiResult<LoginResp>(ApiResultCode.InvalidRequest, "Account is suspended."), null);
+                return (new ApiResult(ApiResultCode.InvalidRequest, "Account is suspended."), null);
 
             case UserStatus.Deleted:
-                return (new ApiResult<LoginResp>(ApiResultCode.NotFound), null);
+                return (new ApiResult(ApiResultCode.NotFound), null);
 
             case UserStatus.Uninitialized:
-                return (new ApiResult<LoginResp>(ApiResultCode.InvalidRequest, "Account not initialized."), null);
+                return (new ApiResult(ApiResultCode.InvalidRequest, "Account not initialized."), null);
         }
-
-        var resp = new LoginResp("/view/storekeeper/home.html");
-
-        return (
-            new ApiResult<LoginResp>(resp),
-            user
-        );
+        return (new ApiResult(), user);
     }
 
 

@@ -4,7 +4,7 @@ using System.Text.Json.Serialization;
 
 namespace ElectronicsWarehouseManagement.WebAPI.DTO
 {
-    public class GetUsersResp
+    public class GetUserResp
     {
         [JsonPropertyName("user_id")]
         public int UserId { get; set; }
@@ -18,20 +18,26 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
         [JsonPropertyName("status")]
         public UserStatus Status { get; set; }
 
-        public GetUsersResp(int userId, string username, string email, UserStatus status)
-        {
-            UserId = userId;
-            Username = username;
-            Email = email;
-            Status = status;
-        }
+        [JsonPropertyName("role")]
+        public List<GetRolesResp> Roles { get; set; } = [];
 
-        public GetUsersResp(User user)
+        public GetUserResp(User user)
         {
             UserId = user.UserId;
             Username = user.Username;
             Email = user.Email;
             Status = (UserStatus)user.Status;
+            foreach (var role in user.Roles)
+                Roles.Add(new GetRolesResp(role));
+        }
+
+        public GetUserResp(int userId, string username, string email, UserStatus status, IEnumerable<GetRolesResp> roles)
+        {
+            UserId = userId;
+            Username = username;
+            Email = email;
+            Status = status;
+            Roles.AddRange(roles);
         }
     }
 }
