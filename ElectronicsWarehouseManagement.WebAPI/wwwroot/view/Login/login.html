@@ -231,19 +231,9 @@
 
                 if (result.success === true) {
 
-                    const role = result.role;   // backend phải trả role
-
-                    if (role === "admin") {
-                        window.location.href = "/view/admin/index.html";
-                    }
-                    else if (role === "manager") {
-                        window.location.href = "/view/manager/home.html";
-                    }
-                    else if (role === "storekeeper") {
-                        window.location.href = "/view/storekeeper/home.html";
-                    }
+                    window.location.href = result.data.href;
                 }
-                 else {
+                else {
                     errorDiv.innerText = result.msg || "Sai tài khoản hoặc mật khẩu";
                 }
 

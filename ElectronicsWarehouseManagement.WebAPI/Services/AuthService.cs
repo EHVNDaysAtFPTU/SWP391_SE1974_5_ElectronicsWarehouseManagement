@@ -60,7 +60,7 @@ class AuthService : IAuthService
         var resp = new LoginResp("/view/storekeeper/home.html");
 
         return (
-            new ApiResult<LoginResp>(ApiResultCode.Success, null, resp),
+            new ApiResult<LoginResp>(resp),
             user
         );
     }
