@@ -1,4 +1,4 @@
-/* ===== RESET ===== */
+﻿/* ===== RESET ===== */
 * {
     margin: 0;
     padding: 0;
@@ -45,6 +45,7 @@ body {
     margin-bottom: 8px;
     text-decoration: none;
     color: inherit;
+    transition: 0.2s;
 }
 
     .sidebar li:hover,
@@ -65,7 +66,7 @@ body {
     overflow-y: auto;
 }
 
-/* ===== HEADER / TOPBAR ===== */
+/* ===== HEADER ===== */
 .header,
 .topbar,
 .box-header {
@@ -79,32 +80,37 @@ body {
         font-size: 26px;
     }
 
-/* ===== BUTTON ===== */
+/* ===== BUTTON SYSTEM ===== */
 button,
 .btn-primary,
-.btn-secondary {
+.btn-secondary,
+.action-btn {
     border: none;
     border-radius: 6px;
     cursor: pointer;
     padding: 8px 16px;
     color: #fff;
     background: #4f46e5;
+    font-size: 13px;
+    transition: 0.2s ease;
 }
 
     button:hover,
     .btn-primary:hover,
-    .btn-secondary:hover {
-        opacity: 0.9;
+    .btn-secondary:hover,
+    .action-btn:hover {
+        background: #4338ca;
     }
 
     button.small {
         padding: 4px 8px;
     }
 
-    button.danger,
-    .btn-link.danger {
-        background: #dc2626;
-    }
+/* ===== ACTION BUTTON (ĐỒNG MÀU) ===== */
+.action-btn {
+    min-width: 70px;
+    margin-right: 6px;
+}
 
 /* ===== FILTER ===== */
 .filter-bar {
@@ -141,6 +147,11 @@ td {
     font-size: 14px;
 }
 
+th {
+    font-weight: 600;
+    color: #374151;
+}
+
 tbody tr {
     border-bottom: 1px solid #e5e7eb;
 }
@@ -172,11 +183,11 @@ tbody tr {
         color: #92400e;
     }
 
-/* ===== LINK BUTTON ===== */
+/* ===== LINK BUTTON (Nếu còn dùng) ===== */
 .btn-link {
     background: none;
     border: none;
-    color: #2563eb;
+    color: #4f46e5;
     cursor: pointer;
     font-size: 13px;
     margin-right: 8px;
