@@ -230,8 +230,20 @@
                 const result = await response.json();
 
                 if (result.success === true) {
-                    window.location.href = "home.html";
-                } else {
+
+                    const role = result.role;   // backend phải trả role
+
+                    if (role === "admin") {
+                        window.location.href = "/view/admin/index.html";
+                    }
+                    else if (role === "manager") {
+                        window.location.href = "/view/manager/home.html";
+                    }
+                    else if (role === "storekeeper") {
+                        window.location.href = "/view/storekeeper/home.html";
+                    }
+                }
+                 else {
                     errorDiv.innerText = result.msg || "Sai tài khoản hoặc mật khẩu";
                 }
 
