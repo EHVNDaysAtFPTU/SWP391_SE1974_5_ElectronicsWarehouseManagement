@@ -2,68 +2,145 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>User Management</title>
+    <title>Admin | User Management</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
     <div class="layout">
 
+        <!-- SIDEBAR -->
         <aside class="sidebar">
-            <div class="brand">ECWMS</div>
-            <nav>
-                <a href="index.html">Dashboard</a>
-                <a class="active">User Management</a>
-                <a href="system-config.html">System Configuration</a>
-                <a>Logout</a>
-            </nav>
+            <h2 class="logo">ECWMS</h2>
+            <ul>
+                <li class="active">User Management</li>
+                <li>System Configuration</li>
+                <li>Logout</li>
+            </ul>
         </aside>
 
-        <main class="main">
-            <header class="topbar">
+        <!-- MAIN CONTENT -->
+        <main class="content">
+
+            <!-- HEADER -->
+            <div class="header">
                 <h1>User Management</h1>
-            </header>
+                <button class="btn-primary">+ Add User</button>
+            </div>
 
-            <section class="content">
-                <div class="box">
-                    <div class="box-header">
-                        <h2>User List</h2>
-                        <button>Add User</button>
-                    </div>
+            <!-- FILTER BAR -->
+            <div class="filter-bar">
+                <input type="text" placeholder="Search by ID or username">
 
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Username</th>
-                                <th>Role</th>
-                                <th>Status</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>admin01</td>
-                                <td>Admin</td>
-                                <td>Active</td>
-                                <td>
-                                    <button class="small">Edit</button>
-                                    <button class="small danger">Disable</button>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>staff01</td>
-                                <td>Staff</td>
-                                <td>Inactive</td>
-                                <td>
-                                    <button class="small">Edit</button>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </section>
+                <select>
+                    <option>All Roles</option>
+                    <option>Admin</option>
+                    <option>Manager</option>
+                    <option>Storekeeper</option>
+                    <option>Accountant</option>
+                </select>
+
+                <select>
+                    <option>All Status</option>
+                    <option>Active</option>
+                    <option>Disabled</option>
+                    <option>Locked</option>
+                </select>
+
+                <button class="btn-secondary">Search</button>
+            </div>
+
+            <!-- TABLE -->
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>User</th>
+                        <th>Role</th>
+                        <th>Status</th>
+                        <th>Last Login</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    <tr>
+                        <td>U001</td>
+                        <td>admin01</td>
+                        <td>Admin</td>
+                        <td><span class="status active">Active</span></td>
+                        <td>03/02/2026 09:10</td>
+                        <td>
+                            <button class="btn-link">View</button>
+                            <button class="btn-link">Edit</button>
+                            <button class="btn-link danger">Disable</button>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td>U002</td>
+                        <td>storekeeper01</td>
+                        <td>Storekeeper</td>
+                        <td><span class="status disabled">Disabled</span></td>
+                        <td>01/02/2026 14:30</td>
+                        <td>
+                            <button class="btn-link">View</button>
+                            <button class="btn-link">Edit</button>
+                            <button class="btn-link">Enable</button>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td>U003</td>
+                        <td>manager01</td>
+                        <td>Manager</td>
+                        <td><span class="status active">Active</span></td>
+                        <td>02/02/2026 08:45</td>
+                        <td>
+                            <button class="btn-link">View</button>
+                            <button class="btn-link">Edit</button>
+                            <button class="btn-link danger">Disable</button>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td>U004</td>
+                        <td>storekeeper02</td>
+                        <td>Storekeeper</td>
+                        <td><span class="status active">Active</span></td>
+                        <td>04/02/2026 10:20</td>
+                        <td>
+                            <button class="btn-link">View</button>
+                            <button class="btn-link">Edit</button>
+                            <button class="btn-link danger">Disable</button>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td>U005</td>
+                        <td>manager02</td>
+                        <td>Manager</td>
+                        <td><span class="status disabled">Disabled</span></td>
+                        <td>30/01/2026 16:45</td>
+                        <td>
+                            <button class="btn-link">View</button>
+                            <button class="btn-link">Edit</button>
+                            <button class="btn-link">Enable</button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <!-- PAGINATION -->
+            <div class="pagination">
+                <button>&lt;</button>
+                <button class="active">1</button>
+                <button>2</button>
+                <button>3</button>
+                <button>&gt;</button>
+            </div>
+
         </main>
-
     </div>
 
 </body>
