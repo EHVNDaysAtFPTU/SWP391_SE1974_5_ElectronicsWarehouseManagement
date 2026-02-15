@@ -1,0 +1,186 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Inbound Orders - Storekeeper</title>
+
+    <style>
+        body {
+            font-family: Arial;
+            background: #f4f6f9;
+            padding: 40px;
+        }
+
+        h2 {
+            margin-bottom: 20px;
+        }
+
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        button {
+            padding: 6px 12px;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        .home-btn {
+            background: #6c757d;
+            color: white;
+        }
+
+        .confirm-btn {
+            background: #27ae60;
+            color: white;
+        }
+
+        .disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+
+        th, td {
+            padding: 10px;
+            border: 1px solid #ddd;
+            text-align: center;
+        }
+
+        th {
+            background: #2f80ed;
+            color: white;
+        }
+
+        .status-complete {
+            color: green;
+            font-weight: bold;
+        }
+
+        .status-pending {
+            color: orange;
+            font-weight: bold;
+        }
+
+        .pagination {
+            margin-top: 20px;
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="top-bar">
+        <h2>Inbound Orders</h2>
+        <button class="home-btn" onclick="goHome()">⬅ Back to Home</button>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Order Code</th>
+                <th>Date</th>
+                <th>Warehouse</th>
+                <th>Supplier</th>
+                <th>Total Items</th>
+                <th>Status</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody id="orderTable">
+        </tbody>
+    </table>
+
+    <div class="pagination">
+        <button onclick="prevPage()">Previous</button>
+        <span id="pageInfo"></span>
+        <button onclick="nextPage()">Next</button>
+    </div>
+
+    <script>
+const orders = [
+{code:"INB001",date:"10/02/2025",warehouse:"Main",supplier:"ABC",items:5,status:"Completed"},
+{code:"INB002",date:"11/02/2025",warehouse:"Main",supplier:"XYZ",items:3,status:"Pending"},
+{code:"INB003",date:"12/02/2025",warehouse:"Central",supplier:"Global",items:6,status:"Pending"},
+{code:"INB004",date:"13/02/2025",warehouse:"Main",supplier:"PartsCo",items:4,status:"Completed"},
+{code:"INB005",date:"14/02/2025",warehouse:"Central",supplier:"SupplyHub",items:7,status:"Pending"},
+{code:"INB006",date:"15/02/2025",warehouse:"Main",supplier:"ABC",items:2,status:"Completed"},
+{code:"INB007",date:"16/02/2025",warehouse:"Central",supplier:"MegaTrade",items:9,status:"Pending"},
+{code:"INB008",date:"17/02/2025",warehouse:"Main",supplier:"BuildPro",items:5,status:"Pending"}
+];
+
+let currentPage = 1;
+const rowsPerPage = 4;
+
+function renderTable() {
+    const table = document.getElementById("orderTable");
+    table.innerHTML = "";
+
+    const start = (currentPage - 1) * rowsPerPage;
+    const end = start + rowsPerPage;
+    const paginated = orders.slice(start, end);
+
+    paginated.forEach((order, index) => {
+        const realIndex = start + index;
+        table.innerHTML += `
+        <tr>
+            <td>${order.code}</td>
+            <td>${order.date}</td>
+            <td>${order.warehouse}</td>
+            <td>${order.supplier}</td>
+            <td>${order.items}</td>
+            <td class="${order.status === 'Completed' ? 'status-complete' : 'status-pending'}">
+                ${order.status}
+            </td>
+            <td>
+                ${
+                    order.status === "Pending"
+                    ? `<button class="confirm-btn" onclick="confirmOrder(${realIndex})">Confirm</button>`
+                    : `<button class="disabled" disabled>✔</button>`
+                }
+            </td>
+        </tr>
+        `;
+    });
+
+    document.getElementById("pageInfo").innerText =
+        `Page ${currentPage} of ${Math.ceil(orders.length / rowsPerPage)}`;
+}
+
+function confirmOrder(index) {
+    orders[index].status = "Completed";
+    renderTable();
+}
+
+function nextPage() {
+    if (currentPage < Math.ceil(orders.length / rowsPerPage)) {
+        currentPage++;
+        renderTable();
+    }
+}
+
+function prevPage() {
+    if (currentPage > 1) {
+        currentPage--;
+        renderTable();
+    }
+}
+
+function goHome() {
+    alert("Back to Home Page");
+}
+
+renderTable();
+    </script>
+
+</body>
+</html>

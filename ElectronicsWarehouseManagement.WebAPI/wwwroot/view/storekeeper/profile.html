@@ -2,138 +2,187 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Thông tin cá nhân</title>
+    <title>User Profile</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
     <style>
-        body {
-            font-family: Arial;
+        * {
             margin: 0;
-            background: #f4f6f9;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
         }
 
-        .container {
-            max-width: 500px;
-            margin: 60px auto;
-            background: white;
-            padding: 30px;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        body {
+            background: linear-gradient(135deg, #4e73df, #1cc88a);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
         }
 
-        h2 {
-            margin-top: 0;
-            text-align: center;
+        .profile-card {
+            width: 650px;
+            background: #fff;
+            border-radius: 15px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+            overflow: hidden;
         }
 
-        input {
-            width: 100%;
-            padding: 10px;
-            margin: 10px 0;
-        }
-
-        button {
-            padding: 10px;
-            width: 100%;
-            background: #1a73e8;
+        .profile-header {
+            background: linear-gradient(135deg, #4e73df, #224abe);
             color: white;
-            border: none;
-            cursor: pointer;
+            text-align: center;
+            padding: 40px 20px;
+            position: relative;
         }
 
-            button:hover {
-                background: #1558b0;
+        .avatar {
+            width: 110px;
+            height: 110px;
+            border-radius: 50%;
+            background: white;
+            color: #4e73df;
+            font-size: 48px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 15px;
+        }
+
+        .profile-header h2 {
+            font-weight: 600;
+        }
+
+        .username {
+            opacity: 0.9;
+            margin-top: 5px;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-top: 10px;
+        }
+
+        .badge-manager {
+            background: #f6c23e;
+            color: #000;
+        }
+
+        .profile-body {
+            padding: 30px;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+            .info-row:last-child {
+                border-bottom: none;
             }
 
-        .msg {
-            text-align: center;
-            margin-top: 10px;
-            color: green;
+        .info-label {
+            font-weight: 500;
+            color: #555;
         }
+
+        .info-value {
+            font-weight: 500;
+        }
+
+        .status-active {
+            color: #1cc88a;
+            font-weight: 600;
+        }
+
+        .buttons {
+            margin-top: 25px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .btn {
+            padding: 10px 18px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-weight: 500;
+            transition: 0.3s;
+        }
+
+        .btn-edit {
+            background: #4e73df;
+            color: white;
+        }
+
+            .btn-edit:hover {
+                background: #2e59d9;
+            }
+
+        .btn-home {
+            background: #858796;
+            color: white;
+        }
+
+            .btn-home:hover {
+                background: #60616f;
+            }
     </style>
 </head>
-
 <body>
 
-    <div class="container">
-        <h2>Thông tin cá nhân</h2>
+    <div class="profile-card">
+        <div class="profile-header">
+            <div class="avatar">N</div>
+            <h2>Nguyễn Văn A</h2>
+            <div class="username">@nguyenvana</div>
+            <div class="badge badge-manager">MANAGER</div>
+        </div>
 
-        <input type="text" id="username" disabled>
-        <input type="text" id="fullname" placeholder="Họ tên">
-        <input type="email" id="email" placeholder="Email">
+        <div class="profile-body">
+            <div class="info-row">
+                <div class="info-label">Email</div>
+                <div class="info-value">vana@gmail.com</div>
+            </div>
 
-        <button onclick="updateProfile()">Cập nhật</button>
+            <div class="info-row">
+                <div class="info-label">Phòng ban</div>
+                <div class="info-value">Warehouse Management</div>
+            </div>
 
-        <hr>
+            <div class="info-row">
+                <div class="info-label">Quản lý trực tiếp</div>
+                <div class="info-value">Trần Minh B</div>
+            </div>
 
-        <h3>Đổi mật khẩu</h3>
-        <input type="password" id="oldPass" placeholder="Mật khẩu cũ">
-        <input type="password" id="newPass" placeholder="Mật khẩu mới">
+            <div class="info-row">
+                <div class="info-label">Ngày tạo tài khoản</div>
+                <div class="info-value">15/02/2025</div>
+            </div>
 
-        <button onclick="changePassword()">Đổi mật khẩu</button>
+            <div class="info-row">
+                <div class="info-label">Trạng thái</div>
+                <div class="info-value status-active">● Đang hoạt động</div>
+            </div>
 
-        <div class="msg" id="msg"></div>
+            <div class="buttons">
+                <button class="btn btn-home" onclick="goHome()">← Trang chủ</button>
+                <button class="btn btn-edit">Chỉnh sửa</button>
+            </div>
+        </div>
     </div>
 
     <script>
-
-async function loadProfile() {
-    try {
-
-        const res = await fetch("/api/auth/me", {
-            credentials: "include"
-        });
-
-        if (!res.ok) {
-            window.location.href = "/view/login/login.html";
-            return;
+        function goHome() {
+            window.location.href = "home.html"; // đổi link theo project của bạn
         }
-
-        const data = await res.json();
-
-        document.getElementById("username").value = data.username;
-        document.getElementById("fullname").value = data.fullName;
-        document.getElementById("email").value = data.email;
-
-    } catch {
-        window.location.href = "/view/login/login.html";
-    }
-}
-
-async function updateProfile() {
-
-    const fullName = document.getElementById("fullname").value;
-    const email = document.getElementById("email").value;
-
-    const res = await fetch("/api/auth/update-profile", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ fullName, email })
-    });
-
-    const result = await res.json();
-
-    document.getElementById("msg").innerText = result.msg || "Cập nhật thành công";
-}
-
-async function changePassword() {
-
-    const oldPass = document.getElementById("oldPass").value;
-    const newPass = document.getElementById("newPass").value;
-
-    const res = await fetch("/api/auth/change-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ oldPass, newPass })
-    });
-
-    const result = await res.json();
-
-    document.getElementById("msg").innerText = result.msg || "Đổi mật khẩu thành công";
-}
-
-loadProfile();
-
     </script>
 
 </body>
