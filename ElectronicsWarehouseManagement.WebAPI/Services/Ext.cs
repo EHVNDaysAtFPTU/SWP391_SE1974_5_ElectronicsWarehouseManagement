@@ -7,6 +7,7 @@ public static class Ext
         services.AddHttpClient();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IAdminService, AdminService>();
+        services.AddScoped<IManagerService, ManagerService>();
         return services;
     }
 }
