@@ -27,30 +27,31 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
 
         public async Task<ApiResult<PagedResult<ItemDTO>>> GetItemList()
         {
-            try
-            {
-                int totalCount = await _dbCtx.Items.CountAsync();
-                var data = await _dbCtx.Items.AsNoTracking().Select(i => new ItemDTO
-                {
-                    ItemId = i.ItemId,
-                    Unit = i.Unit,
-                    Categories = i.Categories,
-                    UnitPrice = i.UnitPrice
+            throw new NotImplementedException();
+            //try
+            //{
+            //    int totalCount = await _dbCtx.Items.CountAsync();
+            //    var data = await _dbCtx.Items.AsNoTracking().Select(i => new ItemDTO
+            //    {
+            //        ItemId = i.ItemId,
+            //        Unit = i.Unit,
+            //        Categories = i.Categories,
+            //        UnitPrice = i.UnitPrice
 
-                }).ToListAsync();
-                var pagedResult = new PagedResult<ItemDTO>
-                {
-                    Item = data,
-                    TotalRecord = totalCount,
-                    PageIndex = 1,
-                    PageSize = totalCount
-                };
-                return new ApiResult<PagedResult<ItemDTO>>(pagedResult);
-            }
-            catch (Exception ex)
-            {
-                return new ApiResult<PagedResult<ItemDTO>>(ApiResultCode.UnknownError, ex.Message);
-            }
+            //    }).ToListAsync();
+            //    var pagedResult = new PagedResult<ItemDTO>
+            //    {
+            //        Item = data,
+            //        TotalRecord = totalCount,
+            //        PageIndex = 1,
+            //        PageSize = totalCount
+            //    };
+            //    return new ApiResult<PagedResult<ItemDTO>>(pagedResult);
+            //}
+            //catch (Exception ex)
+            //{
+            //    return new ApiResult<PagedResult<ItemDTO>>(ApiResultCode.UnknownError, ex.Message);
+            //}
 
         }
         public Task<ApiResult<List<TransferReq>>> GetTransferReqList()

@@ -1,20 +1,21 @@
 ﻿using ElectronicsWarehouseManagement.Repositories.Entities;
+using ElectronicsWarehouseManagement.Repositories.ExternalEntities;
 using System.Text.Json.Serialization;
 
 namespace ElectronicsWarehouseManagement.WebAPI.DTO
 {
     public class ItemDTO
     {
-        [JsonPropertyName("item_id")]
+        [JsonPropertyName("id")]
         public int ItemId { get; set; }
 
         [JsonPropertyName("metadata")]
-        public string Metadata { get; set; }
+        public ComponentMetadata? Metadata { get; set; }
 
-        [JsonPropertyName("item_quantity")]
+        [JsonPropertyName("quantity")]
         public int Quantity { get; set; }
 
-        [JsonPropertyName("item_unit")]
+        [JsonPropertyName("unit")]
         public string Unit { get; set; }
 
         [JsonPropertyName("import_date")]
@@ -29,16 +30,27 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
         [JsonPropertyName("iob_id")]
         public int? IobId { get; set; }
 
-        [JsonPropertyName("iob")]
-        public virtual InOutBoundReq Iob { get; set; }
+        public ItemDTO(Item item)
+        {
+            ItemId = item.ItemId;
+            Quantity = item.Quantity;
+            Unit = item.Unit;
+            ImportDate = item.ImportDate;
+            UnitPrice = item.UnitPrice;
+            TransferId = item.TransferId;
+            IobId = item.IobId;
+        }
 
-        [JsonPropertyName("transfer")]
-        public virtual TransferReq Transfer { get; set; }
-
-        [JsonPropertyName("bins")]
-        public virtual ICollection<Bin> Bins { get; set; } = new List<Bin>();
-
-        [JsonPropertyName("categories")]
-        public virtual ICollection<Category> Categories { get; set; } = new List<Category>();
+        public ItemDTO(int itemId, ComponentMetadata? metadata, int quantity, string unit, DateOnly importDate, float unitPrice, int? transferId, int? iobId)
+        {
+            ItemId = itemId;
+            Metadata = metadata;
+            Quantity = quantity;
+            Unit = unit;
+            ImportDate = importDate;
+            UnitPrice = unitPrice;
+            TransferId = transferId;
+            IobId = iobId;
+        }
     }
 }
