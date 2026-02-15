@@ -34,8 +34,11 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
                     new(ClaimTypes.Name, result.user.Username),
                     new(ClaimTypes.Email, result.user.Email)
                 };
-                foreach (var role in result.user.Roles)
-                    claims.Add(new Claim(ClaimTypes.Role, role.RoleId.ToString()));
+                foreach (var role in result.user.Roles.OrderBy(r => r.RoleId))
+                {
+                    claims.Add(new Claim(ClaimTypes.Role, $"{role.RoleId}"));
+                    claims.Add(new Claim(ClaimTypes.NameIdentifier, role.RoleName));
+                }
                 var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
                 await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(identity));
                 HttpContext.Session.SetString("User", result.user.Username);

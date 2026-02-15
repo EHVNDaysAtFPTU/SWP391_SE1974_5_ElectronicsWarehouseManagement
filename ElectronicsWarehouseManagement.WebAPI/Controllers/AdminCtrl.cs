@@ -64,5 +64,23 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
                 return Ok(result);
             return BadRequest(result);
         }
+
+        [HttpGet("user/{userId:int}")]
+        public async Task<IActionResult> GetUser([FromRoute] int userId)
+        {
+            var result = await _adminService.GetUserAsync(userId);
+            if (result.Success)
+                return Ok(result);
+            return BadRequest(result);
+        }
+
+        [HttpGet("search-users")]
+        public async Task<IActionResult> SearchUsers([FromQuery] string query)
+        {
+            var result = await _adminService.SearchUsersAsync(query);
+            if (result.Success)
+                return Ok(result);
+            return BadRequest(result);
+        }
     }
 }

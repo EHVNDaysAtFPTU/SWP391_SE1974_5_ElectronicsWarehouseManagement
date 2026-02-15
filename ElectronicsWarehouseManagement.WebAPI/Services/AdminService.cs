@@ -14,6 +14,8 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
         Task<ApiResult<List<GetRolesResp>>> GetRolesAsync();
         Task<ApiResult<List<GetUsersResp>>> GetUsersAsync();
         Task<ApiResult> SetRoleAsync(SetRoleReq setRoleReq);
+        Task<ApiResult<GetUserResp>> GetUserAsync(int userId);
+        Task<ApiResult<List<GetUsersResp>>> SearchUsersAsync(string query);
     }
 
     public class AdminService : IAdminService
@@ -94,6 +96,22 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             user.Status = (int)UserStatus.Deleted;
             await _dbCtx.SaveChangesAsync();
             return new ApiResult();
+        }
+
+        public async Task<ApiResult<GetUserResp>> GetUserAsync(int userId)
+        {
+            var user = await _dbCtx.Users.AsNoTracking().Include(u => u.Roles).FirstOrDefaultAsync(u => u.UserId == userId);
+            if (user is null)
+                return new ApiResult<GetUserResp>(ApiResultCode.InvalidRequest, "User does not exist.");
+            return new ApiResult<GetUserResp>(new GetUserResp(user));
+        }
+
+        public async Task<ApiResult<List<GetUsersResp>>> SearchUsersAsync(string query)
+        {
+            var users = await _dbCtx.Users.AsNoTracking().Include(u => u.Roles)
+                .Where(u => u.Username.Contains(query) || u.Email.Contains(query))
+                .ToListAsync();
+            return new ApiResult<List<GetUsersResp>>(users.Select(u => new GetUsersResp(u)).ToList());
         }
     }
 }
