@@ -9,7 +9,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
 {
     [ApiController]
     [Route("api/manager")]
-    [Authorize(Roles ="2")]
+    [Authorize(Roles = "2")]
     public class ManagerCtrl:ControllerBase
     {
         readonly IManagerService _managerService;

@@ -72,7 +72,7 @@ namespace ElectronicsWarehouseManagement.WebAPI
 
             app.UseSession();
 
-            app.UseAuthentication();
+            app.UseAuthentication(); 
             app.UseAuthorization();
 
             //app.UseDefaultFiles();
