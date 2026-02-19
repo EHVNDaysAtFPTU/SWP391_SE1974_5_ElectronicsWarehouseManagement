@@ -19,7 +19,17 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
             _managerService = managerService;
             _logger = logger;
         }
-        [HttpGet("itemlist")]
+        [HttpGet("get-item/{itemId:int}")]
+        public async Task<IActionResult> GetItemList([FromRoute] int itemId)
+        {
+            var result = await _managerService.GetItem(itemId); 
+            if (result.Success)
+            {
+                return Ok(result);
+            }
+            return BadRequest(result);
+        }
+        [HttpGet("get-itemlist")]
         public async Task<IActionResult> GetItemList()
         {
             var result = await _managerService.GetItemList(); if (result.Success)

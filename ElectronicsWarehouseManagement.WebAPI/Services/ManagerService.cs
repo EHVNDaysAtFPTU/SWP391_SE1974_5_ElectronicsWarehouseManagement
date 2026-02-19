@@ -10,7 +10,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
     public interface IManagerService
     {
         Task<ApiResult<PagedResult<ItemDTO>>> GetItemList();
-        Task<ApiResult> GetItem(Item item);
+        Task<ApiResult<ItemDTO>> GetItem(int itemId);
         Task<ApiResult<List<TransferReq>>> GetTransferReqList();
     }
     public class ManagerService : IManagerService
@@ -20,9 +20,24 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
         {
             _dbCtx = dbCtx;
         }
-        public Task<ApiResult> GetItem(Item item)
+        public async Task<ApiResult<ItemDTO>> GetItem(int itemId)
         {
-            throw new NotImplementedException();
+            try
+            {
+                var result = await _dbCtx.Items.Where(x => x.ItemId == itemId).Select(x => new ItemDTO
+                {
+                    ItemId = x.ItemId,
+                    Unit = x.Unit,
+                    UnitPrice = x.UnitPrice,
+                }).FirstOrDefaultAsync();
+                return new ApiResult<ItemDTO>(result);
+            }
+            catch (Exception ex)
+            {
+                return new ApiResult<ItemDTO>(ApiResultCode.NotFound);
+            }
+            
+
         }
 
         public async Task<ApiResult<PagedResult<ItemDTO>>> GetItemList()
