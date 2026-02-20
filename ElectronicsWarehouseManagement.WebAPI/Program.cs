@@ -15,7 +15,6 @@ namespace ElectronicsWarehouseManagement.WebAPI
 
             string? connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
             builder.Services.AddDbContext<EWMDbCtx>(options => options.UseSqlServer(connectionString));
-
             builder.Services.AddControllers();
             builder.Services.AddDistributedMemoryCache();
             builder.Services.AddSession(options =>

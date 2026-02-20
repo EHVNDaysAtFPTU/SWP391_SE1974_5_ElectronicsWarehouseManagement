@@ -45,15 +45,32 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
             return BadRequest(result);
         }
 
-        [HttpGet("request")]
-        public async Task<IActionResult> GetTransferReqList()
+        [HttpGet("get-transfer/{transferId:int}")]
+        public async Task<IActionResult> GetTransfer([FromRoute] int transferId)
         {
-            var result = await _managerService.GetTransferReqList(); 
+            var result = await _managerService.GetTransferAsync(transferId);
+
             if (result.Success)
             {
                 return Ok(result);
             }
             return BadRequest(result);
+        }
+
+        [HttpGet("get-transfer-list")]
+        public async Task<IActionResult> GetTransferReqList([FromQuery] PagingRequest request)
+        {
+            var result = await _managerService.GetTransferReqListAsync(request); 
+            if (result.Success)
+            {
+                return Ok(result);
+            }
+            return BadRequest(result);
+        }
+        [HttpPost("{id:int}/approve")]
+        public async Task<IActionResult>PostApprove(int id)
+        {
+
         }
 
     }

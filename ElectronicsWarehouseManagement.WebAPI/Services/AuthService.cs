@@ -26,11 +26,11 @@ class AuthService : IAuthService
         if (!request.Verify())
             return (new ApiResult(ApiResultCode.InvalidRequest), null);
 
-        //var user = await _dbCtx.Users
-        //    .Include(u => u.Roles)
-        //    .FirstOrDefaultAsync(u =>
-        //        u.Username == request.UsernameOrEmail ||
-        //        u.Email == request.UsernameOrEmail);
+        var user = await _dbCtx.Users
+            .Include(u => u.Roles)
+            .FirstOrDefaultAsync(u =>
+                u.Username == request.UsernameOrEmail ||
+                u.Email == request.UsernameOrEmail);
 
         if (user is null)
             return (new ApiResult(ApiResultCode.NotFound), null);
