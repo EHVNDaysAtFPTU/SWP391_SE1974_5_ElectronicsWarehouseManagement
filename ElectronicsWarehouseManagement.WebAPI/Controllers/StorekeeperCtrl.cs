@@ -66,11 +66,17 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
         //    return BadRequest(result);
         //}
 
+        //[HttpPost("create-outbound")]
         //[HttpPost("create-transfer")]
         //[HttpPost("create-warehouse")]
+        //[HttpPost("create-item-def")]
+        //[HttpPost("create-category")]
         //[HttpGet("warehouses")]
         //[HttpGet("create-bin")]
         //[HttpGet("bins")]
+        //[HttpGet("item-defs")]
+        //[HttpGet("items")]
+        //[HttpGet("categories")]
 
         [HttpPost("upload-image")]
         [RequestFormLimits(MultipartBodyLengthLimit = 1024 * 1024 * 10)]

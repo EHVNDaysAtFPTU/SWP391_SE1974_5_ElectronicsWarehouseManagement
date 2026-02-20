@@ -30,6 +30,4 @@ public partial class Item
     public virtual TransferReq Transfer { get; set; }
 
     public virtual ICollection<Bin> Bins { get; set; } = new List<Bin>();
-
-    public virtual ICollection<Category> Categories { get; set; } = new List<Category>();
 }

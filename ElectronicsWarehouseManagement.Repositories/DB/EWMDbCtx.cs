@@ -79,23 +79,23 @@ public partial class EWMDbCtx : DbContext
                 .HasMaxLength(50)
                 .HasColumnName("category_name");
 
-            entity.HasMany(d => d.Items).WithMany(p => p.Categories)
+            entity.HasMany(d => d.ItemDefs).WithMany(p => p.Categories)
                 .UsingEntity<Dictionary<string, object>>(
                     "ItemCategory",
-                    r => r.HasOne<Item>().WithMany()
-                        .HasForeignKey("ItemId")
+                    r => r.HasOne<ItemDefinition>().WithMany()
+                        .HasForeignKey("ItemDefId")
                         .OnDelete(DeleteBehavior.ClientSetNull)
-                        .HasConstraintName("FK_ItemCategory_Item"),
+                        .HasConstraintName("FK_ItemCategory_ItemDefinition"),
                     l => l.HasOne<Category>().WithMany()
                         .HasForeignKey("CategoryId")
                         .OnDelete(DeleteBehavior.ClientSetNull)
                         .HasConstraintName("FK_ItemCategory_Category"),
                     j =>
                     {
-                        j.HasKey("CategoryId", "ItemId");
+                        j.HasKey("CategoryId", "ItemDefId");
                         j.ToTable("ItemCategory");
                         j.IndexerProperty<int>("CategoryId").HasColumnName("category_id");
-                        j.IndexerProperty<int>("ItemId").HasColumnName("item_id");
+                        j.IndexerProperty<int>("ItemDefId").HasColumnName("item_def_id");
                     });
         });
 

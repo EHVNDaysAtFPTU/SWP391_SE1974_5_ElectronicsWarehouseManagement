@@ -17,4 +17,6 @@ public partial class ItemDefinition
     public float UnitPrice { get; set; }
 
     public virtual ICollection<Item> Items { get; set; } = new List<Item>();
+
+    public virtual ICollection<Category> Categories { get; set; } = new List<Category>();
 }
