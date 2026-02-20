@@ -32,7 +32,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
 
             return BadRequest(result);
         }
-        [HttpGet("get-itemlist")]
+        [HttpGet("get-items")]
         public async Task<IActionResult> GetItemList([FromQuery] PagingRequest request)
         {
             var result = await _managerService.GetItemListAsync(request);
@@ -57,7 +57,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
             return BadRequest(result);
         }
 
-        [HttpGet("get-transfer-list")]
+        [HttpGet("get-transfers")]
         public async Task<IActionResult> GetTransferReqList([FromQuery] PagingRequest request)
         {
             var result = await _managerService.GetTransferReqListAsync(request); 
@@ -68,7 +68,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
             return BadRequest(result);
         }
         [HttpPost("{id:int}/approve")]
-        public async Task<IActionResult>PostApprove(int id)
+        public async Task<IActionResult> PostApprove(int id)
         {
 
         }
