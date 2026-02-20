@@ -5,17 +5,16 @@ using System.Collections.Generic;
 
 namespace ElectronicsWarehouseManagement.Repositories.Entities;
 
-public partial class Bin
+public partial class ItemDefinition
 {
-    public int BinId { get; set; }
+    public int ItemDefId { get; set; }
 
-    public string LocationInWarehouse { get; set; }
+    [Obsolete("Use Metadata instead.")]
+    public string MetadataJson { get; set; }
 
-    public int StatusInt { get; set; }
+    public string Unit { get; set; }
 
-    public int WarehouseId { get; set; }
-
-    public virtual Warehouse Warehouse { get; set; }
+    public float UnitPrice { get; set; }
 
     public virtual ICollection<Item> Items { get; set; } = new List<Item>();
 }

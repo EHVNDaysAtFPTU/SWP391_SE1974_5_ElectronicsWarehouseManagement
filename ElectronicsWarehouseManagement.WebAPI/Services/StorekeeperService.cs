@@ -1,8 +1,6 @@
 ﻿using ElectronicsWarehouseManagement.Repositories.Entities;
-using ElectronicsWarehouseManagement.Repositories;
 using ElectronicsWarehouseManagement.WebAPI.DTO;
 using Microsoft.EntityFrameworkCore;
-using System.Text.Json;
 
 namespace ElectronicsWarehouseManagement.WebAPI.Services
 {
@@ -13,6 +11,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
         Task<ApiResult<string>> UploadImageAsync(IFormFile image);
         Task<ApiResult> CreateComponentCategoryAsync(string categoryName);
         Task<ApiResult<List<CategoryResp>>> GetComponentCategoriesAsync();
+        //Task<ApiResult> CreateInOutBoundRequestAsync(CreateIobReq request, TransferType outbound, int creatorId);
     }
 
     public class StorekeeperService : IStorekeeperService
@@ -56,19 +55,69 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             return new ApiResult<List<CategoryResp>>(categories);
         }
 
-        //public async Task<ApiResult> AddComponentAsync(AddComponentReq addComponentReq)
+        //public async Task<ApiResult> CreateInOutBoundRequestAsync(CreateIobReq request, TransferType type, int creatorId)
         //{
-        //    if (addComponentReq.Metadata is null)
-        //        return new ApiResult(ApiResultCode.InvalidRequest, "Metadata is required.");
-        //    var item = new Item
+        //    if (!await _dbCtx.Warehouses.AnyAsync(w => w.WarehouseId == request.WarehouseId))
+        //        return new ApiResult(ApiResultCode.InvalidRequest, $"Warehouse with ID '{request.WarehouseId}' does not exist.");
+        //    List<Item> items = [];
+        //    foreach (var id in request.ItemIds)
         //    {
-        //        MD = addComponentReq.Metadata,
-        //        Unit = addComponentReq.Unit,
-        //        UnitPrice = addComponentReq.UnitPrice,
-        //        Quantity = 0,
-        //        ImportDate = DateOnly.FromDateTime(DateTime.Now)
+        //        var item = await _dbCtx.Items.FindAsync(id);
+        //        if (item is null)
+        //            return new ApiResult(ApiResultCode.InvalidRequest, $"Item with ID '{id}' does not exist.");
+        //        items.Add(item);
+        //    }
+        //    var iob = new TransferReq
+        //    {
+        //        Description = request.Description,
+        //        Type = type,
+        //        Status = TransferStatus.Pending,
+        //        CreationDate = DateOnly.FromDateTime(DateTime.UtcNow),
+        //        CreatorId = creatorId
         //    };
-        //    _dbCtx.Items.Add(item);
+        //    if (type == TransferType.Inbound)
+        //    {
+        //        iob.WarehouseToId = request.WarehouseId;
+        //        iob.ItemInbounds = items;
+        //    }
+        //    else if (type == TransferType.Outbound)
+        //    {
+        //        iob.WarehouseFromId = request.WarehouseId;
+        //        iob.ItemOutbounds = items;
+        //    }
+        //    else
+        //        return new ApiResult(ApiResultCode.InvalidRequest, $"Transfer type '{type}' is not supported for this operation.");
+        //    _dbCtx.TransferReqs.Add(iob);
+        //    await _dbCtx.SaveChangesAsync();
+        //    return new ApiResult();
+        //}
+
+        //public async Task<ApiResult> CreateTransferRequestAsync(CreateTransferReq request, int creatorId)
+        //{
+        //    if (!await _dbCtx.Warehouses.AnyAsync(w => w.WarehouseId == request.WarehouseFromId))
+        //        return new ApiResult(ApiResultCode.InvalidRequest, $"Warehouse with ID '{request.WarehouseFromId}' does not exist.");
+        //    if (!await _dbCtx.Warehouses.AnyAsync(w => w.WarehouseId == request.WarehouseToId))
+        //        return new ApiResult(ApiResultCode.InvalidRequest, $"Warehouse with ID '{request.WarehouseToId}' does not exist.");
+        //    List<Item> items = [];
+        //    foreach (var id in request.ItemIds)
+        //    {
+        //        var item = await _dbCtx.Items.FindAsync(id);
+        //        if (item is null)
+        //            return new ApiResult(ApiResultCode.InvalidRequest, $"Item with ID '{id}' does not exist.");
+        //        items.Add(item);
+        //    }
+        //    var iob = new TransferReq
+        //    {
+        //        Description = request.Description,
+        //        Type = TransferType.InternalTransfer,
+        //        Status = TransferStatus.Pending,
+        //        CreationDate = DateOnly.FromDateTime(DateTime.UtcNow),
+        //        CreatorId = creatorId,
+        //        WarehouseFromId = request.WarehouseFromId,
+        //        WarehouseToId = request.WarehouseToId,
+        //        ItemTransfers = items,
+        //    };
+        //    _dbCtx.TransferReqs.Add(iob);
         //    await _dbCtx.SaveChangesAsync();
         //    return new ApiResult();
         //}

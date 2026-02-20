@@ -1,4 +1,5 @@
-﻿using ElectronicsWarehouseManagement.WebAPI.DTO;
+﻿using ElectronicsWarehouseManagement.Repositories.Entities;
+using ElectronicsWarehouseManagement.WebAPI.DTO;
 using ElectronicsWarehouseManagement.WebAPI.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -56,7 +57,15 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
             return BadRequest(result);
         }
 
-        //[HttpPost("create-iob")]
+        //[HttpPost("create-inbound")]
+        //public async Task<IActionResult> CreateInboundRequest([FromBody] CreateIobReq request)
+        //{
+        //    var result = await _storekeeperService.CreateInOutBoundRequestAsync(request, TransferType.Outbound, int.Parse(HttpContext.Session.GetString("UserId")!));
+        //    if (result.Success)
+        //        return Ok(result);
+        //    return BadRequest(result);
+        //}
+
         //[HttpPost("create-transfer")]
         //[HttpPost("create-warehouse")]
         //[HttpGet("warehouses")]

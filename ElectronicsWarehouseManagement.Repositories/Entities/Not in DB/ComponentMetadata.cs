@@ -1,6 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace ElectronicsWarehouseManagement.Repositories.ExternalEntities
+namespace ElectronicsWarehouseManagement.Repositories.Entities
 {
     public class ComponentMetadata
     {

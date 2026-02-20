@@ -1,4 +1,4 @@
-﻿namespace ElectronicsWarehouseManagement.Repositories.ExternalEntities
+﻿namespace ElectronicsWarehouseManagement.Repositories.Entities
 {
     public enum UserStatus
     {

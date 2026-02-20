@@ -11,27 +11,33 @@ public partial class TransferReq
 
     public string Description { get; set; }
 
-    public int Type { get; set; }
+    [Obsolete("Use Type instead.")]
+    public int TypeInt { get; set; }
 
     public DateOnly CreationDate { get; set; }
 
     public DateOnly? ExecutionDate { get; set; }
 
-    public int Status { get; set; }
+    [Obsolete("Use Status instead.")]
+    public int StatusInt { get; set; }
 
     public int CreatorId { get; set; }
 
-    public int ApproverId { get; set; }
+    public int? ApproverId { get; set; }
 
-    public int WarehouseFromId { get; set; }
+    public int? WarehouseFromId { get; set; }
 
-    public int WarehouseToId { get; set; }
+    public int? WarehouseToId { get; set; }
 
     public virtual User Approver { get; set; }
 
     public virtual User Creator { get; set; }
 
-    public virtual ICollection<Item> Items { get; set; } = new List<Item>();
+    public virtual ICollection<Item> ItemInbounds { get; set; } = new List<Item>();
+
+    public virtual ICollection<Item> ItemOutbounds { get; set; } = new List<Item>();
+
+    public virtual ICollection<Item> ItemTransfers { get; set; } = new List<Item>();
 
     public virtual Warehouse WarehouseFrom { get; set; }
 

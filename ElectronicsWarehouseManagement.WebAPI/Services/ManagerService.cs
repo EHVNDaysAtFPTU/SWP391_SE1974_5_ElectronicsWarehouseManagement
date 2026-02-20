@@ -1,5 +1,4 @@
 ﻿using ElectronicsWarehouseManagement.Repositories.Entities;
-using ElectronicsWarehouseManagement.Repositories.ExternalEntities;
 using ElectronicsWarehouseManagement.WebAPI.DTO;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Cryptography;

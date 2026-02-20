@@ -1,5 +1,4 @@
 ﻿using ElectronicsWarehouseManagement.Repositories.Entities;
-using ElectronicsWarehouseManagement.Repositories.ExternalEntities;
 using System.Text.Json.Serialization;
 
 namespace ElectronicsWarehouseManagement.WebAPI.DTO
@@ -34,11 +33,11 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
         {
             ItemId = item.ItemId;
             Quantity = item.Quantity;
-            Unit = item.Unit;
+            //Unit = item.Unit;
             ImportDate = item.ImportDate;
-            UnitPrice = item.UnitPrice;
+            //UnitPrice = item.UnitPrice;
             TransferId = item.TransferId;
-            IobId = item.IobId;
+            //IobId = item.IobId;
         }
 
         public ItemDTO(int itemId, ComponentMetadata? metadata, int quantity, string unit, DateOnly importDate, float unitPrice, int? transferId, int? iobId)

@@ -4,6 +4,8 @@ using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 
+#pragma warning disable CS0618 // Type or member is obsolete
+
 namespace ElectronicsWarehouseManagement.Repositories.Entities;
 
 public partial class EWMDbCtx : DbContext
@@ -17,9 +19,9 @@ public partial class EWMDbCtx : DbContext
 
     public virtual DbSet<Category> Categories { get; set; }
 
-    public virtual DbSet<InOutBoundReq> InOutBoundReqs { get; set; }
-
     public virtual DbSet<Item> Items { get; set; }
+
+    public virtual DbSet<ItemDefinition> ItemDefinitions { get; set; }
 
     public virtual DbSet<Role> Roles { get; set; }
 
@@ -39,7 +41,7 @@ public partial class EWMDbCtx : DbContext
             entity.Property(e => e.LocationInWarehouse)
                 .IsRequired()
                 .HasColumnName("location_in_warehouse");
-            entity.Property(e => e.Status).HasColumnName("status");
+            entity.Property(e => e.StatusInt).HasColumnName("status_int");
             entity.Property(e => e.WarehouseId).HasColumnName("warehouse_id");
 
             entity.HasOne(d => d.Warehouse).WithMany(p => p.Bins)
@@ -97,65 +99,53 @@ public partial class EWMDbCtx : DbContext
                     });
         });
 
-        modelBuilder.Entity<InOutBoundReq>(entity =>
-        {
-            entity.HasKey(e => e.IobId);
-
-            entity.ToTable("InOutBoundReq");
-
-            entity.Property(e => e.IobId).HasColumnName("iob_id");
-            entity.Property(e => e.ApproverId).HasColumnName("approver_id");
-            entity.Property(e => e.CreationDate).HasColumnName("creation_date");
-            entity.Property(e => e.CreatorId).HasColumnName("creator_id");
-            entity.Property(e => e.Description)
-                .IsRequired()
-                .HasColumnName("description");
-            entity.Property(e => e.ExecutionDate).HasColumnName("execution_date");
-            entity.Property(e => e.Staus).HasColumnName("staus");
-            entity.Property(e => e.Type).HasColumnName("type");
-            entity.Property(e => e.WarehouseId).HasColumnName("warehouse_id");
-
-            entity.HasOne(d => d.Approver).WithMany(p => p.InOutBoundReqApprovers)
-                .HasForeignKey(d => d.ApproverId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_InOutBoundReq_User1");
-
-            entity.HasOne(d => d.Creator).WithMany(p => p.InOutBoundReqCreators)
-                .HasForeignKey(d => d.CreatorId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_InOutBoundReq_User");
-
-            entity.HasOne(d => d.Warehouse).WithMany(p => p.InOutBoundReqs)
-                .HasForeignKey(d => d.WarehouseId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_InOutBoundReq_Warehouse");
-        });
-
         modelBuilder.Entity<Item>(entity =>
         {
             entity.ToTable("Item");
 
             entity.Property(e => e.ItemId).HasColumnName("item_id");
             entity.Property(e => e.ImportDate).HasColumnName("import_date");
-            entity.Property(e => e.IobId).HasColumnName("iob_id");
-            entity.Property(e => e.Metadata)
-                .IsRequired()
-                .HasColumnName("metadata");
+            entity.Property(e => e.InboundId).HasColumnName("inbound_id");
+            entity.Property(e => e.ItemDefId).HasColumnName("item_def_id");
+            entity.Property(e => e.OutboundId).HasColumnName("outbound_id");
             entity.Property(e => e.Quantity).HasColumnName("quantity");
             entity.Property(e => e.TransferId).HasColumnName("transfer_id");
+
+            entity.HasOne(d => d.Inbound).WithMany(p => p.ItemInbounds)
+                .HasForeignKey(d => d.InboundId)
+                .HasConstraintName("FK_Item_TransferReq2");
+
+            entity.HasOne(d => d.ItemDef).WithMany(p => p.Items)
+                .HasForeignKey(d => d.ItemDefId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_Item_ItemDefinition");
+
+            entity.HasOne(d => d.Outbound).WithMany(p => p.ItemOutbounds)
+                .HasForeignKey(d => d.OutboundId)
+                .HasConstraintName("FK_Item_TransferReq");
+
+            entity.HasOne(d => d.Transfer).WithMany(p => p.ItemTransfers)
+                .HasForeignKey(d => d.TransferId)
+                .HasConstraintName("FK_Item_TransferReq1");
+        });
+
+        modelBuilder.Entity<ItemDefinition>(entity =>
+        {
+            entity.HasKey(e => e.ItemDefId);
+
+            entity.ToTable("ItemDefinition");
+
+            entity.Property(e => e.ItemDefId)
+                .ValueGeneratedNever()
+                .HasColumnName("item_def_id");
+            entity.Property(e => e.MetadataJson)
+                .IsRequired()
+                .HasColumnName("metadata_json");
             entity.Property(e => e.Unit)
                 .IsRequired()
                 .HasMaxLength(50)
                 .HasColumnName("unit");
             entity.Property(e => e.UnitPrice).HasColumnName("unit_price");
-
-            entity.HasOne(d => d.Iob).WithMany(p => p.Items)
-                .HasForeignKey(d => d.IobId)
-                .HasConstraintName("FK_Item_InOutBoundReq");
-
-            entity.HasOne(d => d.Transfer).WithMany(p => p.Items)
-                .HasForeignKey(d => d.TransferId)
-                .HasConstraintName("FK_Item_TransferReq");
         });
 
         modelBuilder.Entity<Role>(entity =>
@@ -203,14 +193,13 @@ public partial class EWMDbCtx : DbContext
                 .IsRequired()
                 .HasColumnName("description");
             entity.Property(e => e.ExecutionDate).HasColumnName("execution_date");
-            entity.Property(e => e.Status).HasColumnName("status");
-            entity.Property(e => e.Type).HasColumnName("type");
+            entity.Property(e => e.StatusInt).HasColumnName("status_int");
+            entity.Property(e => e.TypeInt).HasColumnName("type_int");
             entity.Property(e => e.WarehouseFromId).HasColumnName("warehouse_from_id");
             entity.Property(e => e.WarehouseToId).HasColumnName("warehouse_to_id");
 
             entity.HasOne(d => d.Approver).WithMany(p => p.TransferReqApprovers)
                 .HasForeignKey(d => d.ApproverId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_TransferReq_User1");
 
             entity.HasOne(d => d.Creator).WithMany(p => p.TransferReqCreators)
@@ -220,12 +209,10 @@ public partial class EWMDbCtx : DbContext
 
             entity.HasOne(d => d.WarehouseFrom).WithMany(p => p.TransferReqWarehouseFroms)
                 .HasForeignKey(d => d.WarehouseFromId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_TransferReq_Warehouse");
 
             entity.HasOne(d => d.WarehouseTo).WithMany(p => p.TransferReqWarehouseTos)
                 .HasForeignKey(d => d.WarehouseToId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_TransferReq_Warehouse1");
         });
 
@@ -242,7 +229,7 @@ public partial class EWMDbCtx : DbContext
                 .IsRequired()
                 .HasMaxLength(100)
                 .HasColumnName("password_hash");
-            entity.Property(e => e.Status).HasColumnName("status");
+            entity.Property(e => e.StatusInt).HasColumnName("status_int");
             entity.Property(e => e.Username)
                 .IsRequired()
                 .HasMaxLength(50)
@@ -274,3 +261,5 @@ public partial class EWMDbCtx : DbContext
 
     partial void OnModelCreatingPartial(ModelBuilder modelBuilder);
 }
+
+#pragma warning restore CS0618 // Type or member is obsolete
