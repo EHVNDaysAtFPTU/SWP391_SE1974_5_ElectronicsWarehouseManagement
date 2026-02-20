@@ -1,4 +1,5 @@
-﻿using ElectronicsWarehouseManagement.Repositories.Entities;
+﻿using Azure.Core;
+using ElectronicsWarehouseManagement.Repositories.Entities;
 using ElectronicsWarehouseManagement.WebAPI.DTO;
 using ElectronicsWarehouseManagement.WebAPI.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -9,7 +10,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
 {
     [ApiController]
     [Route("api/manager")]
-    [Authorize(Roles = "2")]
+    [Authorize(Roles ="2")]
     public class ManagerCtrl:ControllerBase
     {
         readonly IManagerService _managerService;
@@ -20,22 +21,27 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
             _logger = logger;
         }
         [HttpGet("get-item/{itemId:int}")]
-        public async Task<IActionResult> GetItemList([FromRoute] int itemId)
+        public async Task<IActionResult> GetItem([FromRoute]int itemId)
         {
-            var result = await _managerService.GetItem(itemId); 
+            var result = await _managerService.GetItemAsync(itemId);
+
             if (result.Success)
             {
                 return Ok(result);
             }
+
             return BadRequest(result);
         }
         [HttpGet("get-itemlist")]
-        public async Task<IActionResult> GetItemList()
+        public async Task<IActionResult> GetItemList([FromQuery] PagingRequest request)
         {
-            var result = await _managerService.GetItemList(); if (result.Success)
+            var result = await _managerService.GetItemListAsync(request);
+
+            if (result.Success)
             {
                 return Ok(result);
             }
+
             return BadRequest(result);
         }
 

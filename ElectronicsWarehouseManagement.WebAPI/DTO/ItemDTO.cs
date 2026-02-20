@@ -40,5 +40,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
 
         [JsonPropertyName("categories")]
         public virtual ICollection<Category> Categories { get; set; } = new List<Category>();
+
+        public ItemDTO(Item item) { ItemId = item.ItemId; Metadata = item.Metadata; Quantity = item.Quantity; Unit = item.Unit; ImportDate = item.ImportDate; UnitPrice = item.UnitPrice; TransferId = item.TransferId; IobId = item.IobId; Iob = item.Iob; Transfer = item.Transfer; Bins = item.Bins; Categories = item.Categories; }
     }
 }
