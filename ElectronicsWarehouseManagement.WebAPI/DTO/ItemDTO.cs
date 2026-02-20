@@ -12,7 +12,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
         public ComponentMetadata? Metadata { get; set; }
 
         [JsonPropertyName("quantity")]
-        public int Quantity { get; set; }
+        public float Quantity { get; set; }
 
         [JsonPropertyName("unit")]
         public string Unit { get; set; }

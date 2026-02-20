@@ -9,7 +9,7 @@ public partial class Item
 {
     public int ItemId { get; set; }
 
-    public int Quantity { get; set; }
+    public float Quantity { get; set; }
 
     public DateOnly ImportDate { get; set; }
 
