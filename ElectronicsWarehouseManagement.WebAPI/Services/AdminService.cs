@@ -71,8 +71,20 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
 
         public async Task<ApiResult<List<GetRolesResp>>> GetRolesAsync() => new ApiResult<List<GetRolesResp>>((await _dbCtx.Roles.AsNoTracking().ToListAsync()).Select(r => new GetRolesResp(r)).ToList());
 
-        public async Task<ApiResult<List<GetUsersResp>>> GetUsersAsync() => new ApiResult<List<GetUsersResp>>((await _dbCtx.Users.AsNoTracking().Include(u => u.Roles).ToListAsync()).Select(u => new GetUsersResp(u)).ToList());
+        //public async Task<ApiResult<List<GetUsersResp>>> GetUsersAsync() => new ApiResult<List<GetUsersResp>>((await _dbCtx.Users.AsNoTracking().Include(u => u.Roles).ToListAsync()).Select(u => new GetUsersResp(u)).ToList());
 
+        public async Task<ApiResult<List<GetUsersResp>>> GetUsersAsync()
+        {
+            var users = await _dbCtx.Users
+                .AsNoTracking()
+                .Include(u => u.Roles)
+                .Where(u => u.Status != (int)UserStatus.Deleted)
+                .ToListAsync();
+
+            var result = users.Select(u => new GetUsersResp(u)).ToList();
+
+            return new ApiResult<List<GetUsersResp>>(result);
+        }
         public async Task<ApiResult> SetRoleAsync(SetRoleReq setRoleReq)
         {
             if (!setRoleReq.Verify())

@@ -42,7 +42,6 @@
                     <th>User</th>
                     <th>Role</th>
                     <th>Status</th>
-                    <th>Last Login</th>
                     <th>Action</th>
                 </tr>
             </thead>
@@ -116,7 +115,7 @@ function renderUsers(users) {
 
     users.forEach(user => {
 
-        const roles = user.roles
+        const role = user.roles
             ? user.roles.map(r => r.roleName).join(", ")
             : "";
 
@@ -129,9 +128,8 @@ function renderUsers(users) {
             <tr>
                 <td>${user.userId}</td>
                 <td>${user.username}</td>
-                <td>${roles}</td>
+                <td>${role}</td>
                 <td><span class="status ${statusClass}">${user.status}</span></td>
-                <td>${user.lastLogin || ""}</td>
                 <td>
                     <button class="btn-link danger" onclick="deleteUser('${user.userId}')">
                         Delete
