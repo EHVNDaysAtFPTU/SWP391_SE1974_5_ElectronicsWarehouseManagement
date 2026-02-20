@@ -67,11 +67,11 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
             }
             return BadRequest(result);
         }
-        [HttpPost("{id:int}/approve")]
-        public async Task<IActionResult> PostApprove(int id)
-        {
+        //[HttpPost("{id:int}/approve")]
+        //public async Task<IActionResult> PostApprove(int id)
+        //{
 
-        }
+        //}
 
     }
 }

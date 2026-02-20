@@ -68,13 +68,11 @@ namespace ElectronicsWarehouseManagement.WebAPI
             }
 
             app.UseHttpsRedirection();
-
+            app.UseStaticFiles();
             app.UseSession();
 
             app.UseAuthentication(); 
             app.UseAuthorization();
-
-            //app.UseDefaultFiles();
 
             //app.UseStaticFiles(new StaticFileOptions
             //{
