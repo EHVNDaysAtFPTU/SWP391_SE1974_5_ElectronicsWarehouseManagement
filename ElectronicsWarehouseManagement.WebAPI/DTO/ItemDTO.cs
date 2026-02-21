@@ -1,55 +1,73 @@
 ﻿using ElectronicsWarehouseManagement.Repositories.Entities;
 using System.Text.Json.Serialization;
+using Microsoft.EntityFrameworkCore;
 
 namespace ElectronicsWarehouseManagement.WebAPI.DTO
 {
     public class ItemDTO
     {
-        [JsonPropertyName("id")]
+        [JsonPropertyName("item_id")]
         public int ItemId { get; set; }
-
-        [JsonPropertyName("metadata")]
-        public ComponentMetadata? Metadata { get; set; }
 
         [JsonPropertyName("quantity")]
         public float Quantity { get; set; }
 
-        [JsonPropertyName("unit")]
-        public string Unit { get; set; }
-
         [JsonPropertyName("import_date")]
         public DateOnly ImportDate { get; set; }
-
-        [JsonPropertyName("unit_price")]
-        public float UnitPrice { get; set; }
 
         [JsonPropertyName("transfer_id")]
         public int? TransferId { get; set; }
 
-        [JsonPropertyName("iob_id")]
-        public int? IobId { get; set; }
+        [JsonPropertyName("inbound_id")]
+        public int? InboundId { get; set; }
 
-        public ItemDTO(Item item)
+        [JsonPropertyName("outbound_id")]
+        public int? OutboundId { get; set; }
+
+        [JsonPropertyName("item_def_id")]
+        public int ItemDefId { get; set; }
+
+        [JsonPropertyName("item_def")]
+        public ItemDefinition? ItemDef { get; set; }
+
+        [JsonPropertyName("bins")]
+        public List<BinDTO>? Bins { get; set; }
+
+
+        public ItemDTO(Item entity)
         {
-            ItemId = item.ItemId;
-            Quantity = item.Quantity;
-            //Unit = item.Unit;
-            ImportDate = item.ImportDate;
-            //UnitPrice = item.UnitPrice;
-            TransferId = item.TransferId;
-            //IobId = item.IobId;
+            ItemId = entity.ItemId;
+            Quantity = entity.Quantity;
+            ImportDate = entity.ImportDate;
+            TransferId = entity.TransferId;
+            InboundId = entity.InboundId;
+            OutboundId = entity.OutboundId;
+            ItemDefId = entity.ItemDefId;
+
+            ItemDef = entity.ItemDef;
+
+            Bins = entity.Bins?
+                .Select(b => new BinDTO(b))
+                .ToList();
         }
 
-        public ItemDTO(int itemId, ComponentMetadata? metadata, int quantity, string unit, DateOnly importDate, float unitPrice, int? transferId, int? iobId)
+
+
+        public ItemDTO(int itemId, float quantity, DateOnly importDate,
+                       int? transferId, int? inboundId, int? outboundId,
+                       int itemDefId,
+                       ItemDefinition? itemDef = null,
+                       List<BinDTO>? bins = null)
         {
             ItemId = itemId;
-            Metadata = metadata;
             Quantity = quantity;
-            Unit = unit;
             ImportDate = importDate;
-            UnitPrice = unitPrice;
             TransferId = transferId;
-            IobId = iobId;
+            InboundId = inboundId;
+            OutboundId = outboundId;
+            ItemDefId = itemDefId;
+            ItemDef = itemDef;
+            Bins = bins;
         }
     }
 }

@@ -12,7 +12,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
         public string Description { get; set; }
 
         [JsonPropertyName("type")]
-        public int Type { get; set; }
+        public int TypeInt { get; set; }
 
         [JsonPropertyName("creation_date")]
         public DateOnly CreationDate { get; set; }
@@ -21,66 +21,50 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
         public DateOnly? ExecutionDate { get; set; }
 
         [JsonPropertyName("status")]
-        public int Status { get; set; }
+        public int StatusInt { get; set; }
 
         [JsonPropertyName("creator_id")]
         public int CreatorId { get; set; }
 
         [JsonPropertyName("approver_id")]
-        public int ApproverId { get; set; }
+        public int? ApproverId { get; set; }
 
         [JsonPropertyName("warehouse_from_id")]
-        public int WarehouseFromId { get; set; }
+        public int? WarehouseFromId { get; set; }
 
         [JsonPropertyName("warehouse_to_id")]
-        public int WarehouseToId { get; set; }
+        public int? WarehouseToId { get; set; }
+
 
         [JsonPropertyName("approver")]
-        public virtual User Approver { get; set; }
+        public User Approver { get; set; }
 
         [JsonPropertyName("creator")]
-        public virtual User Creator { get; set; }
+        public User Creator { get; set; }
 
-        [JsonPropertyName("items")]
-        public virtual ICollection<Item> Items { get; set; } = new List<Item>();
+        [JsonPropertyName("item_inbounds")]
+        public ICollection<Item> ItemInbounds { get; set; }
+
+        [JsonPropertyName("item_outbounds")]
+        public ICollection<Item> ItemOutbounds { get; set; }
+
+        [JsonPropertyName("item_transfers")]
+        public ICollection<Item> ItemTransfers { get; set; }
 
         [JsonPropertyName("warehouse_from")]
-        public virtual Warehouse WarehouseFrom { get; set; }
+        public Warehouse WarehouseFrom { get; set; }
 
         [JsonPropertyName("warehouse_to")]
-        public virtual Warehouse WarehouseTo { get; set; }
+        public Warehouse WarehouseTo { get; set; }
 
-        public TransferReqDTO(int transferId, string description, int type, DateOnly creationDate,
-                              DateOnly? executionDate, int status, int creatorId, int approverId,
-                              int warehouseFromId, int warehouseToId,
-                              User approver = null, User creator = null,
-                              ICollection<Item> items = null,
-                              Warehouse warehouseFrom = null, Warehouse warehouseTo = null)
-        {
-            TransferId = transferId;
-            Description = description;
-            Type = type;
-            CreationDate = creationDate;
-            ExecutionDate = executionDate;
-            Status = status;
-            CreatorId = creatorId;
-            ApproverId = approverId;
-            WarehouseFromId = warehouseFromId;
-            WarehouseToId = warehouseToId;
-            Approver = approver;
-            Creator = creator;
-            Items = items ?? new List<Item>();
-            WarehouseFrom = warehouseFrom;
-            WarehouseTo = warehouseTo;
-        }
         public TransferReqDTO(TransferReq entity)
         {
             TransferId = entity.TransferId;
             Description = entity.Description;
-            Type = entity.Type;
+            TypeInt = entity.TypeInt;
             CreationDate = entity.CreationDate;
             ExecutionDate = entity.ExecutionDate;
-            Status = entity.Status;
+            StatusInt = entity.StatusInt;
             CreatorId = entity.CreatorId;
             ApproverId = entity.ApproverId;
             WarehouseFromId = entity.WarehouseFromId;
@@ -88,7 +72,9 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
 
             Approver = entity.Approver;
             Creator = entity.Creator;
-            Items = entity.Items;
+            ItemInbounds = entity.ItemInbounds;
+            ItemOutbounds = entity.ItemOutbounds;
+            ItemTransfers = entity.ItemTransfers;
             WarehouseFrom = entity.WarehouseFrom;
             WarehouseTo = entity.WarehouseTo;
         }

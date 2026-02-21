@@ -67,8 +67,41 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
             }
             return BadRequest(result);
         }
+
+        [Authorize]
+        [HttpGet("me")]
+        public IActionResult Me()
+        {
+            string? username = HttpContext.Session.GetString("User");
+            string? userId = HttpContext.Session.GetString("UserId");
+
+            if (string.IsNullOrEmpty(username))
+            {
+                return Unauthorized(new ApiResult(ApiResultCode.Unauthorized));
+            }
+
+            var userInfo = new
+            {
+                Username = username,
+                UserId = userId
+            };
+
+            return Ok(new ApiResult<object>(userInfo));
+        }
+
+        private string? GetCurrentUserId()
+        {
+            return HttpContext.Session.GetString("UserId");
+        }
+
+        private string? GetCurrentUsername()
+        {
+            return HttpContext.Session.GetString("User");
+        }
+
+
         //[HttpPost("{id:int}/approve")]
-        //public async Task<IActionResult> PostApprove(int id)
+        //public async Task<IActionResult> PostTransferApprove(int id)
         //{
 
         //}
