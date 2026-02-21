@@ -38,24 +38,37 @@ public sealed class ViewCtrl : ControllerBase
     [HttpGet("/{**path}")]
     public IActionResult GetView([FromRoute] string path, [FromServices] IWebHostEnvironment env)
     {
-        if (User?.Identity?.IsAuthenticated == false)
+        if (path.StartsWith("uploads/", StringComparison.InvariantCultureIgnoreCase))
         {
-            if (path.EndsWith("/") || path.EndsWith("\\") || path.EndsWith(".html", StringComparison.OrdinalIgnoreCase))
-                return Redirect("/login");
-            return NotFound();
+            string filePath = Path.Combine(Path.GetDirectoryName(env.WebRootPath)!, path);
+            if (!System.IO.File.Exists(filePath))
+                return NotFound();
+            var provider = new FileExtensionContentTypeProvider();
+            if (!provider.TryGetContentType(filePath, out var contentType))
+                contentType = "application/octet-stream";
+            return PhysicalFile(filePath, contentType);
         }
-        DisableClientCache();
-        var highestRoleName = HttpContext.User.Claims
-            .Where(c => c.Type == ClaimTypes.NameIdentifier)
-            .Select(c => c.Value)
-            .FirstOrDefault() ?? "";
-        var physicalPath = Path.Combine(env.WebRootPath, "view", highestRoleName, path);
-        if (!System.IO.File.Exists(physicalPath))
-            return NotFound();
-        var provider = new FileExtensionContentTypeProvider();
-        if (!provider.TryGetContentType(physicalPath, out var contentType))
-            contentType = "application/octet-stream";
-        return PhysicalFile(physicalPath, contentType);
+        else
+        {
+            if (User?.Identity?.IsAuthenticated == false)
+            {
+                if (path.EndsWith("/") || path.EndsWith("\\") || path.EndsWith(".html", StringComparison.OrdinalIgnoreCase))
+                    return Redirect("/login");
+                return NotFound();
+            }
+            DisableClientCache();
+            var highestRoleName = HttpContext.User.Claims
+                .Where(c => c.Type == ClaimTypes.NameIdentifier)
+                .Select(c => c.Value)
+                .FirstOrDefault() ?? "";
+            var physicalPath = Path.Combine(env.WebRootPath, "view", highestRoleName, path);
+            if (!System.IO.File.Exists(physicalPath))
+                return NotFound();
+            var provider = new FileExtensionContentTypeProvider();
+            if (!provider.TryGetContentType(physicalPath, out var contentType))
+                contentType = "application/octet-stream";
+            return PhysicalFile(physicalPath, contentType);
+        }
     }
 
     [AllowAnonymous]

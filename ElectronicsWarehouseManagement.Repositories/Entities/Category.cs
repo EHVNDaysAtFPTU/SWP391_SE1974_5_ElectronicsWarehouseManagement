@@ -11,5 +11,5 @@ public partial class Category
 
     public string CategoryName { get; set; }
 
-    public virtual ICollection<Item> Items { get; set; } = new List<Item>();
+    public virtual ICollection<ItemDefinition> ItemDefs { get; set; } = new List<ItemDefinition>();
 }
