@@ -68,7 +68,20 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
             return BadRequest(result);
         }
 
-        [Authorize]
+        [HttpPost("transfer-requests/{transferId:int}/decisions")]
+        public async Task<IActionResult> PostTransferReq([FromRoute] int transferId, [FromBody] TransferDecisionRequest request)
+        {
+            int? approverId = GetCurrentUserId();
+            var result = await _managerService.PostTransferDecisionAsync(transferId, approverId, request.Decision);
+            if (result.Success)
+            {
+                return Ok(result);
+            }
+            return BadRequest(result);
+        }
+
+
+
         [HttpGet("me")]
         public IActionResult Me()
         {
@@ -89,16 +102,21 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
             return Ok(new ApiResult<object>(userInfo));
         }
 
-        private string? GetCurrentUserId()
+        private int? GetCurrentUserId()
         {
-            return HttpContext.Session.GetString("UserId");
+            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
+            if (userIdClaim == null)
+                return null;
+
+            return int.Parse(userIdClaim.Value);
         }
 
-        private string? GetCurrentUsername()
+        private String? GetCurrentUsername()
         {
             return HttpContext.Session.GetString("User");
         }
 
+       
 
         //[HttpPost("{id:int}/approve")]
         //public async Task<IActionResult> PostTransferApprove(int id)

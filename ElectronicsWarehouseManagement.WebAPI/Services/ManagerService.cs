@@ -13,7 +13,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
         Task<ApiResult<PagedResult<ItemDTO>>> GetItemListAsync(PagingRequest request);
         Task<ApiResult<TransferReqDTO>> GetTransferAsync(int transferId);
         Task<ApiResult<PagedResult<TransferReqDTO>>> GetTransferReqListAsync(PagingRequest request);
-        //Task<ApiResult<TransferReqDTO>> PostTransferDecisionAsync();
+        Task<ApiResult> PostTransferDecisionAsync(int transferId,int? approverId,TransferDecisionType decision);
     }
 
     public class ManagerService : IManagerService
@@ -40,12 +40,12 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
 
         public async Task<ApiResult<PagedResult<ItemDTO>>> GetItemListAsync(PagingRequest request)
         {
-            var query = _dbCtx.Items
+            var itemList = _dbCtx.Items
                 .AsNoTracking();
 
-            int totalCount = await query.CountAsync();
+            int totalCount = await itemList.CountAsync();
 
-            var data = await query
+            var data = await itemList
                 .Skip((request.PageNumber - 1) * request.PageSize)
                 .Take(request.PageSize)
                 .Select(i => new ItemDTO(i))
@@ -96,7 +96,25 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
 
             return new ApiResult<PagedResult<TransferReqDTO>>(pagedResult);
         }
-        //public async Task<ApiResult<TransferReqDTO>> PostTransferDecisionAsync();
+        public async Task<ApiResult> PostTransferDecisionAsync(int transferId, int? approverId, TransferDecisionType decision)
+        {
+            var query = _dbCtx.TransferReqs;
+            var result = await query.FirstOrDefaultAsync(i => i.TransferId == transferId);
+
+            if(result == null)
+            {
+                return new ApiResult(ApiResultCode.NotFound);
+            }
+            //switch (decision) 
+            //{ case TransferDecisionType.Approve: 
+            //        result.StatusInt = (int)TransferStatus.Approved; break; case TransferDecisionType.Reject: transferReq.StatusInt = (int)TransferStatus.Rejected; break; case TransferDecisionType.Cancel: transferReq.StatusInt = (int)TransferStatus.Canceled; break; }
+            //result.ExecutionDate = DateOnly.FromDateTime(DateTime.UtcNow);
+            result.ApproverId = approverId;
+            await _dbCtx.SaveChangesAsync();
+
+            return new ApiResult(ApiResultCode.Success);
+        }
+
     }
 
 }
