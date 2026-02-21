@@ -1,5 +1,4 @@
 ﻿using ElectronicsWarehouseManagement.Repositories.Entities;
-using ElectronicsWarehouseManagement.Repositories.ExternalEntities;
 using System.Text.Json.Serialization;
 
 namespace ElectronicsWarehouseManagement.WebAPI.DTO
@@ -26,7 +25,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
             UserId = user.UserId;
             Username = user.Username;
             Email = user.Email;
-            Status = (UserStatus)user.Status;
+            Status = user.Status;
             foreach (var role in user.Roles)
                 Roles.Add(new GetRolesResp(role));
         }

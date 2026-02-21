@@ -1,5 +1,4 @@
 ﻿using ElectronicsWarehouseManagement.Repositories.Entities;
-using ElectronicsWarehouseManagement.Repositories.ExternalEntities;
 using ElectronicsWarehouseManagement.WebAPI.DTO;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Cryptography;
@@ -33,7 +32,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
                 return new ApiResult(ApiResultCode.InvalidRequest);
             // Check if username or email already exists
             User? existingUser = await _dbCtx.Users.FirstOrDefaultAsync(u => u.Username == createAccReq.Username || u.Email == createAccReq.Email);
-            if (existingUser is not null && existingUser.Status != (int)UserStatus.Deleted)
+            if (existingUser is not null && existingUser.Status != UserStatus.Deleted)
             {
                 if (existingUser.Username == createAccReq.Username)
                     return new ApiResult(ApiResultCode.InvalidRequest, "Username already exists.");
@@ -53,7 +52,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
                     Username = createAccReq.Username,
                     Email = createAccReq.Email,
                     PasswordHash = Convert.ToBase64String(hash),
-                    Status = (int)UserStatus.Active,
+                    Status = UserStatus.Active,
                     Roles = [role]
                 };
                 _dbCtx.Users.Add(user);
@@ -62,7 +61,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             {
                 existingUser.PasswordHash = Convert.ToBase64String(hash);
                 existingUser.Email = createAccReq.Email;
-                existingUser.Status = (int)UserStatus.Active;
+                existingUser.Status = UserStatus.Active;
                 existingUser.Roles = [role];
             }
             await _dbCtx.SaveChangesAsync();
@@ -93,7 +92,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             var user = await _dbCtx.Users.FirstOrDefaultAsync(u => u.UserId == userId);
             if (user is null)
                 return new ApiResult(ApiResultCode.InvalidRequest, "User does not exist.");
-            user.Status = (int)UserStatus.Deleted;
+            user.Status = UserStatus.Deleted;
             await _dbCtx.SaveChangesAsync();
             return new ApiResult();
         }

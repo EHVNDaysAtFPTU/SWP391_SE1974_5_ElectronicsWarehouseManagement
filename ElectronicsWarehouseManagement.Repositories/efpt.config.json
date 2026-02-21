@@ -27,10 +27,6 @@
          "ObjectType": 0
       },
       {
-         "Name": "[dbo].[InOutBoundReq]",
-         "ObjectType": 0
-      },
-      {
          "Name": "[dbo].[Item]",
          "ObjectType": 0
       },
@@ -40,6 +36,10 @@
       },
       {
          "Name": "[dbo].[ItemCategory]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[ItemDefinition]",
          "ObjectType": 0
       },
       {

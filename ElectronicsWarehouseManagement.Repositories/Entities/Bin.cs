@@ -11,7 +11,7 @@ public partial class Bin
 
     public string LocationInWarehouse { get; set; }
 
-    public int Status { get; set; }
+    public int StatusInt { get; set; }
 
     public int WarehouseId { get; set; }
 
