@@ -93,6 +93,8 @@ public enum ApiResultCode
     IncorrectCred,
     [Description("Session Expired")]
     SessionExpired,
+    [Description("Rate limited")]
+    RateLimited,
     [Description("Unknown error")]
     UnknownError = -1,
 }

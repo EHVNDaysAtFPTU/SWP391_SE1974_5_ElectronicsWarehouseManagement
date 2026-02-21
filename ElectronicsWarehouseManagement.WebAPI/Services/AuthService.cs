@@ -3,7 +3,6 @@ using ElectronicsWarehouseManagement.WebAPI.DTO;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Cryptography;
 using System.Text;
-using ElectronicsWarehouseManagement.Repositories.ExternalEntities;
 
 public interface IAuthService
 {
@@ -42,7 +41,7 @@ class AuthService : IAuthService
             StringComparison.Ordinal))
             return (new ApiResult(ApiResultCode.IncorrectCred), null);
 
-        switch ((UserStatus)user.Status)
+        switch (user.Status)
         {
             case UserStatus.Inactive:
                 return (new ApiResult(ApiResultCode.InvalidRequest, "Account is inactive."), null);

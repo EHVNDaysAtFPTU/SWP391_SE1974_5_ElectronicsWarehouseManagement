@@ -9,25 +9,25 @@ public partial class Item
 {
     public int ItemId { get; set; }
 
-    public string Metadata { get; set; }
-
-    public int Quantity { get; set; }
-
-    public string Unit { get; set; }
+    public float Quantity { get; set; }
 
     public DateOnly ImportDate { get; set; }
 
-    public float UnitPrice { get; set; }
-
     public int? TransferId { get; set; }
 
-    public int? IobId { get; set; }
+    public int? InboundId { get; set; }
 
-    public virtual InOutBoundReq Iob { get; set; }
+    public int? OutboundId { get; set; }
+
+    public int ItemDefId { get; set; }
+
+    public virtual TransferReq Inbound { get; set; }
+
+    public virtual ItemDefinition ItemDef { get; set; }
+
+    public virtual TransferReq Outbound { get; set; }
 
     public virtual TransferReq Transfer { get; set; }
 
     public virtual ICollection<Bin> Bins { get; set; } = new List<Bin>();
-
-    public virtual ICollection<Category> Categories { get; set; } = new List<Category>();
 }

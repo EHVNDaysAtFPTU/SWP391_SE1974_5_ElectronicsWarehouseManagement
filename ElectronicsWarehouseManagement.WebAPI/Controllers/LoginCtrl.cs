@@ -42,9 +42,10 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
                 var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
                 await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(identity));
                 HttpContext.Session.SetString("User", result.user.Username);
+                HttpContext.Session.SetString("UserId", result.user.UserId.ToString());
                 return Ok(result.resp);
             }
-            return Unauthorized(result.resp);
+            return NotFound(result.resp);
         }
 
         [Authorize]
@@ -65,6 +66,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
             if (result.Success)
             {
                 HttpContext.Session.Remove("User");
+                HttpContext.Session.Remove("UserId");
                 return Ok(result);
             }
             return BadRequest(result);

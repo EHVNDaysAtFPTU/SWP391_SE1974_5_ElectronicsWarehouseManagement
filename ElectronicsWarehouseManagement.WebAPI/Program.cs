@@ -2,6 +2,7 @@ using ElectronicsWarehouseManagement.Repositories.Entities;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
+using System.Threading.RateLimiting;
 
 namespace ElectronicsWarehouseManagement.WebAPI
 {
@@ -15,6 +16,7 @@ namespace ElectronicsWarehouseManagement.WebAPI
 
             string? connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
             builder.Services.AddDbContext<EWMDbCtx>(options => options.UseSqlServer(connectionString));
+
             builder.Services.AddControllers();
             builder.Services.AddDistributedMemoryCache();
             builder.Services.AddSession(options =>
@@ -59,6 +61,48 @@ namespace ElectronicsWarehouseManagement.WebAPI
 
             builder.Services.AddDIService();
 
+            builder.Services.AddRateLimiter(options =>
+            {
+                options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+                options.OnRejected = async (context, ct) =>
+                {
+                    context.HttpContext.Response.ContentType = "application/json; charset=utf-8";
+                    ApiResult payload = new ApiResult(ApiResultCode.RateLimited);
+                    await context.HttpContext.Response.WriteAsync(JsonSerializer.Serialize(payload), ct);
+                };
+
+                options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
+                {
+                    var identity = httpContext.User?.Identity?.Name;
+                    var key = identity ?? httpContext.Connection.RemoteIpAddress?.ToString() ?? "anonymous";
+
+                    if (httpContext.Request.HasFormContentType)
+                    {
+                        return RateLimitPartition.GetTokenBucketLimiter(
+                            partitionKey: key,
+                            factory: _ => new TokenBucketRateLimiterOptions
+                            {
+                                TokenLimit = 15,
+                                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                                QueueLimit = 0,
+                                ReplenishmentPeriod = TimeSpan.FromMinutes(1),
+                                TokensPerPeriod = 1,
+                                AutoReplenishment = true
+                            });
+                    }
+
+                    return RateLimitPartition.GetFixedWindowLimiter(
+                        partitionKey: key,
+                        factory: _ => new FixedWindowRateLimiterOptions
+                        {
+                            PermitLimit = 60,
+                            Window = TimeSpan.FromMinutes(1),
+                            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                            QueueLimit = 0
+                        });
+                });
+            });
+
             var app = builder.Build();
 
             if (app.Environment.IsDevelopment())
@@ -68,11 +112,11 @@ namespace ElectronicsWarehouseManagement.WebAPI
             }
 
             app.UseHttpsRedirection();
-            app.UseStaticFiles();
+            app.UseRateLimiter();
             app.UseSession();
-
-            app.UseAuthentication(); 
+            app.UseAuthentication();
             app.UseAuthorization();
+            //app.UseDefaultFiles();
 
             //app.UseStaticFiles(new StaticFileOptions
             //{
@@ -87,7 +131,6 @@ namespace ElectronicsWarehouseManagement.WebAPI
             //});
 
             app.MapControllers();
-
             app.Run();
         }
     }
