@@ -1,189 +1,47 @@
 ﻿<!DOCTYPE html>
-<html lang="vi">
+<html>
 <head>
     <meta charset="UTF-8">
-    <title>User Profile</title>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <title>Profile</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Poppins', sans-serif;
-        }
-
         body {
-            background: linear-gradient(135deg, #4e73df, #1cc88a);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
+            font-family: Arial;
+            background: #f4f6fb;
+            padding: 20px
         }
 
-        .profile-card {
-            width: 650px;
-            background: #fff;
-            border-radius: 15px;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
-            overflow: hidden;
-        }
-
-        .profile-header {
-            background: linear-gradient(135deg, #4e73df, #224abe);
-            color: white;
-            text-align: center;
-            padding: 40px 20px;
-            position: relative;
+        .card {
+            max-width: 500px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1)
         }
 
         .avatar {
-            width: 110px;
-            height: 110px;
+            width: 100px;
+            height: 100px;
             border-radius: 50%;
-            background: white;
-            color: #4e73df;
-            font-size: 48px;
-            font-weight: 600;
+            background: #1a73e8;
+            color: white;
             display: flex;
             align-items: center;
             justify-content: center;
-            margin: 0 auto 15px;
+            font-size: 30px;
+            margin: auto
         }
 
-        .profile-header h2 {
-            font-weight: 600;
+        .info {
+            margin-top: 20px
         }
 
-        .username {
-            opacity: 0.9;
-            margin-top: 5px;
-        }
-
-        .badge {
-            display: inline-block;
-            padding: 5px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-            margin-top: 10px;
-        }
-
-        .badge-manager {
-            background: #f6c23e;
-            color: #000;
-        }
-
-        .profile-body {
-            padding: 30px;
-        }
-
-        .info-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 12px 0;
-            border-bottom: 1px solid #eee;
-        }
-
-            .info-row:last-child {
-                border-bottom: none;
-            }
-
-        .info-label {
-            font-weight: 500;
-            color: #555;
-        }
-
-        .info-value {
-            font-weight: 500;
-        }
-
-        .status-active {
-            color: #1cc88a;
-            font-weight: 600;
-        }
-
-        .buttons {
-            margin-top: 25px;
-            display: flex;
-            justify-content: space-between;
-        }
-
-        .btn {
-            padding: 10px 18px;
-            border-radius: 8px;
-            border: none;
-            cursor: pointer;
-            font-weight: 500;
-            transition: 0.3s;
-        }
-
-        .btn-edit {
-            background: #4e73df;
-            color: white;
-        }
-
-            .btn-edit:hover {
-                background: #2e59d9;
-            }
-
-        .btn-home {
-            background: #858796;
-            color: white;
-        }
-
-            .btn-home:hover {
-                background: #60616f;
+            .info p {
+                margin: 8px 0
             }
     </style>
 </head>
 <body>
-
-    <div class="profile-card">
-        <div class="profile-header">
-            <div class="avatar">N</div>
-            <h2>Nguyễn Văn A</h2>
-            <div class="username">@nguyenvana</div>
-            <div class="badge badge-manager">MANAGER</div>
-        </div>
-
-        <div class="profile-body">
-            <div class="info-row">
-                <div class="info-label">Email</div>
-                <div class="info-value">vana@gmail.com</div>
-            </div>
-
-            <div class="info-row">
-                <div class="info-label">Phòng ban</div>
-                <div class="info-value">Warehouse Management</div>
-            </div>
-
-            <div class="info-row">
-                <div class="info-label">Quản lý trực tiếp</div>
-                <div class="info-value">Trần Minh B</div>
-            </div>
-
-            <div class="info-row">
-                <div class="info-label">Ngày tạo tài khoản</div>
-                <div class="info-value">15/02/2025</div>
-            </div>
-
-            <div class="info-row">
-                <div class="info-label">Trạng thái</div>
-                <div class="info-value status-active">● Đang hoạt động</div>
-            </div>
-
-            <div class="buttons">
-                <button class="btn btn-home" onclick="goHome()">← Trang chủ</button>
-                <button class="btn btn-edit">Chỉnh sửa</button>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        function goHome() {
-            window.location.href = "home.html"; // đổi link theo project của bạn
-        }
-    </script>
-
+    <div class="card"> <div class="avatar">A</div> <div class="info"> <p><strong>Tên:</strong> Anh Nguyễn</p> <p><strong>Chức vụ:</strong> Storekeeper</p> <p><strong>Email:</strong> anh.nguyen@ewm.com</p> <p><strong>SĐT:</strong> 0987654321</p> <p><strong>Kho phụ trách:</strong> Warehouse A</p> </div> </div>
 </body>
 </html>
