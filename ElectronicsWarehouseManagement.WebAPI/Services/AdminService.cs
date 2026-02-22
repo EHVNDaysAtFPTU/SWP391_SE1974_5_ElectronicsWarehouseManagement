@@ -1,4 +1,5 @@
-﻿using ElectronicsWarehouseManagement.Repositories.Entities;
+﻿using Azure.Core;
+using ElectronicsWarehouseManagement.Repositories.Entities;
 using ElectronicsWarehouseManagement.WebAPI.DTO;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Cryptography;
@@ -8,11 +9,11 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
 {
     public interface IAdminService
     {
-        Task<ApiResult> CreateAccountAsync(CreateAccReq createAccReq);
+        Task<ApiResult> CreateAccountAsync(CreateAccReq request);
         Task<ApiResult> DeleteAccountAsync(int userId);
         Task<ApiResult<List<GetRolesResp>>> GetRolesAsync();
         Task<ApiResult<List<GetUsersResp>>> GetUsersAsync();
-        Task<ApiResult> SetRoleAsync(SetRoleReq setRoleReq);
+        Task<ApiResult> SetRoleAsync(SetRoleReq request);
         Task<ApiResult<GetUserResp>> GetUserAsync(int userId);
         Task<ApiResult<List<GetUsersResp>>> SearchUsersAsync(string query);
     }
@@ -26,21 +27,20 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             _dbCtx = dbCtx;
         }
 
-        public async Task<ApiResult> CreateAccountAsync(CreateAccReq createAccReq)
+        public async Task<ApiResult> CreateAccountAsync(CreateAccReq request)
         {
-            if (!createAccReq.Verify())
-                return new ApiResult(ApiResultCode.InvalidRequest);
-            // Check if username or email already exists
-            User? existingUser = await _dbCtx.Users.FirstOrDefaultAsync(u => u.Username == createAccReq.Username || u.Email == createAccReq.Email);
+            if (!request.Verify(out string failedReason))
+                return new ApiResult(ApiResultCode.InvalidRequest, failedReason);
+            User? existingUser = await _dbCtx.Users.FirstOrDefaultAsync(u => u.Username == request.Username || u.Email == request.Email);
             if (existingUser is not null && existingUser.Status != UserStatus.Deleted)
             {
-                if (existingUser.Username == createAccReq.Username)
+                if (existingUser.Username == request.Username)
                     return new ApiResult(ApiResultCode.InvalidRequest, "Username already exists.");
-                if (existingUser.Email == createAccReq.Email)
+                if (existingUser.Email == request.Email)
                     return new ApiResult(ApiResultCode.InvalidRequest, "Email already exists.");
             }
-            var hash = SHA256.HashData(Encoding.UTF8.GetBytes(createAccReq.Password));
-            var role = await _dbCtx.Roles.FirstOrDefaultAsync(r => r.RoleId == createAccReq.RoleId);
+            var hash = SHA256.HashData(Encoding.UTF8.GetBytes(request.Password));
+            var role = await _dbCtx.Roles.FirstOrDefaultAsync(r => r.RoleId == request.RoleId);
             if (role is null)
                 return new ApiResult(ApiResultCode.InvalidRequest, "Role does not exist.");
             if (role.RoleId == 1)
@@ -49,8 +49,8 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             {
                 var user = new User
                 {
-                    Username = createAccReq.Username,
-                    Email = createAccReq.Email,
+                    Username = request.Username,
+                    Email = request.Email,
                     PasswordHash = Convert.ToBase64String(hash),
                     Status = UserStatus.Active,
                     Roles = [role]
@@ -60,7 +60,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             else
             {
                 existingUser.PasswordHash = Convert.ToBase64String(hash);
-                existingUser.Email = createAccReq.Email;
+                existingUser.Email = request.Email;
                 existingUser.Status = UserStatus.Active;
                 existingUser.Roles = [role];
             }
@@ -72,14 +72,14 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
 
         public async Task<ApiResult<List<GetUsersResp>>> GetUsersAsync() => new ApiResult<List<GetUsersResp>>((await _dbCtx.Users.AsNoTracking().Include(u => u.Roles).ToListAsync()).Select(u => new GetUsersResp(u)).ToList());
 
-        public async Task<ApiResult> SetRoleAsync(SetRoleReq setRoleReq)
+        public async Task<ApiResult> SetRoleAsync(SetRoleReq request)
         {
-            if (!setRoleReq.Verify())
-                return new ApiResult(ApiResultCode.InvalidRequest);
-            var user = await _dbCtx.Users.Include(u => u.Roles).FirstOrDefaultAsync(u => u.UserId == setRoleReq.UserId);
+            if (!request.Verify(out string failedReason))
+                return new ApiResult(ApiResultCode.InvalidRequest, failedReason);
+            var user = await _dbCtx.Users.Include(u => u.Roles).FirstOrDefaultAsync(u => u.UserId == request.UserId);
             if (user is null)
                 return new ApiResult(ApiResultCode.InvalidRequest, "User does not exist.");
-            var role = await _dbCtx.Roles.FirstOrDefaultAsync(r => r.RoleId == setRoleReq.RoleId);
+            var role = await _dbCtx.Roles.FirstOrDefaultAsync(r => r.RoleId == request.RoleId);
             if (role is null)
                 return new ApiResult(ApiResultCode.InvalidRequest, "Role does not exist.");
             user.Roles = [role];

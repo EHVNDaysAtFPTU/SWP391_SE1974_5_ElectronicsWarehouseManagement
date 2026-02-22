@@ -37,6 +37,15 @@ namespace ElectronicsWarehouseManagement.Repositories.Entities
                 set => transferReq.TypeInt = (int)value;
             }
         }
+
+        extension(Bin bin)
+        {
+            public BinStatus Status
+            {
+                get => (BinStatus)bin.StatusInt;
+                set => bin.StatusInt = (int)value;
+            }
+        }
     }
 }
 #pragma warning restore CS0618 // Type or member is obsolete
