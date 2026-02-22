@@ -128,7 +128,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             }
             await _dbCtx.SaveChangesAsync();
 
-            return new ApiResult(ApiResultCode.Success);
+            return new ApiResult();
         }
 
     }

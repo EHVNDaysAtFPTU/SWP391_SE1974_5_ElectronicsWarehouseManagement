@@ -83,4 +83,5 @@ public sealed class ViewCtrl : ControllerBase
             return NotFound();
         return PhysicalFile(physicalPath, "text/html; charset=utf-8");
     }
+    
 }
