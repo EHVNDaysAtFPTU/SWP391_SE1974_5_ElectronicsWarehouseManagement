@@ -2,6 +2,7 @@ using ElectronicsWarehouseManagement.Repositories.Entities;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
+using System.Text.Json.Serialization; // Thêm namespace này
 using System.Threading.RateLimiting;
 
 namespace ElectronicsWarehouseManagement.WebAPI
@@ -17,7 +18,12 @@ namespace ElectronicsWarehouseManagement.WebAPI
             string? connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
             builder.Services.AddDbContext<EWMDbCtx>(options => options.UseSqlServer(connectionString));
 
-            builder.Services.AddControllers();
+            builder.Services.AddControllers()
+                .AddJsonOptions(options =>
+                {
+                    options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+                });
+
             builder.Services.AddDistributedMemoryCache();
             builder.Services.AddSession(options =>
             {

@@ -11,6 +11,7 @@ public partial class Bin
 
     public string LocationInWarehouse { get; set; }
 
+    [Obsolete("Use Status instead.")]
     public int StatusInt { get; set; }
 
     public int WarehouseId { get; set; }
