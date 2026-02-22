@@ -5,86 +5,116 @@
     <title>Đơn Xuất Kho</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
-            background: #f4f6fb;
-            padding: 20px;
+            font-family: Arial;
+            background: #eef2f7;
+            padding: 30px
         }
 
         .container {
-            max-width: 1100px;
+            max-width: 1200px;
             margin: auto;
-            background: #fff;
-            padding: 20px;
-            border-radius: 10px;
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 5px 20px rgba(0,0,0,.08)
         }
 
-        h2 {
-            margin-bottom: 15px;
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px
         }
+
+        button {
+            padding: 8px 14px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: .2s
+        }
+
+        .back-btn {
+            background: #6b7280;
+            color: white
+        }
+
+            .back-btn:hover {
+                background: #4b5563
+            }
+
+        .add-btn {
+            background: #22c55e;
+            color: white
+        }
+
+            .add-btn:hover {
+                background: #16a34a
+            }
+
+        .remove-btn {
+            background: #ef4444;
+            color: white
+        }
+
+            .remove-btn:hover {
+                background: #dc2626
+            }
+
+        .submit-btn {
+            background: #f97316;
+            color: white;
+            font-size: 16px
+        }
+
+            .submit-btn:hover {
+                background: #ea580c
+            }
 
         .form-row {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
-            margin-bottom: 15px;
+            grid-template-columns: repeat(3,1fr);
+            gap: 15px;
+            margin-bottom: 20px
         }
 
-        input, select, textarea {
-            width: 100%;
-            padding: 8px;
+        input, textarea {
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            width: 100%
         }
 
         table {
             width: 100%;
-            border-collapse: collapse;
+            border-collapse: collapse
         }
 
         th, td {
-            border: 1px solid #ccc;
-            padding: 6px;
-            text-align: center;
-            vertical-align: middle; 
+            border: 1px solid #e5e7eb;
+            padding: 8px;
+            text-align: center
         }
-
 
         th {
-            background: #f0f0f0;
-        }
-
-        button {
-            padding: 8px 15px;
-            margin-top: 10px;
-            cursor: pointer;
-        }
-
-        .add-btn {
-            background: #4CAF50;
-            color: white;
-        }
-
-        .remove-btn {
-            background: #f44336;
-            color: white;
-        }
-
-        .submit-btn {
-            background: #1976d2;
-            color: white;
-            font-size: 16px;
+            background: #f3f4f6
         }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <h2>📤 ĐƠN XUẤT KHO</h2>
+        <div class="topbar">
+            <h2>📤 ĐƠN XUẤT KHO</h2>
+            <button class="back-btn" onclick="goHome()">← Về Home</button>
+        </div>
 
         <div class="form-row">
             <input placeholder="Mã đơn xuất">
             <input type="date">
             <input placeholder="Kho xuất">
             <input placeholder="BIN">
-            <input placeholder="Người nhận">
+            <input placeholder="Khách hàng">
             <input placeholder="Nhân viên xuất">
         </div>
 
@@ -98,11 +128,11 @@
                     <th>Hành động</th>
                 </tr>
             </thead>
-            <tbody id="exportBody">
+            <tbody id="bodyTable">
                 <tr>
                     <td><input></td>
                     <td><input></td>
-                    <td><input type="number"></td>
+                    <td><input type="number" min="1"></td>
                     <td><input></td>
                     <td><button class="remove-btn" onclick="removeRow(this)">X</button></td>
                 </tr>
@@ -113,26 +143,25 @@
 
         <br><br>
 <textarea rows="3" placeholder="Ghi chú"></textarea>
-        <br>
+        <br><br>
 
-        <button class="submit-btn">Lưu đơn xuất kho</button>
+        <button class="submit-btn">💾 Lưu đơn xuất</button>
+
     </div>
 
     <script>
-function addRow() {
-    const row = `
-    <tr>
-        <td><input></td>
-        <td><input></td>
-        <td><input type="number"></td>
-        <td><input></td>
-        <td><button class="remove-btn" onclick="removeRow(this)">X</button></td>
-    </tr>`;
-    document.getElementById("exportBody").insertAdjacentHTML("beforeend", row);
-}
-function removeRow(btn) {
-    btn.closest("tr").remove();
-}
+        function addRow() {
+            const row = `<tr>
+<td><input></td>
+<td><input></td>
+<td><input type="number" min="1"></td>
+<td><input></td>
+<td><button class="remove-btn" onclick="removeRow(this)">X</button></td>
+</tr>`;
+            document.getElementById("bodyTable").insertAdjacentHTML("beforeend", row);
+        }
+        function removeRow(btn) { btn.closest("tr").remove() }
+        function goHome() { window.location = "home.html" }
     </script>
 
 </body>

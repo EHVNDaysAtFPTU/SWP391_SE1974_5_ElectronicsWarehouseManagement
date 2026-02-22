@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Đơn Nhập Kho</title>
+    <title>Đơn Chuyển Kho</title>
     <style>
         body {
             font-family: Arial;
@@ -62,13 +62,13 @@
             }
 
         .submit-btn {
-            background: #2563eb;
+            background: #7c3aed;
             color: white;
             font-size: 16px
         }
 
             .submit-btn:hover {
-                background: #1d4ed8
+                background: #6d28d9
             }
 
         .form-row {
@@ -105,17 +105,17 @@
 
     <div class="container">
         <div class="topbar">
-            <h2>📥 ĐƠN NHẬP KHO</h2>
+            <h2>🔁 ĐƠN CHUYỂN KHO</h2>
             <button class="back-btn" onclick="goHome()">← Về Home</button>
         </div>
 
         <div class="form-row">
-            <input placeholder="Mã đơn nhập">
+            <input placeholder="Mã đơn chuyển">
             <input type="date">
-            <input placeholder="Kho nhập">
-            <input placeholder="BIN">
-            <input placeholder="Nhà cung cấp">
-            <input placeholder="Nhân viên nhập">
+            <input placeholder="Kho nguồn">
+            <input placeholder="Kho đích">
+            <input placeholder="BIN nguồn">
+            <input placeholder="Nhân viên thực hiện">
         </div>
 
         <table>
@@ -145,7 +145,7 @@
 <textarea rows="3" placeholder="Ghi chú"></textarea>
         <br><br>
 
-        <button class="submit-btn">💾 Lưu đơn nhập</button>
+        <button class="submit-btn">💾 Lưu đơn chuyển</button>
 
     </div>
 
