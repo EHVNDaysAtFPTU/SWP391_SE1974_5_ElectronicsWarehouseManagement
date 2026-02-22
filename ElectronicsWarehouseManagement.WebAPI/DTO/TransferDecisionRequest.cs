@@ -8,7 +8,7 @@
     {
         Approve = 1,
         Reject = 2,
-        Cancel = 3
+        Pending = 0
     }
 
 

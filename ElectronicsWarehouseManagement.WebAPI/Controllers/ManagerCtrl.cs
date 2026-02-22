@@ -4,6 +4,7 @@ using ElectronicsWarehouseManagement.WebAPI.DTO;
 using ElectronicsWarehouseManagement.WebAPI.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 
 namespace ElectronicsWarehouseManagement.WebAPI.Controllers
@@ -71,8 +72,15 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
         [HttpPost("transfer-requests/{transferId:int}/decisions")]
         public async Task<IActionResult> PostTransferReq([FromRoute] int transferId, [FromBody] TransferDecisionRequest request)
         {
-            int? approverId = GetCurrentUserId();
-            var result = await _managerService.PostTransferDecisionAsync(transferId, approverId, request.Decision);
+            //int? approverId = GetCurrentUserId();
+            //_logger.LogInformation("CurrentUserId (Session): {userId}", approverId);
+            //_logger.LogInformation("Authenticated: {auth}", User.Identity?.IsAuthenticated);
+            //_logger.LogInformation("Role: {role}", User.FindFirst(ClaimTypes.Role)?.Value);
+            //_logger.LogInformation("ModelState valid: {valid}", ModelState.IsValid);
+            //_logger.LogInformation("TransferId: {id}", transferId);
+            //_logger.LogInformation("Request null: {nullCheck}", request == null);
+            //_logger.LogInformation("Decision: {decision}", request?.Decision);
+            var result = await _managerService.PostTransferDecisionAsync(transferId, request.Decision);
             if (result.Success)
             {
                 return Ok(result);
@@ -82,34 +90,39 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
 
 
 
-        [HttpGet("me")]
-        public IActionResult Me()
-        {
-            string? username = HttpContext.Session.GetString("User");
-            string? userId = HttpContext.Session.GetString("UserId");
+        //[HttpGet("me")]
+        //public IActionResult Me()
+        //{
+        //    string? username = HttpContext.Session.GetString("User");
+        //    string? userId = HttpContext.Session.GetString("UserId");
 
-            if (string.IsNullOrEmpty(username))
-            {
-                return Unauthorized(new ApiResult(ApiResultCode.Unauthorized));
-            }
+        //    if (string.IsNullOrEmpty(username))
+        //    {
+        //        return Unauthorized(new ApiResult(ApiResultCode.Unauthorized));
+        //    }
 
-            var userInfo = new
-            {
-                Username = username,
-                UserId = userId
-            };
+        //    var userInfo = new
+        //    {
+        //        Username = username,
+        //        UserId = userId
+        //    };
 
-            return Ok(new ApiResult<object>(userInfo));
-        }
+        //    return Ok(new ApiResult<object>(userInfo));
+        //}
 
         private int? GetCurrentUserId()
         {
-            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+
             if (userIdClaim == null)
                 return null;
 
-            return int.Parse(userIdClaim.Value);
+            if (int.TryParse(userIdClaim.Value, out int userId))
+                return userId;
+
+            return null;
         }
+
 
         private String? GetCurrentUsername()
         {
