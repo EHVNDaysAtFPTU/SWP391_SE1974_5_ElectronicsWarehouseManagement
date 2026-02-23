@@ -25,7 +25,7 @@
 
             <br><br>
 
-            <table>
+            <table border="1" cellpadding="8">
                 <thead>
                     <tr>
                         <th>ID</th>
@@ -41,6 +41,7 @@
         </div>
     </div>
 
+    <!-- CREATE USER MODAL -->
     <div id="modal" class="modal hidden">
         <div class="modal-content">
             <h3>Create User</h3>
@@ -53,6 +54,50 @@
             </select><br><br>
             <button class="btn-primary" onclick="createUser()">Create</button>
             <button onclick="closeModal()">Cancel</button>
+        </div>
+    </div>
+
+    <!-- VIEW USER MODAL -->
+    <div id="viewModal" class="modal hidden">
+        <div class="modal-content">
+            <h3>User Information</h3>
+
+            <p><b>Username:</b> <span id="viewUsername"></span></p>
+            <p><b>Email:</b> <span id="viewEmail"></span></p>
+            <p><b>Role:</b> <span id="viewRole"></span></p>
+            <p><b>Status:</b> <span id="viewStatus"></span></p>
+
+            <br>
+            <button onclick="closeViewModal()">Close</button>
+        </div>
+    </div>
+
+    <!-- EDIT USER MODAL -->
+    <div id="editModal" class="modal hidden">
+        <div class="modal-content">
+            <h3>Edit User</h3>
+
+            <input type="hidden" id="editUserId">
+
+            <label>Role</label><br>
+            <select id="editRole">
+                <option value="2">Manager</option>
+                <option value="3">Storekeeper</option>
+            </select>
+
+            <br><br>
+
+            <label>Status</label><br>
+            <select id="editStatus">
+                <option value="1">Active</option>
+                <option value="2">Inactive</option>
+                <option value="3">Suspended</option>
+            </select>
+
+            <br><br>
+
+            <button class="btn-primary" onclick="updateUser()">Save</button>
+            <button onclick="closeEditModal()">Cancel</button>
         </div>
     </div>
 
@@ -72,11 +117,7 @@
 
         async function loadUsers() {
             const r = await api("/admin/users");
-            if (r.success) {
-                render(r.data);
-            } else {
-                alert("Load failed");
-            }
+            if (r.success) render(r.data);
         }
 
         function render(users) {
@@ -84,15 +125,15 @@
             tbody.innerHTML = "";
 
             users.forEach(u => {
+               let statusText = "Unknown";
 
-                let statusText = "";
-                switch (u.status) {
-                    case 1: statusText = "Active"; break;
-                    case 2: statusText = "Locked"; break;
-                    case 3: statusText = "Disabled"; break;
-                    case 4: statusText = "Deleted"; break;
-                    default: statusText = u.status;
-                }
+switch (u.status) {
+    case 1: statusText = "Active"; break;
+    case 2: statusText = "Inactive"; break;
+    case 3: statusText = "Suspended"; break;
+    case 4: statusText = "Deleted"; break;
+    default: statusText = u.status;
+}
 
                 tbody.innerHTML += `
 <tr>
@@ -101,42 +142,29 @@
 <td>${u.email}</td>
 <td>${statusText}</td>
 <td>
-<button class="btn-danger" onclick="deleteUser(${u.user_id})">
-Delete
-</button>
+<button onclick="viewUser(${u.user_id})">View</button>
+<button onclick="editUser(${u.user_id})">Edit</button>
+<button class="btn-danger" onclick="deleteUser(${u.user_id})">Delete</button>
 </td>
 </tr>`;
             });
         }
 
         async function createUser() {
+            const username = newUsername.value;
+            const email = newEmail.value;
+            const password = newPassword.value;
+            const roleId = parseInt(newRole.value);
 
-            const username = document.getElementById("newUsername").value;
-            const email = document.getElementById("newEmail").value;
-            const password = document.getElementById("newPassword").value;
-            const roleId = parseInt(document.getElementById("newRole").value);
-
-            const response = await fetch(BASE + "/admin/create-account", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                credentials: "include",
-                body: JSON.stringify({
-                    username,
-                    email,
-                    password,
-                    role_id: roleId
-                })
+            const r = await api("/admin/create-account", "POST", {
+                username, email, password, role_id: roleId
             });
 
-            const data = await response.json();
-
-            if (response.ok) {
+            if (r.success) {
                 alert("Create success");
                 closeModal();
                 loadUsers();
-            } else {
-                alert(data.message || "Create failed");
-            }
+            } else alert(r.message || "Create failed");
         }
 
         async function deleteUser(id) {
@@ -146,18 +174,92 @@ Delete
         }
 
         async function searchUsers() {
-            const q = document.getElementById("searchInput").value.trim();
-            if (!q) { loadUsers(); return; }
+            const q = searchInput.value.trim();
+            if (!q) return loadUsers();
             const r = await api(`/admin/search-users?query=${q}`);
             if (r.success) render(r.data);
         }
 
         function openModal() {
-            document.getElementById("modal").classList.remove("hidden");
+            modal.classList.remove("hidden");
         }
 
         function closeModal() {
-            document.getElementById("modal").classList.add("hidden");
+            modal.classList.add("hidden");
+        }
+        async function viewUser(id) {
+            const r = await api(`/admin/user/${id}`);
+            if (!r.success) return;
+
+            const u = r.data;
+            let statusText = "Unknown";
+
+            switch (u.status) {
+                case 1: statusText = "Active"; break;
+                case 2: statusText = "Inactive"; break;
+                case 3: statusText = "Suspended"; break;
+                case 4: statusText = "Deleted"; break;
+            }
+
+            const roleName = u.role && u.role.length > 0
+                ? u.role.map(r => r.role_name).join(", ")
+                : "No Role";
+
+            viewUsername.innerText = u.username;
+            viewEmail.innerText = u.email;
+            viewRole.innerText = roleName;
+            viewStatus.innerText = statusText;
+
+            viewModal.classList.remove("hidden");
+        }
+
+        function closeViewModal() {
+            viewModal.classList.add("hidden");
+        }
+        async function editUser(id) {
+            const r = await api(`/admin/user/${id}`);
+            if (!r.success) return;
+
+            const u = r.data;
+
+            const roleName = u.role && u.role.length > 0
+                ? u.role[0].role_name
+                : "";
+
+            const roleId = u.role && u.role.length > 0
+                ? u.role[0].role_id
+                : "";
+
+            if (roleName === "Admin") {
+                alert("Cannot edit Admin account");
+                return;
+            }
+
+            editUserId.value = id;
+            editRole.value = roleId;
+            editStatus.value = u.status;
+
+            editModal.classList.remove("hidden");
+        }
+        function closeEditModal() {
+            editModal.classList.add("hidden");
+        }
+
+        async function updateUser() {
+            const id = editUserId.value;
+            const roleId = parseInt(editRole.value);
+            const status = parseInt(editStatus.value);
+
+            const r = await api(`/admin/update-account/${id}`, "PUT", {
+                role_id: roleId,
+                status: status
+            });
+
+            if (r.success) {
+                alert("Update success");
+                closeEditModal();
+                loadUsers();
+            } else alert("Update failed");
         }
 
         async function logout() {

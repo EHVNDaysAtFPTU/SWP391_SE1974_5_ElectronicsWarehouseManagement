@@ -83,3 +83,41 @@ th {
     .sidebar p:hover {
         text-decoration: underline;
     }
+
+.modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-content {
+    background: white;
+    padding: 25px;
+    border-radius: 10px;
+    width: 350px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+}
+
+.hidden {
+    display: none;
+}
+
+button {
+    padding: 8px 14px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+}
+
+.btn-primary {
+    background: #2f80ed;
+    color: white;
+}
+
+.btn-danger {
+    background: #eb5757;
+    color: white;
+}
