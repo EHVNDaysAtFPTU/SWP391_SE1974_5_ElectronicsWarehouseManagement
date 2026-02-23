@@ -3,438 +3,253 @@
 <head>
     <meta charset="UTF-8">
     <title>Item List - Electronic Components Warehouse</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- Bootstrap 5 CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: Arial, sans-serif;
-        }
-
         body {
-            display: flex;
-            background-color: #f4f6f9;
+            background-color: #f8f9fa;
         }
 
-        /* Sidebar */
         .sidebar {
-            width: 250px;
-            height: 100vh;
-            background-color: #1e293b;
-            color: white;
-            padding: 20px;
-            overflow-y: auto;
-            position: fixed;
-            left: 0;
-            top: 0;
+            min-height: 100vh;
         }
 
-        .sidebar h2 {
-            text-align: center;
-            margin-bottom: 30px;
-            font-size: 18px;
-        }
-
-        .sidebar ul {
-            list-style: none;
-        }
-
-        .sidebar ul li {
-            padding: 12px;
-            margin: 8px 0;
-            background: #334155;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: 0.3s;
-        }
-
-        .sidebar ul li:hover {
-            background: #475569;
-        }
-
-        .sidebar ul li a {
-            text-decoration: none;
-            color: white;
-            display: block;
-        }
-
-        /* Main content */
-        .main-content {
-            flex: 1;
-            margin-left: 250px;
-            padding: 30px;
-        }
-
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 30px;
-        }
-
-        .header h1 {
-            font-size: 28px;
-            color: #1e293b;
-        }
-
-        .logout-btn {
-            background: #dc2626;
-            color: white;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: 0.3s;
-        }
-
-        .logout-btn:hover {
-            background: #b91c1c;
-        }
-
-        /* Table styles */
-        .table-container {
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            overflow: hidden;
-            margin-bottom: 30px;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        thead {
-            background-color: #1e293b;
-            color: white;
-        }
-
-        th {
-            padding: 15px;
-            text-align: left;
-            font-weight: 600;
-        }
-
-        tbody tr {
-            border-bottom: 1px solid #e2e8f0;
-            transition: 0.3s;
-        }
-
-        tbody tr:hover {
-            background-color: #f8fafc;
-        }
-
-        td {
-            padding: 15px;
-            color: #334155;
-        }
-
-        /* Pagination */
-        .pagination {
-            display: flex;
-            justify-content: center;
-            gap: 10px;
-            margin-top: 20px;
-            flex-wrap: wrap;
-        }
-
-        .pagination button,
-        .pagination span {
-            padding: 8px 12px;
-            border: 1px solid #cbd5e1;
-            background: white;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: 0.3s;
-        }
-
-        .pagination button:hover {
-            background: #2563eb;
-            color: white;
-            border-color: #2563eb;
-        }
-
-        .pagination .active {
-            background: #2563eb;
-            color: white;
-            border-color: #2563eb;
-        }
-
-        /* Loading and error states */
-        .loading {
-            text-align: center;
-            padding: 40px;
-            color: #666;
-        }
-
-        .error {
-            background: #fee2e2;
-            color: #dc2626;
-            padding: 15px;
-            border-radius: 6px;
-            margin-bottom: 20px;
-            border-left: 4px solid #dc2626;
-        }
-
-        .success {
-            background: #dbeafe;
-            color: #0284c7;
-            padding: 15px;
-            border-radius: 6px;
-            margin-bottom: 20px;
-            border-left: 4px solid #0284c7;
-        }
-
-        /* Controls */
-        .controls {
-            display: flex;
-            gap: 15px;
-            margin-bottom: 20px;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-
-        .page-size-control {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .page-size-control label {
-            color: #475569;
-            font-weight: 500;
-        }
-
-        .page-size-control select {
-            padding: 8px 12px;
-            border: 1px solid #cbd5e1;
-            border-radius: 6px;
-            background: white;
-            cursor: pointer;
-        }
-
-        /* Footer */
-        footer {
-            margin-top: 40px;
-            text-align: center;
-            color: #777;
+        .bin-detail {
             font-size: 13px;
-        }
-
-        .info-text {
-            color: #666;
-            font-size: 14px;
-            margin-bottom: 10px;
         }
     </style>
 </head>
 <body>
 
-    <!-- Sidebar -->
-    <div class="sidebar">
-        <h2>Manager Panel</h2>
-        <ul>
-            <li><a href="home.html">Dashboard</a></li>
-            <li><a href="itemlist.html">View Items</a></li>
-            <li><a href="#">View Transfer Requests</a></li>
-            <li><a href="#">View Receipts</a></li>
-            <li><a href="#">Approve GR</a></li>
-            <li><a href="#">Reports</a></li>
-            <li><a href="#">Export Report</a></li>
-        </ul>
-    </div>
+<div class="container-fluid">
+    <div class="row">
 
-    <!-- Main Content -->
-    <div class="main-content">
-        <div class="header">
-            <h1>Items Inventory</h1>
-            <button class="logout-btn" onclick="logout()">Logout</button>
-        </div>
-
-        <div id="messageContainer"></div>
-
-        <div class="controls">
-            <div class="page-size-control">
-                <label for="pageSize">Items per page:</label>
-                <select id="pageSize" onchange="changePageSize()">
-                    <option value="5">5</option>
-                    <option value="10" selected>10</option>
-                    <option value="20">20</option>
-                    <option value="50">50</option>
-                </select>
+        <!-- Sidebar -->
+        <nav class="col-md-3 col-lg-2 d-md-block bg-dark sidebar collapse">
+            <div class="position-sticky pt-3 text-white p-3">
+                <h5 class="text-center mb-4">Manager Panel</h5>
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link text-white" href="home.html">Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-white active" href="itemlist.html">View Items</a>
+                    </li>
+                    <li class="nav-item"><a class="nav-link text-white" href="#">Transfer Requests</a></li>
+                    <li class="nav-item"><a class="nav-link text-white" href="#">Receipts</a></li>
+                    <li class="nav-item"><a class="nav-link text-white" href="#">Approve GR</a></li>
+                    <li class="nav-item"><a class="nav-link text-white" href="#">Reports</a></li>
+                    <li class="nav-item"><a class="nav-link text-white" href="#">Export Report</a></li>
+                </ul>
             </div>
-        </div>
+        </nav>
 
-        <div class="info-text" id="infoText"></div>
+        <!-- Main content -->
+        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 py-4">
 
-        <div class="table-container">
-            <table id="itemsTable">
-                <thead>
-                    <tr>
-                        <th>Item ID</th>
-                        <th>Item Definition</th>
-                        <th>Quantity</th>
-                        <th>Import Date</th>
-                        <th>Transfer ID</th>
-                        <th>Inbound ID</th>
-                        <th>Outbound ID</th>
-                        <th>Bins</th>
-                    </tr>
-                </thead>
-                <tbody id="itemsBody">
-                    <tr>
-                        <td colspan="8" class="loading">Loading items...</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="fw-bold">Items Inventory</h2>
+                <button class="btn btn-danger" onclick="logout()">Logout</button>
+            </div>
 
-        <div class="pagination" id="paginationContainer"></div>
+            <div id="messageContainer"></div>
 
-        <footer>
-            © 2026 Electronic Components Warehouse Management System
-        </footer>
+            <!-- Controls -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-body d-flex align-items-center gap-3 flex-wrap">
+                    <label class="fw-semibold">Items per page:</label>
+                    <select id="pageSize" class="form-select w-auto" onchange="changePageSize()">
+                        <option value="5">5</option>
+                        <option value="10" selected>10</option>
+                        <option value="20">20</option>
+                        <option value="50">50</option>
+                    </select>
+                    <div id="infoText" class="text-muted ms-auto"></div>
+                </div>
+            </div>
+
+            <!-- Table -->
+            <div class="card shadow-sm">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Item ID</th>
+                                <th>Item Name</th>
+                                <th>Quantity</th>
+                                <th>Import Date</th>
+                                <th>Transfer</th>
+                                <th>Inbound</th>
+                                <th>Outbound</th>
+                                <th>Bins</th>
+                            </tr>
+                        </thead>
+                        <tbody id="itemsBody">
+                            <tr>
+                                <td colspan="8" class="text-center py-4">
+                                    <div class="spinner-border text-primary"></div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Pagination -->
+            <nav class="mt-4">
+                <ul class="pagination justify-content-center" id="paginationContainer"></ul>
+            </nav>
+
+            <footer class="text-center text-muted mt-5">
+                © 2026 Electronic Components Warehouse Management System
+            </footer>
+
+        </main>
     </div>
+</div>
 
-    <script>
-        let currentPage = 1;
-        let pageSize = 10;
-        let totalPages = 1;
+<script>
+let currentPage = 1;
+let pageSize = 10;
+let totalPages = 1;
+let itemDetailCache = {};
 
-        // Load items on page load
-        document.addEventListener('DOMContentLoaded', function () {
-            loadItems(1);
+document.addEventListener('DOMContentLoaded', function () {
+    loadItems(1);
+});
+
+async function loadItems(page) {
+    try {
+        currentPage = page;
+
+        const response = await fetch(`/api/manager/get-items?pageNumber=${page}&pageSize=${pageSize}`, {
+            method: 'GET',
+            credentials: 'include'
         });
 
-        async function loadItems(page) {
-            try {
-                currentPage = page;
-                const response = await fetch(`/api/manager/get-items?pageNumber=${page}&pageSize=${pageSize}`, {
-                    method: 'GET',
-                    credentials: 'include',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                });
+        const result = await response.json();
 
-                console.log('Response status:', response.status);
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error('Error response:', errorText);
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-
-                const result = await response.json();
-                console.log('API Response:', result);
-
-                if (result.success) {
-                    displayItems(result.data);
-                    totalPages = result.data.totalPages;
-                    updatePagination();
-                } else {
-                    showMessage(result.message || 'Failed to load items', 'error');
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                showMessage('Error loading items: ' + error.message, 'error');
-            }
+        if (result.success) {
+            displayItems(result.data);
+            totalPages = result.data.totalPages;
+            updatePagination();
+        } else {
+            showMessage(result.message || 'Failed to load items', 'danger');
         }
 
-        function displayItems(data) {
-            const tbody = document.getElementById('itemsBody');
-            const infoText = document.getElementById('infoText');
+    } catch (error) {
+        showMessage(error.message, 'danger');
+    }
+}
 
-            if (!data.data || data.data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 20px;">No items found</td></tr>';
-                infoText.textContent = '';
-                return;
-            }
+function displayItems(data) {
+    const tbody = document.getElementById('itemsBody');
+    const infoText = document.getElementById('infoText');
 
-            infoText.textContent = `Showing ${(currentPage - 1) * pageSize + 1} to ${Math.min(currentPage * pageSize, data.totalCount)} of ${data.totalCount} items`;
+    if (!data.data || data.data.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center py-4">No items found</td></tr>`;
+        return;
+    }
 
-            tbody.innerHTML = data.data.map(item => `
-                <tr>
-                    <td>${item.item_id}</td>
-                    <td>${item.item_def ? item.item_def.itemDefName : 'N/A'}</td>
-                    <td>${item.quantity.toFixed(2)}</td>
-                    <td>${formatDate(item.import_date)}</td>
-                    <td>${item.transfer_id || '-'}</td>
-                    <td>${item.inbound_id || '-'}</td>
-                    <td>${item.outbound_id || '-'}</td>
-                    <td>${item.bins && item.bins.length > 0 ? item.bins.map(b => b.binCode).join(', ') : '-'}</td>
-                </tr>
-            `).join('');
-        }
+    infoText.textContent =
+        `Showing ${(currentPage - 1) * pageSize + 1}
+         to ${Math.min(currentPage * pageSize, data.totalCount)}
+         of ${data.totalCount} items`;
 
-        function updatePagination() {
-            const container = document.getElementById('paginationContainer');
-            container.innerHTML = '';
+    tbody.innerHTML = data.data.map(item => `
+        <tr>
+            <td>${item.id}</td>
+            <td>${item.definition?.metadata?.name || 'N/A'}</td>
+            <td><span class="badge bg-primary">${item.quantity}</span></td>
+            <td>${formatDate(item.import_date)}</td>
+            <td>-</td>
+            <td>-</td>
+            <td>-</td>
+            <td>
+                <button class="btn btn-sm btn-outline-primary"
+                        onclick="toggleBinDetail(${item.id})"
+                        id="btn-${item.id}">
+                    View
+                </button>
+                <div id="bin-detail-${item.id}" class="bin-detail mt-2 text-muted"></div>
+            </td>
+        </tr>
+    `).join('');
+}
 
-            // Previous button
-            if (currentPage > 1) {
-                const prevBtn = document.createElement('button');
-                prevBtn.textContent = '← Previous';
-                prevBtn.onclick = () => loadItems(currentPage - 1);
-                container.appendChild(prevBtn);
-            }
+async function toggleBinDetail(itemId) {
+    const detailDiv = document.getElementById(`bin-detail-${itemId}`);
+    const button = document.getElementById(`btn-${itemId}`);
 
-            // Page numbers
-            for (let i = 1; i <= totalPages; i++) {
-                if (i === currentPage) {
-                    const span = document.createElement('span');
-                    span.textContent = i;
-                    span.className = 'active';
-                    container.appendChild(span);
-                } else if (i === 1 || i === totalPages || (i >= currentPage - 1 && i <= currentPage + 1)) {
-                    const btn = document.createElement('button');
-                    btn.textContent = i;
-                    btn.onclick = () => loadItems(i);
-                    container.appendChild(btn);
-                } else if (i === currentPage - 2 || i === currentPage + 2) {
-                    const span = document.createElement('span');
-                    span.textContent = '...';
-                    span.style.cursor = 'default';
-                    container.appendChild(span);
-                }
-            }
+    if (detailDiv.innerHTML !== "") {
+        detailDiv.innerHTML = "";
+        button.textContent = "View";
+        return;
+    }
 
-            // Next button
-            if (currentPage < totalPages) {
-                const nextBtn = document.createElement('button');
-                nextBtn.textContent = 'Next →';
-                nextBtn.onclick = () => loadItems(currentPage + 1);
-                container.appendChild(nextBtn);
-            }
-        }
+    if (itemDetailCache[itemId]) {
+        detailDiv.innerHTML = itemDetailCache[itemId];
+        button.textContent = "Hide";
+        return;
+    }
 
-        function changePageSize() {
-            pageSize = parseInt(document.getElementById('pageSize').value);
-            loadItems(1);
-        }
+    button.innerHTML = `<span class="spinner-border spinner-border-sm"></span>`;
 
-        function formatDate(dateString) {
-            const options = { year: 'numeric', month: '2-digit', day: '2-digit' };
-            return new Date(dateString).toLocaleDateString('en-US', options);
-        }
+    const response = await fetch(`/api/manager/get-item/${itemId}?fullInfo=true`, {
+        credentials: 'include'
+    });
 
-        function showMessage(message, type) {
-            const container = document.getElementById('messageContainer');
-            const className = type === 'error' ? 'error' : 'success';
-            container.innerHTML = `<div class="${className}">${message}</div>`;
-            setTimeout(() => {
-                container.innerHTML = '';
-            }, 5000);
-        }
+    const result = await response.json();
 
-        function logout() {
-            if (confirm('Are you sure you want to logout?')) {
-                window.location.href = '/login';
-            }
-        }
-    </script>
+    const item = result.data;
+    let html = "";
+
+    if (item.bins && item.bins.length > 0) {
+        html = item.bins.map(b => `• ${b.location_in_warehouse}`).join("<br>");
+    } else {
+        html = "No bins";
+    }
+
+    itemDetailCache[itemId] = html;
+    detailDiv.innerHTML = html;
+    button.textContent = "Hide";
+}
+
+function updatePagination() {
+    const container = document.getElementById('paginationContainer');
+    container.innerHTML = '';
+
+    for (let i = 1; i <= totalPages; i++) {
+        container.innerHTML += `
+            <li class="page-item ${i === currentPage ? 'active' : ''}">
+                <a class="page-link" href="#" onclick="loadItems(${i})">${i}</a>
+            </li>
+        `;
+    }
+}
+
+function formatDate(dateString) {
+    return new Date(dateString).toLocaleDateString('en-US');
+}
+
+function showMessage(message, type) {
+    document.getElementById('messageContainer').innerHTML =
+        `<div class="alert alert-${type}">${message}</div>`;
+}
+
+function changePageSize() {
+    pageSize = parseInt(document.getElementById('pageSize').value);
+    loadItems(1);
+}
+
+function logout() {
+    window.location.href = '/login';
+}
+</script>
 
 </body>
 </html>

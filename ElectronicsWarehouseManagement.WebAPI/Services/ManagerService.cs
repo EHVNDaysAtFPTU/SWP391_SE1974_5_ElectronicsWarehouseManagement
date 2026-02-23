@@ -9,8 +9,8 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
 {
     public interface IManagerService
     {
-        Task<ApiResult<ItemDTO>> GetItemAsync(int itemId);
-        Task<ApiResult<PagedResult<ItemDTO>>> GetItemListAsync(PagingRequest request);
+        Task<ApiResult<ItemResp>> GetItemAsync(int itemId, bool fullInfo);
+        Task<ApiResult<PagedResult<ItemResp>>> GetItemListAsync(PagingRequest request);
         Task<ApiResult<TransferReqDTO>> GetTransferAsync(int transferId);
         Task<ApiResult<PagedResult<TransferReqDTO>>> GetTransferReqListAsync(PagingRequest request);
         Task<ApiResult> PostTransferDecisionAsync(int transferId,TransferDecisionType decision);
@@ -25,33 +25,41 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             _dbCtx = dbCtx;
         }
 
-        public async Task<ApiResult<ItemDTO>> GetItemAsync(int itemId)
+        public async Task<ApiResult<ItemResp>> GetItemAsync(int itemId, bool fullInfo)
         {
-            var item = await _dbCtx.Items.AsNoTracking()
+            var item = await _dbCtx.Items
+                .AsNoTracking()
+                .Include(i => i.Bins)
+                    .ThenInclude(b => b.Warehouse)
                 .Where(i => i.ItemId == itemId)
-                .Select(i => new ItemDTO(i))
+                .Select(i => new ItemResp(i, fullInfo))
                 .FirstOrDefaultAsync();
 
             if (item == null)
-                return new ApiResult<ItemDTO>(ApiResultCode.NotFound, "Item not found");
+                return new ApiResult<ItemResp>(ApiResultCode.NotFound, "Item not found");
 
-            return new ApiResult<ItemDTO>(item);
+            return new ApiResult<ItemResp>(item);
         }
 
-        public async Task<ApiResult<PagedResult<ItemDTO>>> GetItemListAsync(PagingRequest request)
+        public async Task<ApiResult<PagedResult<ItemResp>>> GetItemListAsync(PagingRequest request)
         {
             var itemList = _dbCtx.Items
-                .AsNoTracking();
+                .AsNoTracking().Include(i => i.ItemDef)
+                .Include(i => i.Bins)
+                .ThenInclude(b => b.Warehouse)
+                .Include(i => i.Transfer)
+                .Include(i => i.Inbound)
+                .Include(i => i.Outbound);
 
             int totalCount = await itemList.CountAsync();
 
             var data = await itemList
                 .Skip((request.PageNumber - 1) * request.PageSize)
                 .Take(request.PageSize)
-                .Select(i => new ItemDTO(i))
+                .Select(i => new ItemResp(i,false))
                 .ToListAsync();
 
-            var pagedResult = new PagedResult<ItemDTO>
+            var pagedResult = new PagedResult<ItemResp>
             {
                 data = data,
                 TotalCount = totalCount,
@@ -59,7 +67,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
                 PageSize = request.PageSize
             };
 
-            return new ApiResult<PagedResult<ItemDTO>>(pagedResult);
+            return new ApiResult<PagedResult<ItemResp>>(pagedResult);
         }
 
         public async Task<ApiResult<TransferReqDTO>> GetTransferAsync(int transferId)

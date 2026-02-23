@@ -58,8 +58,10 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
                 InboundId = item.InboundId;
                 OutboundId = item.OutboundId;
                 ItemDef = item.ItemDef is null ? null : new ItemDefResp(item.ItemDef);
-                Bins = item.Bins.Select(b => new BinResp(b, true)).ToList();
-                // TODO
+                Bins = item.Bins?
+        .Select(b => new BinResp(b, false))
+        .ToList();
+
             }
         }
     }

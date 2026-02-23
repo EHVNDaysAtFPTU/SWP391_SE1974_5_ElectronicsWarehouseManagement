@@ -22,9 +22,9 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
             _logger = logger;
         }
         [HttpGet("get-item/{itemId:int}")]
-        public async Task<IActionResult> GetItem([FromRoute]int itemId)
+        public async Task<IActionResult> GetItem([FromRoute]int itemId, [FromQuery] bool fullInfo)
         {
-            var result = await _managerService.GetItemAsync(itemId);
+            var result = await _managerService.GetItemAsync(itemId, fullInfo);
 
             if (result.Success)
             {
