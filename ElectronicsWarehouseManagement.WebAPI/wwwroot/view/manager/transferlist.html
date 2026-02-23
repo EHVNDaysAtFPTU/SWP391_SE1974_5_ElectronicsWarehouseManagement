@@ -89,6 +89,7 @@
                                 <th>From</th>
                                 <th>To</th>
                                 <th>Decision</th>
+                                <th>Transfer Monitor</th>
                             </tr>
                         </thead>
                         <tbody id="itemsBody">
@@ -190,9 +191,48 @@ function displayTransfers(data) {
             <td>
                 ${renderDecisionButtons(t)}
             </td>
+
+            <td>
+                ${transferMonitorStatus(t)}
+            </td>
         </tr>
     `).join('');
-}
+    }
+
+    function transferMonitorStatus(t) {
+        let result = checkStatus(t);
+        switch (result) {
+            case 0:
+                return'<button class="btn btn-sm">Not Yet</button>'
+                break;
+            case 1:
+                if (t.execution_date && t.execution_date.trim() !== "") {
+                    return '<button class="btn btn-sm">Done</button>'
+                }
+                return '<button class="btn btn-sm">Processing</button>'
+                break;
+            case 2:
+                return '<button class="btn btn-sm">Canceled</button>'
+                break;
+            default:
+                return '<button class="btn btn-sm">Unknown</button>'
+                break;
+        }
+    }
+    function checkStatus(t) {
+        if (t.status == 0) {
+            return 0;
+        }
+        if (t.status == 1) { 
+            return 1;
+        }
+        if (t.status == 2) {
+            return 2;
+        }
+        else {
+            return -1;
+        }
+    }
 function renderDecisionButtons(t) {
 
     // chỉ hiện khi pending (0)
