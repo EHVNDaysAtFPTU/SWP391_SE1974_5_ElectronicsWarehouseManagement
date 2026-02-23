@@ -96,5 +96,17 @@ public sealed class ViewCtrl : ControllerBase
             return NotFound();
         return PhysicalFile(physicalPath, "text/html; charset=utf-8");
     }
-    
+    [Authorize(Roles = "2")]
+    [HttpGet("/manager/view-transfer")]
+    public IActionResult ManagerViewTransfers([FromServices] IWebHostEnvironment env)
+    {
+        if (User?.Identity?.IsAuthenticated == false)
+            return Redirect("/login");
+        DisableClientCache();
+        var physicalPath = Path.Combine(env.WebRootPath, "view", "manager", "transferlist.html");
+        if (!System.IO.File.Exists(physicalPath))
+            return NotFound();
+        return PhysicalFile(physicalPath, "text/html; charset=utf-8");
+    }
+
 }

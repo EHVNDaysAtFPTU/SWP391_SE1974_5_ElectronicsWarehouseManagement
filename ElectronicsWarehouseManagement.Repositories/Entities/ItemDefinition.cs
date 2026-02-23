@@ -2,6 +2,8 @@
 #nullable disable
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json;
 
 namespace ElectronicsWarehouseManagement.Repositories.Entities;
 
@@ -15,6 +17,28 @@ public partial class ItemDefinition
     public string Unit { get; set; }
 
     public float UnitPrice { get; set; }
+
+    private ComponentMetadata? _metadata;
+    [NotMapped]
+    public ComponentMetadata? Metadata
+    {
+        get
+        {
+            if (_metadata == null && !string.IsNullOrEmpty(MetadataJson))
+            {
+                try
+                {
+                    _metadata = JsonSerializer.Deserialize<ComponentMetadata>(MetadataJson);
+                }
+                catch
+                {
+                    _metadata = new ComponentMetadata();
+                }
+            }
+            return _metadata;
+        }
+        set => _metadata = value;
+    }
 
     public virtual ICollection<Item> Items { get; set; } = new List<Item>();
 

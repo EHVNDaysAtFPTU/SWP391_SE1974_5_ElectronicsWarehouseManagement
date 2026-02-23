@@ -52,16 +52,16 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
             Quantity = item.Quantity;
             ImportDate = item.ImportDate;
             ItemDefId = item.ItemDefId;
+            ItemDef = item.ItemDef is null ? null : new ItemDefResp(item.ItemDef);
+            
             if (fullInfo)
             {
                 TransferId = item.TransferId;
                 InboundId = item.InboundId;
                 OutboundId = item.OutboundId;
-                ItemDef = item.ItemDef is null ? null : new ItemDefResp(item.ItemDef);
                 Bins = item.Bins?
-        .Select(b => new BinResp(b, false))
-        .ToList();
-
+                    .Select(b => new BinResp(b, false))
+                    .ToList();
             }
         }
     }

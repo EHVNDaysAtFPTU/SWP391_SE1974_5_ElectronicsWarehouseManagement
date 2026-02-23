@@ -29,8 +29,12 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
         {
             var item = await _dbCtx.Items
                 .AsNoTracking()
+                .Include(i => i.ItemDef)
                 .Include(i => i.Bins)
                     .ThenInclude(b => b.Warehouse)
+                .Include(i => i.Transfer)
+                .Include(i => i.Inbound)
+                .Include(i => i.Outbound)
                 .Where(i => i.ItemId == itemId)
                 .Select(i => new ItemResp(i, fullInfo))
                 .FirstOrDefaultAsync();

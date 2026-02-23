@@ -20,6 +20,22 @@
         .bin-detail {
             font-size: 13px;
         }
+        .product-card {
+    transition: 0.2s;
+}
+.product-card:hover {
+    transform: translateY(-4px);
+}
+
+.price {
+    font-weight: 600;
+    color: #198754;
+}
+
+.stock-low {
+    color: red;
+    font-weight: 600;
+}
     </style>
 </head>
 <body>
@@ -73,41 +89,43 @@
             </div>
 
             <!-- Table -->
-            <div class="card shadow-sm">
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
-                        <thead class="table-dark">
-                            <tr>
-                                <th>Item ID</th>
-                                <th>Item Name</th>
-                                <th>Quantity</th>
-                                <th>Import Date</th>
-                                <th>Transfer</th>
-                                <th>Inbound</th>
-                                <th>Outbound</th>
-                                <th>Bins</th>
-                            </tr>
-                        </thead>
-                        <tbody id="itemsBody">
-                            <tr>
-                                <td colspan="8" class="text-center py-4">
-                                    <div class="spinner-border text-primary"></div>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
+            <!-- Product Grid -->
+<div class="card shadow-sm p-4">
+    <div class="row" id="itemsGrid">
+        <div class="col-12 text-center py-5">
+            <div class="spinner-border text-primary"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Pagination -->
+<nav class="mt-4">
+    <ul class="pagination justify-content-center" id="paginationContainer"></ul>
+</nav>
+
+<footer class="text-center text-muted mt-5">
+    © 2026 Electronic Components Warehouse Management System
+</footer>
+
+<!-- Item Detail Modal -->
+<div class="modal fade" id="itemDetailModal" tabindex="-1" aria-labelledby="itemDetailLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="itemDetailLabel">Item Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="itemDetailContent">
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary"></div>
                 </div>
             </div>
-
-            <!-- Pagination -->
-            <nav class="mt-4">
-                <ul class="pagination justify-content-center" id="paginationContainer"></ul>
-            </nav>
-
-            <footer class="text-center text-muted mt-5">
-                © 2026 Electronic Components Warehouse Management System
-            </footer>
-
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
         </main>
     </div>
 </div>
@@ -147,11 +165,13 @@ async function loadItems(page) {
 }
 
 function displayItems(data) {
-    const tbody = document.getElementById('itemsBody');
+
+    const container = document.getElementById('itemsGrid');
     const infoText = document.getElementById('infoText');
 
     if (!data.data || data.data.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" class="text-center py-4">No items found</td></tr>`;
+        container.innerHTML =
+            `<div class="col-12 text-center py-5">No items found</div>`;
         return;
     }
 
@@ -160,25 +180,171 @@ function displayItems(data) {
          to ${Math.min(currentPage * pageSize, data.totalCount)}
          of ${data.totalCount} items`;
 
-    tbody.innerHTML = data.data.map(item => `
-        <tr>
-            <td>${item.id}</td>
-            <td>${item.definition?.metadata?.name || 'N/A'}</td>
-            <td><span class="badge bg-primary">${item.quantity}</span></td>
-            <td>${formatDate(item.import_date)}</td>
-            <td>-</td>
-            <td>-</td>
-            <td>-</td>
-            <td>
-                <button class="btn btn-sm btn-outline-primary"
-                        onclick="toggleBinDetail(${item.id})"
-                        id="btn-${item.id}">
-                    View
-                </button>
-                <div id="bin-detail-${item.id}" class="bin-detail mt-2 text-muted"></div>
-            </td>
-        </tr>
-    `).join('');
+    container.innerHTML = data.data.map(item => {
+
+        const name = item.definition?.metadata?.name || 'N/A';
+        const code = item.definition?.code || 'N/A';
+        const category = item.definition?.metadata?.category || 'N/A';
+        const quantity = item.quantity;
+        const price = item.definition?.price || 0;
+        const imageUrl = item.definition?.metadata?.image_url;
+        
+        // Only render image if URL exists, otherwise use placeholder div
+        const imageHtml = imageUrl && imageUrl.trim() !== '' 
+            ? `<img src="${imageUrl}" class="card-img-top p-3" style="height:150px;object-fit:contain;" onerror="this.style.display='none'">`
+            : `<div class="card-img-top p-3 d-flex align-items-center justify-content-center bg-light" style="height:150px;"><span class="text-muted">No Image</span></div>`;
+
+        return `
+        <div class="col-lg-3 col-md-4 col-sm-6 mb-4">
+            <div class="card product-card shadow-sm h-100">
+
+                ${imageHtml}
+
+                <div class="card-body d-flex flex-column">
+
+                    <h6 class="fw-bold">${name}</h6>
+
+                    <div class="small text-muted">Mã: ${code}</div>
+                    <div class="small text-muted">Loại: ${category}</div>
+
+                    <div class="small mt-2">
+                        Tồn:
+                        <span class="${quantity < 30 ? 'stock-low' : ''}">
+                            ${quantity}
+                        </span>
+                    </div>
+
+                    <div class="price mt-2">
+                        ${formatCurrency(price)}
+                    </div>
+
+                    <button class="btn btn-primary btn-sm mt-auto"
+                            onclick="viewDetail(${item.id})">
+                        Chi tiết
+                    </button>
+
+                </div>
+            </div>
+        </div>
+        `;
+    }).join('');
+}
+function formatCurrency(amount) {
+    return amount.toLocaleString('vi-VN') + " đ";
+}
+
+async function viewDetail(id) {
+    try {
+        const response = await fetch(`/api/manager/get-item/${id}?fullInfo=true`, {
+            method: 'GET',
+            credentials: 'include'
+        });
+
+        const result = await response.json();
+
+        if (!result.success) {
+            showMessage(result.message || 'Failed to load item details', 'danger');
+            return;
+        }
+
+        const item = result.data;
+        const name = item.definition?.metadata?.name || 'N/A';
+        const code = item.definition?.code || 'N/A';
+        const category = item.definition?.metadata?.category || 'N/A';
+        const description = item.definition?.metadata?.desc || 'N/A';
+        const manufacturer = item.definition?.metadata?.manufacter || 'N/A';
+        const manufacturingDate = item.definition?.metadata?.manufacting_date || 'N/A';
+        const imageUrl = item.definition?.metadata?.image_url;
+        const quantity = item.quantity;
+        const importDate = item.import_date || 'N/A';
+        const price = item.definition?.price || 0;
+        const unit = item.definition?.unit || 'pcs';
+
+        // Build bins HTML
+        let binsHtml = '<div class="mt-3"><strong>Bins:</strong>';
+        if (item.bins && item.bins.length > 0) {
+            binsHtml += '<ul class="list-group mt-2">';
+            item.bins.forEach(bin => {
+                binsHtml += `
+                    <li class="list-group-item">
+                        <strong>Location:</strong> ${bin.location_in_warehouse}<br>
+                        <strong>Warehouse:</strong> ${bin.warehouse?.name || 'N/A'}<br>
+                        <strong>Status:</strong> ${bin.status}
+                    </li>
+                `;
+            });
+            binsHtml += '</ul>';
+        } else {
+            binsHtml += '<p class="text-muted mt-2">No bins found</p>';
+        }
+        binsHtml += '</div>';
+
+        // Build image HTML
+        const imageHtml = imageUrl && imageUrl.trim() !== '' 
+            ? `<img src="${imageUrl}" class="img-fluid rounded" style="max-height:200px;object-fit:contain;">`
+            : `<div class="bg-light d-flex align-items-center justify-content-center rounded" style="height:200px;"><span class="text-muted">No Image</span></div>`;
+
+        // Build full detail HTML
+        const detailHtml = `
+            <div class="row">
+                <div class="col-md-4">
+                    ${imageHtml}
+                </div>
+                <div class="col-md-8">
+                    <table class="table table-sm">
+                        <tbody>
+                            <tr>
+                                <th>Name:</th>
+                                <td>${name}</td>
+                            </tr>
+                            <tr>
+                                <th>Code:</th>
+                                <td>${code}</td>
+                            </tr>
+                            <tr>
+                                <th>Category:</th>
+                                <td>${category}</td>
+                            </tr>
+                            <tr>
+                                <th>Description:</th>
+                                <td>${description}</td>
+                            </tr>
+                            <tr>
+                                <th>Manufacturer:</th>
+                                <td>${manufacturer}</td>
+                            </tr>
+                            <tr>
+                                <th>Manufacturing Date:</th>
+                                <td>${manufacturingDate}</td>
+                            </tr>
+                            <tr>
+                                <th>Quantity:</th>
+                                <td><span class="${quantity < 30 ? 'stock-low' : ''}">${quantity} ${unit}</span></td>
+                            </tr>
+                            <tr>
+                                <th>Import Date:</th>
+                                <td>${importDate}</td>
+                            </tr>
+                            <tr>
+                                <th>Unit Price:</th>
+                                <td><strong>${formatCurrency(price)}</strong></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            ${binsHtml}
+        `;
+
+        document.getElementById('itemDetailContent').innerHTML = detailHtml;
+        document.getElementById('itemDetailLabel').textContent = `Item Details - ${name}`;
+        
+        const modal = new bootstrap.Modal(document.getElementById('itemDetailModal'));
+        modal.show();
+
+    } catch (error) {
+        showMessage(error.message, 'danger');
+    }
 }
 
 async function toggleBinDetail(itemId) {
@@ -250,6 +416,9 @@ function logout() {
     window.location.href = '/login';
 }
 </script>
+
+<!-- Bootstrap 5 JS CDN -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
 </body>
 </html>

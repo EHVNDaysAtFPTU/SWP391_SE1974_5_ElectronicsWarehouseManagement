@@ -8,6 +8,9 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
         [JsonPropertyName("id")]
         public int ID { get; set; }
 
+        [JsonPropertyName("code")]
+        public string Code { get; set; } = "";
+
         [JsonPropertyName("metadata")]
         public ComponentMetadata? Metadata { get; set; }
 
@@ -17,20 +20,29 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
         [JsonPropertyName("unit_price")]
         public float UnitPrice { get; set; }
 
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        [JsonPropertyName("price")]
+        public float? Price { get; set; }
+
         public ItemDefResp(ItemDefinition itemDef)
         {
             ID = itemDef.ItemDefId;
             Metadata = itemDef.Metadata;
+            Code = itemDef.Metadata?.Code ?? "";
             Unit = itemDef.Unit;
             UnitPrice = itemDef.UnitPrice;
+            Price = itemDef.UnitPrice;
         }
 
         public ItemDefResp(int iD, ComponentMetadata? metadata, string unit, float unitPrice)
         {
             ID = iD;
             Metadata = metadata;
+            Code = metadata?.Code ?? "";
             Unit = unit;
             UnitPrice = unitPrice;
+            Price = unitPrice;
         }
     }
 }
+
