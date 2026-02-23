@@ -1,0 +1,115 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Manager Dashboard</title>
+</head>
+<body>
+
+    <h2>Manager Dashboard</h2>
+
+    <ul>
+        <li onclick="loadItems()">View Item</li>
+        <li onclick="loadTransfers()">View Transfers</li>
+    </ul>
+
+    <!-- THÊM CÁI NÀY -->
+    <div id="table-container"></div>
+
+    <script>
+        const API_BASE = "https://localhost:7297/api/manager";
+
+        async function loadItems() {
+            try {
+                const token = localStorage.getItem("token");
+
+                const response = await fetch(`${API_BASE}/get-items?pageNumber=1&pageSize=10`, {
+                    headers: {
+                        "Authorization": `Bearer ${token}`,
+                        "Content-Type": "application/json"
+                    }
+                });
+
+                if (!response.ok) {
+                    alert("Unauthorized or API error");
+                    return;
+                }
+
+                const result = await response.json();
+
+                renderItems(result.data.items);
+
+            } catch (error) {
+                console.error(error);
+                alert("Error calling API");
+            }
+        }
+
+        function renderItems(items) {
+            let html = `
+                    <table border="1">
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Quantity</th>
+                        </tr>
+                `;
+
+            items.forEach(item => {
+                html += `
+                        <tr>
+                            <td>${item.itemId}</td>
+                            <td>${item.itemName}</td>
+                            <td>${item.quantity}</td>
+                        </tr>
+                    `;
+            });
+
+            html += `</table>`;
+
+            document.getElementById("table-container").innerHTML = html;
+        }
+
+        async function loadTransfers() {
+            const token = localStorage.getItem("token");
+
+            const response = await fetch(`${API_BASE}/get-transfers?pageNumber=1&pageSize=10`, {
+                headers: {
+                    "Authorization": `Bearer ${token}`
+                }
+            });
+
+            if (!response.ok) {
+                alert("Unauthorized or API error");
+                return;
+            }
+
+            const result = await response.json();
+
+            let html = `
+                    <table border="1">
+                        <tr>
+                            <th>ID</th>
+                            <th>Status</th>
+                            <th>Date</th>
+                        </tr>
+                `;
+
+            result.data.items.forEach(t => {
+                html += `
+                        <tr>
+                            <td>${t.transferId}</td>
+                            <td>${t.status}</td>
+                            <td>${t.createdDate}</td>
+                        </tr>
+                    `;
+            });
+
+            html += `</table>`;
+
+            document.getElementById("table-container").innerHTML = html;
+        }
+    </script>
+
+</body>
+</html>

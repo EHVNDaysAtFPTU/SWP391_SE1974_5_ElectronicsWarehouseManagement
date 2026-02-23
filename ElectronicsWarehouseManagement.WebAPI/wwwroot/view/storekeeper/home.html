@@ -2,173 +2,253 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Admin | User Management</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Dashboard | Storekeeper</title>
+
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial;
+            background: #f1f5f9
+        }
+
+        .layout {
+            display: flex;
+            height: 100vh
+        }
+
+        /* SIDEBAR */
+        .sidebar {
+            width: 240px;
+            background: #0f172a;
+            color: white;
+            padding: 20px;
+        }
+
+            .sidebar h2 {
+                margin-bottom: 30px
+            }
+
+            .sidebar ul {
+                list-style: none;
+                padding: 0;
+                margin: 0
+            }
+
+            .sidebar li {
+                padding: 12px;
+                border-radius: 6px;
+                cursor: pointer;
+                margin-bottom: 6px;
+            }
+
+                .sidebar li:hover {
+                    background: #1e293b
+                }
+
+        .submenu {
+            display: none;
+            margin-left: 10px;
+        }
+
+            .submenu li {
+                background: #1e293b;
+                margin-bottom: 4px;
+                font-size: 14px;
+            }
+
+        .show {
+            display: block
+        }
+
+        /* CONTENT */
+        .content {
+            flex: 1;
+            padding: 30px
+        }
+
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* AVATAR */
+        .avatar-box {
+            position: relative;
+            cursor: pointer;
+        }
+
+        .avatar {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: #3b82f6;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
+        .avatar-menu {
+            position: absolute;
+            right: 0;
+            top: 55px;
+            background: white;
+            color: black;
+            width: 150px;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0,0,0,.2);
+            display: none;
+        }
+
+            .avatar-menu div {
+                padding: 10px;
+                cursor: pointer;
+            }
+
+                .avatar-menu div:hover {
+                    background: #f1f5f9;
+                }
+
+        .show-menu {
+            display: block
+        }
+
+        /* CARD */
+        .cards {
+            display: flex;
+            gap: 20px;
+            margin-top: 30px
+        }
+
+        .card {
+            flex: 1;
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 3px 10px rgba(0,0,0,.1)
+        }
+
+            .card h3 {
+                margin: 0 0 10px
+            }
+
+            .card p {
+                font-size: 28px;
+                font-weight: bold
+            }
+    </style>
 </head>
+
 <body>
 
-<div class="layout">
+    <div class="layout">
 
-    <!-- SIDEBAR -->
-    <aside class="sidebar">
-        <h2 class="logo">ECWMS</h2>
-        <ul>
-            <li class="active">User Management</li>
-            <li>System Configuration</li>
-            <li id="logoutBtn">Logout</li>
-        </ul>
-    </aside>
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+            <h2>ECWMS</h2>
+            <ul>
 
-    <!-- MAIN -->
-    <main class="content">
+                <li onclick="toggleMenu('inboundMenu')">Inbound ▾</li>
+                <ul id="inboundMenu" class="submenu">
+                    <li onclick="go('inbound-create.html')">Create Inbound</li>
+                    <li onclick="go('inbound-list.html')">Inbound List</li>
+                </ul>
 
-        <!-- HEADER -->
-        <div class="header">
-            <h1>User Management</h1>
-            <button class="btn-primary" onclick="loadUsers()">Refresh</button>
-        </div>
+                <li onclick="toggleMenu('outboundMenu')">Outbound ▾</li>
+                <ul id="outboundMenu" class="submenu">
+                    <li onclick="go('outbound-create.html')">Create Outbound</li>
+                    <li onclick="go('outbound-list.html')">Outbound List</li>
+                </ul>
+                <li onclick="toggleMenu('transferMenu')">Transfer ▾</li>
+                <ul id="transferMenu" class="submenu">
+                    <li onclick="go('transfer-create.html')">Create Transfer</li>
+                    <li onclick="go('transfer-list.html')">Transfer List</li>
+                </ul>
+                <li onclick="go('components.html')">Inventory</li>
 
-        <!-- FILTER -->
-        <div class="filter-bar">
-            <input type="text" id="searchInput" placeholder="Search by username">
-            <button class="btn-secondary" id="searchBtn">Search</button>
-        </div>
+            </ul>
+        </aside>
 
-        <!-- TABLE -->
-        <table>
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Username</th>
-                    <th>Role</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody id="userTableBody"></tbody>
-        </table>
+        <!-- MAIN -->
+        <main class="content">
 
-    </main>
-</div>
+            <div class="topbar">
+                <h1>Warehouse Dashboard</h1>
 
-<script>
+                <div class="avatar-box" onclick="toggleAvatar()">
+                    <div class="avatar">S</div>
 
-const BASE_URL = "https://localhost:7297/api";
+                    <div id="avatarMenu" class="avatar-menu">
+                        <div onclick="go('profile.html')">Profile</div>
+                        <div onclick="go('settings.html')">Settings</div>
+                        <div onclick="logout()">Logout</div>
+                    </div>
 
-/* ================= API CALL ================= */
-async function apiRequest(endpoint, method = "GET", body = null) {
+                </div>
+            </div>
 
-    const options = {
-        method: method,
-        headers: { "Content-Type": "application/json" },
-        credentials: "include"   // VERY IMPORTANT (cookie auth)
-    };
+            <div class="cards">
+                <div class="card">
+                    <h3>Total Inbound</h3>
+                    <p id="inboundCount">0</p>
+                </div>
 
-    if (body) options.body = JSON.stringify(body);
+                <div class="card">
+                    <h3>Total Outbound</h3>
+                    <p id="outboundCount">0</p>
+                </div>
 
-    const response = await fetch(BASE_URL + endpoint, options);
+                <div class="card">
+                    <h3>Total Inventory</h3>
+                    <p id="inventoryCount">0</p>
+                </div>
+            </div>
 
-    if (response.status === 401) {
-        alert("You are not logged in!");
-        window.location.href = "login.html";
-        return null;
-    }
+        </main>
+    </div>
 
-    return await response.json();
-}
+    <script>
 
-/* ================= LOAD USERS ================= */
-async function loadUsers() {
+        const BASE = "https://localhost:7297/api";
 
-    const result = await apiRequest("/admin/users");
+        function go(page) {
+            window.location.href = page;
+        }
 
-    if (!result || !result.success) {
-        alert("Cannot load users");
-        return;
-    }
+        function toggleMenu(id) {
+            document.getElementById(id).classList.toggle("show");
+        }
 
-    renderUsers(result.data);
-}
+        function toggleAvatar() {
+            document.getElementById("avatarMenu").classList.toggle("show-menu");
+        }
 
-/* ================= RENDER TABLE ================= */
-function renderUsers(users) {
+        async function logout() {
+            await fetch(BASE + "/auth/logout", { method: "POST", credentials: "include" });
+            window.location = "login.html";
+        }
 
-    const tbody = document.getElementById("userTableBody");
-    tbody.innerHTML = "";
+        async function load() {
+            let t = await fetch(BASE + "/storekeeper/transfer-requests", { credentials: "include" });
+            let i = await fetch(BASE + "/storekeeper/items", { credentials: "include" });
 
-    if (!users || users.length === 0) {
-        tbody.innerHTML = "<tr><td colspan='4'>No users found</td></tr>";
-        return;
-    }
+            let tData = await t.json();
+            let iData = await i.json();
 
-    users.forEach(user => {
+            if (tData.success) {
+                document.getElementById("inboundCount").innerText = tData.data.filter(x => x.typeInt === 1).length;
+                document.getElementById("outboundCount").innerText = tData.data.filter(x => x.typeInt === 2).length;
+            }
 
-        const roles = user.roles
-            ? user.roles.map(r => r.roleName).join(", ")
-            : "";
+            if (iData.success) {
+                document.getElementById("inventoryCount").innerText = iData.data.length;
+            }
+        }
+        load();
 
-        const row = `
-            <tr>
-                <td>${user.userId}</td>
-                <td>${user.username}</td>
-                <td>${roles}</td>
-                <td>
-                    <button class="action-btn" onclick="deleteUser(${user.userId})">
-                        Delete
-                    </button>
-                </td>
-            </tr>
-        `;
-
-        tbody.innerHTML += row;
-    });
-}
-
-/* ================= DELETE USER ================= */
-async function deleteUser(id) {
-
-    if (!confirm("Delete this user?")) return;
-
-    const result = await apiRequest(`/admin/delete-account/${id}`, "DELETE");
-
-    if (result && result.success) {
-        alert("Deleted successfully");
-        loadUsers();
-    } else {
-        alert(result?.message || "Delete failed");
-    }
-}
-
-/* ================= SEARCH ================= */
-async function searchUsers() {
-
-    const query = document.getElementById("searchInput").value;
-
-    if (!query) {
-        loadUsers();
-        return;
-    }
-
-    const result = await apiRequest(`/admin/search-users?query=${query}`);
-
-    if (result && result.success) {
-        renderUsers(result.data);
-    } else {
-        alert("Search failed");
-    }
-}
-
-/* ================= LOGOUT ================= */
-async function logout() {
-    await apiRequest("/auth/logout", "POST");
-    window.location.href = "login.html";
-}
-
-/* ================= EVENTS ================= */
-document.getElementById("searchBtn").addEventListener("click", searchUsers);
-document.getElementById("logoutBtn").addEventListener("click", logout);
-document.addEventListener("DOMContentLoaded", loadUsers);
-
-</script>
+    </script>
 
 </body>
 </html>

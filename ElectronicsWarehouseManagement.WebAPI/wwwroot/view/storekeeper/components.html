@@ -1,0 +1,146 @@
+﻿<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Component Management</title>
+</head>
+<body>
+
+    <h2>📦 Component List</h2>
+    <button onclick="loadComponents()">Refresh</button>
+
+    <table border="1" cellpadding="6">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Category</th>
+            </tr>
+        </thead>
+        <tbody id="componentBody"></tbody>
+    </table>
+
+    <hr>
+
+    <h3>➕ Create Category</h3>
+    <input id="categoryName" placeholder="Category name">
+    <button onclick="createCategory()">Create</button>
+
+    <hr>
+
+    <h3>📂 Upload Image</h3>
+    <input type="file" id="imageFile">
+    <button onclick="uploadImage()">Upload</button>
+
+    <script>
+
+const BASE_URL = "https://localhost:7297/api";
+
+/* ================= COMMON API ================= */
+async function apiRequest(endpoint, method = "GET", body = null, isFormData = false) {
+
+    const options = {
+        method: method,
+        credentials: "include"
+    };
+
+    if (!isFormData) {
+        options.headers = { "Content-Type": "application/json" };
+        if (body) options.body = JSON.stringify(body);
+    } else {
+        options.body = body;
+    }
+
+    const response = await fetch(BASE_URL + endpoint, options);
+
+    if (response.status === 401) {
+        alert("Not logged in");
+        window.location.href = "login.html";
+        return null;
+    }
+
+    return await response.json();
+}
+
+/* ================= LOAD COMPONENTS ================= */
+async function loadComponents() {
+
+    const result = await apiRequest("/storekeeper/components");
+
+    if (!result || !result.success) {
+        alert("Cannot load components");
+        return;
+    }
+
+    const tbody = document.getElementById("componentBody");
+    tbody.innerHTML = "";
+
+    result.data.forEach(item => {
+        tbody.innerHTML += `
+            <tr>
+                <td>${item.itemId}</td>
+                <td>${item.itemName}</td>
+                <td>${item.categoryName || ""}</td>
+            </tr>
+        `;
+    });
+}
+
+/* ================= CREATE CATEGORY ================= */
+async function createCategory() {
+
+    const name = document.getElementById("categoryName").value;
+
+    if (!name) {
+        alert("Enter category name");
+        return;
+    }
+
+    const result = await apiRequest(
+        "/storekeeper/categories",
+        "POST",
+        { categoryName: name }
+    );
+
+    if (result && result.success) {
+        alert("Created successfully");
+        document.getElementById("categoryName").value = "";
+    } else {
+        alert(result?.message || "Create failed");
+    }
+}
+
+/* ================= UPLOAD IMAGE ================= */
+async function uploadImage() {
+
+    const fileInput = document.getElementById("imageFile");
+    const file = fileInput.files[0];
+
+    if (!file) {
+        alert("Choose file");
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append("image", file);
+
+    const result = await apiRequest(
+        "/storekeeper/upload-image",
+        "POST",
+        formData,
+        true
+    );
+
+    if (result && result.success) {
+        alert("Uploaded: " + result.data);
+    } else {
+        alert(result?.message || "Upload failed");
+    }
+}
+
+document.addEventListener("DOMContentLoaded", loadComponents);
+
+    </script>
+
+</body>
+</html>

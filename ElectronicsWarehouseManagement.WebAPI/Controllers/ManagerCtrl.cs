@@ -1,4 +1,5 @@
-﻿using ElectronicsWarehouseManagement.Repositories.Entities;
+﻿using Azure.Core;
+using ElectronicsWarehouseManagement.Repositories.Entities;
 using ElectronicsWarehouseManagement.WebAPI.DTO;
 using ElectronicsWarehouseManagement.WebAPI.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -19,26 +20,91 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
             _managerService = managerService;
             _logger = logger;
         }
-        [HttpGet("itemlist")]
-        public async Task<IActionResult> GetItemList()
+        [HttpGet("get-item/{itemId:int}")]
+        public async Task<IActionResult> GetItem([FromRoute]int itemId)
         {
-            var result = await _managerService.GetItemList(); if (result.Success)
+            var result = await _managerService.GetItemAsync(itemId);
+
+            if (result.Success)
             {
                 return Ok(result);
             }
+
+            return BadRequest(result);
+        }
+        [HttpGet("get-items")]
+        public async Task<IActionResult> GetItemList([FromQuery] PagingRequest request)
+        {
+            var result = await _managerService.GetItemListAsync(request);
+
+            if (result.Success)
+            {
+                return Ok(result);
+            }
+
             return BadRequest(result);
         }
 
-        [HttpGet("request")]
-        public async Task<IActionResult> GetTransferReqList()
+        [HttpGet("get-transfer/{transferId:int}")]
+        public async Task<IActionResult> GetTransfer([FromRoute] int transferId)
         {
-            var result = await _managerService.GetTransferReqList(); 
+            var result = await _managerService.GetTransferAsync(transferId);
+
             if (result.Success)
             {
                 return Ok(result);
             }
             return BadRequest(result);
         }
+
+        [HttpGet("get-transfers")]
+        public async Task<IActionResult> GetTransferReqList([FromQuery] PagingRequest request)
+        {
+            var result = await _managerService.GetTransferReqListAsync(request); 
+            if (result.Success)
+            {
+                return Ok(result);
+            }
+            return BadRequest(result);
+        }
+
+        [Authorize]
+        [HttpGet("me")]
+        public IActionResult Me()
+        {
+            string? username = HttpContext.Session.GetString("User");
+            string? userId = HttpContext.Session.GetString("UserId");
+
+            if (string.IsNullOrEmpty(username))
+            {
+                return Unauthorized(new ApiResult(ApiResultCode.Unauthorized));
+            }
+
+            var userInfo = new
+            {
+                Username = username,
+                UserId = userId
+            };
+
+            return Ok(new ApiResult<object>(userInfo));
+        }
+
+        private string? GetCurrentUserId()
+        {
+            return HttpContext.Session.GetString("UserId");
+        }
+
+        private string? GetCurrentUsername()
+        {
+            return HttpContext.Session.GetString("User");
+        }
+
+
+        //[HttpPost("{id:int}/approve")]
+        //public async Task<IActionResult> PostTransferApprove(int id)
+        //{
+
+        //}
 
     }
 }

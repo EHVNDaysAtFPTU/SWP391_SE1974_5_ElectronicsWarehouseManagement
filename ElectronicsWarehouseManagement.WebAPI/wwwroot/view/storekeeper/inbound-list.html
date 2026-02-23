@@ -1,0 +1,117 @@
+﻿<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>Inbound Orders</title>
+
+<style>
+body{font-family:Arial;background:#f3f4f6;padding:30px}
+.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+.back-btn{background:#6b7280;color:white;padding:8px 15px;border:none;border-radius:6px;cursor:pointer}
+table{width:100%;border-collapse:collapse;background:white}
+th,td{padding:12px;border:1px solid #ddd;text-align:center}
+th{background:#3b82f6;color:white}
+.status{
+font-weight:bold;
+}
+.pending{color:#f59e0b}
+.approved{color:#2563eb}
+.completed{color:#16a34a}
+.rejected{color:#dc2626}
+button{
+padding:6px 12px;
+border:none;
+border-radius:6px;
+cursor:pointer;
+}
+.confirm-btn{
+background:#16a34a;
+color:white;
+}
+.confirm-btn:hover{background:#15803d}
+.icon-btn{
+background:#d1d5db;
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+<h2>Inbound Orders</h2>
+<button class="back-btn" onclick="goHome()">← Back to Home</button>
+</div>
+
+<table>
+<thead>
+<tr>
+<th>Order Code</th>
+<th>Date</th>
+<th>Warehouse</th>
+<th>Supplier</th>
+<th>Total Items</th>
+<th>Status</th>
+<th>Action</th>
+</tr>
+</thead>
+
+<tbody id="orderTable"></tbody>
+</table>
+
+<script>
+
+let orders = [
+{code:"INB001",date:"10/02/2025",warehouse:"Main",supplier:"ABC",total:5,status:"Completed"},
+{code:"INB002",date:"11/02/2025",warehouse:"Main",supplier:"XYZ",total:3,status:"Pending"},
+{code:"INB003",date:"12/02/2025",warehouse:"Central",supplier:"Global",total:6,status:"Approved"},
+{code:"INB004",date:"13/02/2025",warehouse:"Main",supplier:"PartsCo",total:4,status:"Rejected"}
+];
+
+function render(){
+let html="";
+orders.forEach((o,i)=>{
+let statusClass=o.status.toLowerCase();
+let action="";
+
+if(o.status==="Approved"){
+action=`<button class="confirm-btn" onclick="completeOrder(${i})">Confirm</button>`;
+}
+else if(o.status==="Completed"){
+action=`<button class="icon-btn">✓</button>`;
+}
+else if(o.status==="Rejected"){
+action=`<button class="icon-btn">✕</button>`;
+}
+else{
+action="-";
+}
+
+html+=`
+<tr>
+<td>${o.code}</td>
+<td>${o.date}</td>
+<td>${o.warehouse}</td>
+<td>${o.supplier}</td>
+<td>${o.total}</td>
+<td class="status ${statusClass}">${o.status}</td>
+<td>${action}</td>
+</tr>
+`;
+});
+document.getElementById("orderTable").innerHTML=html;
+}
+
+function completeOrder(index){
+orders[index].status="Completed";
+render();
+}
+
+function goHome(){
+window.location="home.html";
+}
+
+render();
+
+</script>
+
+</body>
+</html>
