@@ -32,7 +32,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
         {
             if (!request.Verify(out string failedReason))
                 return new ApiResult(ApiResultCode.InvalidRequest, failedReason);
-            User? existingUser = await _dbCtx.Users.FirstOrDefaultAsync(u => u.Username == request.Username || u.Email == request.Email);
+            User? existingUser = await _dbCtx.Users.Include(u => u.Roles).FirstOrDefaultAsync(u => u.Username == request.Username || u.Email == request.Email);
             if (existingUser is not null && existingUser.Status != UserStatus.Deleted)
             {
                 if (existingUser.Username == request.Username)
@@ -63,7 +63,8 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
                 existingUser.PasswordHash = Convert.ToBase64String(hash);
                 existingUser.Email = request.Email;
                 existingUser.Status = UserStatus.Active;
-                existingUser.Roles = [role];
+                existingUser.Roles.Clear();
+                existingUser.Roles.Add(role);
             }
             await _dbCtx.SaveChangesAsync();
             return new ApiResult();

@@ -9,10 +9,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
         public int ID { get; set; }
 
         [JsonPropertyName("quantity")]
-        public float Quantity { get; set; }
-
-        [JsonPropertyName("import_date")]
-        public DateOnly ImportDate { get; set; }
+        public float Quantity { get; set; } 
 
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         [JsonPropertyName("transfer_id")]
@@ -31,16 +28,12 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
 
         //TODO
 
-        //[JsonPropertyName("def_id")]
-        //public TransferReqResp Inbound { get; set; }
+        //[JsonPropertyName("transfers")]
+        //public List<TransferReqResp> Transfers { get; set; }
 
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         [JsonPropertyName("definition")]
         public ItemDefResp? ItemDef { get; set; }
-
-        //public TransferReqResp Outbound { get; set; }
-
-        //public TransferReqResp Transfer { get; set; }
 
         [JsonPropertyName("bins")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
@@ -49,19 +42,16 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
         public ItemResp(Item item, bool fullInfo)
         {
             ID = item.ItemId;
-            Quantity = item.Quantity;
-            ImportDate = item.ImportDate;
+            Quantity = item.Quantity; 
             ItemDefId = item.ItemDefId;
             ItemDef = item.ItemDef is null ? null : new ItemDefResp(item.ItemDef);
             
             if (fullInfo)
             {
-                TransferId = item.TransferId;
-                InboundId = item.InboundId;
-                OutboundId = item.OutboundId;
-                Bins = item.Bins?
-                    .Select(b => new BinResp(b, false))
-                    .ToList();
+                ItemDef = item.ItemDef is null ? null : new ItemDefResp(item.ItemDef);
+                Bins = item.Bins.Select(b => new BinResp(b, true)).ToList();
+                // TODO
+                //Transfers = ...
             }
         }
     }

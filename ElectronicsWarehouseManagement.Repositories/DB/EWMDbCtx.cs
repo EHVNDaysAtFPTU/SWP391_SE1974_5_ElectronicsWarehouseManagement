@@ -104,29 +104,32 @@ public partial class EWMDbCtx : DbContext
             entity.ToTable("Item");
 
             entity.Property(e => e.ItemId).HasColumnName("item_id");
-            entity.Property(e => e.ImportDate).HasColumnName("import_date");
-            entity.Property(e => e.InboundId).HasColumnName("inbound_id");
             entity.Property(e => e.ItemDefId).HasColumnName("item_def_id");
-            entity.Property(e => e.OutboundId).HasColumnName("outbound_id");
             entity.Property(e => e.Quantity).HasColumnName("quantity");
-            entity.Property(e => e.TransferId).HasColumnName("transfer_id");
-
-            entity.HasOne(d => d.Inbound).WithMany(p => p.ItemInbounds)
-                .HasForeignKey(d => d.InboundId)
-                .HasConstraintName("FK_Item_TransferReq2");
 
             entity.HasOne(d => d.ItemDef).WithMany(p => p.Items)
                 .HasForeignKey(d => d.ItemDefId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_Item_ItemDefinition");
 
-            entity.HasOne(d => d.Outbound).WithMany(p => p.ItemOutbounds)
-                .HasForeignKey(d => d.OutboundId)
-                .HasConstraintName("FK_Item_TransferReq");
-
-            entity.HasOne(d => d.Transfer).WithMany(p => p.ItemTransfers)
-                .HasForeignKey(d => d.TransferId)
-                .HasConstraintName("FK_Item_TransferReq1");
+            entity.HasMany(d => d.Transfers).WithMany(p => p.Items)
+                .UsingEntity<Dictionary<string, object>>(
+                    "TransferReqItem",
+                    r => r.HasOne<TransferReq>().WithMany()
+                        .HasForeignKey("TransferId")
+                        .OnDelete(DeleteBehavior.ClientSetNull)
+                        .HasConstraintName("FK_TransferReqItem_TransferReq"),
+                    l => l.HasOne<Item>().WithMany()
+                        .HasForeignKey("ItemId")
+                        .OnDelete(DeleteBehavior.ClientSetNull)
+                        .HasConstraintName("FK_TransferReqItem_Item"),
+                    j =>
+                    {
+                        j.HasKey("ItemId", "TransferId");
+                        j.ToTable("TransferReqItem");
+                        j.IndexerProperty<int>("ItemId").HasColumnName("item_id");
+                        j.IndexerProperty<int>("TransferId").HasColumnName("transfer_id");
+                    });
         });
 
         modelBuilder.Entity<ItemDefinition>(entity =>
