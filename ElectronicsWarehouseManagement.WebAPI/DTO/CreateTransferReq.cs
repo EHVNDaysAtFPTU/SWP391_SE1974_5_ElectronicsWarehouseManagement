@@ -5,8 +5,8 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
 {
     public class CreateTransferReq : IVerifiableRequest
     {
-        [JsonPropertyName("item_ids")]
-        public int[] ItemIds { get; set; } = [];
+        [JsonPropertyName("items")]
+        public List<ItemReq> Items { get; set; } = [];
 
         [JsonPropertyName("desc")]
         public string Description { get; set; } = "";
@@ -24,10 +24,15 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
 
         public bool Verify(out string failedReason)
         {
-            if (ItemIds.Length == 0)
+            if (Items.Count == 0)
             {
                 failedReason = "Item list cannot be empty.";
                 return false;
+            }
+            foreach (var item in Items)
+            {
+                if (!item.Verify(out failedReason))
+                    return false;
             }
             switch (Type)
             {

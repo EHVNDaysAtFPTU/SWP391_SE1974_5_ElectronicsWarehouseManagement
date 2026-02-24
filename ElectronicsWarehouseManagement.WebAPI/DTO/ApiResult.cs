@@ -9,7 +9,7 @@ public class ApiResult<T>
         Data = data;
     }
 
-    public ApiResult(ApiResultCode errorCode, string errorMessage = null, T? data = default)
+    public ApiResult(ApiResultCode errorCode, string errorMessage = "", T? data = default)
     {
         Success = false;
         ResultCode = errorCode;
