@@ -189,17 +189,37 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
 
         public async Task<ApiResult> CreateTransferRequestAsync(CreateTransferReq request, TransferType type, int creatorId)
         {
+            request.Type = type;
             if (!request.Verify(out string failedReason))
                 return new ApiResult(ApiResultCode.InvalidRequest, failedReason);
-            if (!await _dbCtx.Warehouses.AnyAsync(w => w.WarehouseId == request.WarehouseFromId))
-                return new ApiResult(ApiResultCode.InvalidRequest, $"Warehouse with ID '{request.WarehouseFromId}' does not exist.");
-            List<Item> items = [];
-            foreach (var id in request.ItemIds)
+            switch (type)
             {
-                var item = await _dbCtx.Items.FindAsync(id);
-                if (item is null)
-                    return new ApiResult(ApiResultCode.InvalidRequest, $"Item with ID '{id}' does not exist.");
-                items.Add(item);
+                case TransferType.Inbound:
+                    if (!await _dbCtx.Warehouses.AnyAsync(w => w.WarehouseId == request.WarehouseToId))
+                        return new ApiResult(ApiResultCode.InvalidRequest, $"Warehouse with ID '{request.WarehouseToId}' does not exist.");
+                    break;
+                case TransferType.Outbound:
+                    if (!await _dbCtx.Warehouses.AnyAsync(w => w.WarehouseId == request.WarehouseFromId))
+                        return new ApiResult(ApiResultCode.InvalidRequest, $"Warehouse with ID '{request.WarehouseFromId}' does not exist.");
+                    break;
+                case TransferType.InternalTransfer:
+                    if (!await _dbCtx.Warehouses.AnyAsync(w => w.WarehouseId == request.WarehouseFromId))
+                        return new ApiResult(ApiResultCode.InvalidRequest, $"Warehouse with ID '{request.WarehouseFromId}' does not exist.");
+                    if (!await _dbCtx.Warehouses.AnyAsync(w => w.WarehouseId == request.WarehouseToId))
+                        return new ApiResult(ApiResultCode.InvalidRequest, $"Warehouse with ID '{request.WarehouseToId}' does not exist.");
+                    break;
+            }
+            List<Item> items = [];
+            foreach (var item in request.Items)
+            {
+                var itemDef = await _dbCtx.ItemDefinitions.FindAsync(item.ItemDefId);
+                if (itemDef is null)
+                    return new ApiResult(ApiResultCode.InvalidRequest, $"Item with ID '{item.ItemDefId}' does not exist.");
+                items.Add(new Item
+                {
+                    ItemDefId = item.ItemDefId,
+                    Quantity = item.Quantity,
+                });
             }
             var transferReq = new TransferReq
             {
@@ -210,7 +230,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
                 CreatorId = creatorId,
                 WarehouseFromId = request.WarehouseFromId,
                 WarehouseToId = request.WarehouseToId,
-                ItemTransfers = items,
+                Items = items,
             };
             _dbCtx.TransferReqs.Add(transferReq);
             await _dbCtx.SaveChangesAsync();
