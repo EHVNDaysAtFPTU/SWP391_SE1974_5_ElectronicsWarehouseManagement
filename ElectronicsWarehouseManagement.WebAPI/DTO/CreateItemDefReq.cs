@@ -29,7 +29,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
         public float UnitPrice { get; set; }
 
         [JsonPropertyName("category_ids")]
-        public List<int> CategoryIds { get; set; }
+        public List<int> CategoryIds { get; set; } = [];
 
         public bool Verify(out string failedReason)
         {
