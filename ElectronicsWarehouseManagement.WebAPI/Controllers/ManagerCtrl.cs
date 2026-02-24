@@ -4,6 +4,7 @@ using ElectronicsWarehouseManagement.WebAPI.DTO;
 using ElectronicsWarehouseManagement.WebAPI.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 
 namespace ElectronicsWarehouseManagement.WebAPI.Controllers
@@ -21,9 +22,9 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
             _logger = logger;
         }
         [HttpGet("get-item/{itemId:int}")]
-        public async Task<IActionResult> GetItem([FromRoute]int itemId)
+        public async Task<IActionResult> GetItem([FromRoute]int itemId, [FromQuery] bool fullInfo)
         {
-            var result = await _managerService.GetItemAsync(itemId);
+            var result = await _managerService.GetItemAsync(itemId, fullInfo);
 
             if (result.Success)
             {
@@ -68,37 +69,67 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
             return BadRequest(result);
         }
 
-        [Authorize]
-        [HttpGet("me")]
-        public IActionResult Me()
+        [HttpPost("transfer-requests/{transferId:int}/decisions")]
+        public async Task<IActionResult> PostTransferReq([FromRoute] int transferId, [FromBody] TransferDecisionRequest request)
         {
-            string? username = HttpContext.Session.GetString("User");
-            string? userId = HttpContext.Session.GetString("UserId");
-
-            if (string.IsNullOrEmpty(username))
+            //int? approverId = GetCurrentUserId();
+            //_logger.LogInformation("CurrentUserId (Session): {userId}", approverId);
+            //_logger.LogInformation("Authenticated: {auth}", User.Identity?.IsAuthenticated);
+            //_logger.LogInformation("Role: {role}", User.FindFirst(ClaimTypes.Role)?.Value);
+            //_logger.LogInformation("ModelState valid: {valid}", ModelState.IsValid);
+            //_logger.LogInformation("TransferId: {id}", transferId);
+            //_logger.LogInformation("Request null: {nullCheck}", request == null);
+            //_logger.LogInformation("Decision: {decision}", request?.Decision);
+            var result = await _managerService.PostTransferDecisionAsync(transferId, request.Decision);
+            if (result.Success)
             {
-                return Unauthorized(new ApiResult(ApiResultCode.Unauthorized));
+                return Ok(result);
             }
-
-            var userInfo = new
-            {
-                Username = username,
-                UserId = userId
-            };
-
-            return Ok(new ApiResult<object>(userInfo));
+            return BadRequest(result);
         }
 
-        private string? GetCurrentUserId()
+
+
+        //[HttpGet("me")]
+        //public IActionResult Me()
+        //{
+        //    string? username = HttpContext.Session.GetString("User");
+        //    string? userId = HttpContext.Session.GetString("UserId");
+
+        //    if (string.IsNullOrEmpty(username))
+        //    {
+        //        return Unauthorized(new ApiResult(ApiResultCode.Unauthorized));
+        //    }
+
+        //    var userInfo = new
+        //    {
+        //        Username = username,
+        //        UserId = userId
+        //    };
+
+        //    return Ok(new ApiResult<object>(userInfo));
+        //}
+
+        private int? GetCurrentUserId()
         {
-            return HttpContext.Session.GetString("UserId");
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+
+            if (userIdClaim == null)
+                return null;
+
+            if (int.TryParse(userIdClaim.Value, out int userId))
+                return userId;
+
+            return null;
         }
 
-        private string? GetCurrentUsername()
+
+        private String? GetCurrentUsername()
         {
             return HttpContext.Session.GetString("User");
         }
 
+       
 
         //[HttpPost("{id:int}/approve")]
         //public async Task<IActionResult> PostTransferApprove(int id)

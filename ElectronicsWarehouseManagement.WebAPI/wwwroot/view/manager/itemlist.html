@@ -2,195 +2,423 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Manager Dashboard - Electronic Components Warehouse</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Item List - Electronic Components Warehouse</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- Bootstrap 5 CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: Arial, sans-serif;
-        }
-
         body {
-            display: flex;
-            background-color: #f4f6f9;
+            background-color: #f8f9fa;
         }
 
-        /* Sidebar */
         .sidebar {
-            width: 250px;
-            height: 100vh;
-            background-color: #1e293b;
-            color: white;
-            padding: 20px;
+            min-height: 100vh;
         }
 
-            .sidebar h2 {
-                text-align: center;
-                margin-bottom: 30px;
-            }
-
-            .sidebar ul {
-                list-style: none;
-            }
-
-                .sidebar ul li {
-                    padding: 12px;
-                    margin: 8px 0;
-                    background: #334155;
-                    border-radius: 6px;
-                    cursor: pointer;
-                    transition: 0.3s;
-                }
-
-                    .sidebar ul li:hover {
-                        background: #475569;
-                    }
-
-                    .sidebar ul li a {
-                        text-decoration: none;
-                        color: white;
-                        display: block;
-                    }
-
-        /* Main content */
-        .main-content {
-            flex: 1;
-            padding: 30px;
-        }
-
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 30px;
-        }
-
-            .header h1 {
-                font-size: 24px;
-            }
-
-        .logout-btn {
-            background: #dc2626;
-            color: white;
-            padding: 8px 16px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-        }
-
-            .logout-btn:hover {
-                background: #b91c1c;
-            }
-
-        /* Cards */
-        .cards {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 20px;
-        }
-
-        .card {
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.05);
-            transition: 0.3s;
-        }
-
-            .card:hover {
-                transform: translateY(-5px);
-            }
-
-            .card h3 {
-                margin-bottom: 10px;
-                color: #1e293b;
-            }
-
-            .card p {
-                color: #555;
-                font-size: 14px;
-            }
-
-            .card button {
-                margin-top: 15px;
-                padding: 8px 12px;
-                border: none;
-                background: #2563eb;
-                color: white;
-                border-radius: 6px;
-                cursor: pointer;
-            }
-
-                .card button:hover {
-                    background: #1d4ed8;
-                }
-
-        /* Footer */
-        footer {
-            margin-top: 40px;
-            text-align: center;
-            color: #777;
+        .bin-detail {
             font-size: 13px;
         }
+        .product-card {
+    transition: 0.2s;
+}
+.product-card:hover {
+    transform: translateY(-4px);
+}
+
+.price {
+    font-weight: 600;
+    color: #198754;
+}
+
+.stock-low {
+    color: red;
+    font-weight: 600;
+}
     </style>
 </head>
 <body>
 
-    <!-- Sidebar -->
-    <div class="sidebar">
-        <h2>Manager Panel</h2>
-        <ul>
-            <li><a href="#">View Inventory</a></li>
-            <li><a href="#">View Transfer Requests</a></li>
-            <li><a href="#">View Receipts</a></li>
-            <li><a href="#">Approve GR</a></li>
-            <li><a href="#">Reports</a></li>
-            <li><a href="#">Export Report</a></li>
-        </ul>
-    </div>
+<div class="container-fluid">
+    <div class="row">
 
-    <!-- Main Content -->
-    <div class="main-content">
-        <div class="header">
-            <h1>Electronic Components Warehouse Management</h1>
-            <button class="logout-btn">Logout</button>
+        <!-- Sidebar -->
+        <nav class="col-md-3 col-lg-2 d-md-block bg-dark sidebar collapse">
+            <div class="position-sticky pt-3 text-white p-3">
+                <h5 class="text-center mb-4">Manager Panel</h5>
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link text-white" href="home.html">Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-white active" href="itemlist.html">View Items</a>
+                    </li>
+                    <li class="nav-item"><a class="nav-link text-white" href="#">Transfer Requests</a></li>
+                    <li class="nav-item"><a class="nav-link text-white" href="#">Receipts</a></li>
+                    <li class="nav-item"><a class="nav-link text-white" href="#">Approve GR</a></li>
+                    <li class="nav-item"><a class="nav-link text-white" href="#">Reports</a></li>
+                    <li class="nav-item"><a class="nav-link text-white" href="#">Export Report</a></li>
+                </ul>
+            </div>
+        </nav>
+
+        <!-- Main content -->
+        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 py-4">
+
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="fw-bold">Items Inventory</h2>
+                <button class="btn btn-danger" onclick="logout()">Logout</button>
+            </div>
+
+            <div id="messageContainer"></div>
+
+            <!-- Controls -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-body d-flex align-items-center gap-3 flex-wrap">
+                    <label class="fw-semibold">Items per page:</label>
+                    <select id="pageSize" class="form-select w-auto" onchange="changePageSize()">
+                        <option value="5">5</option>
+                        <option value="10" selected>10</option>
+                        <option value="20">20</option>
+                        <option value="50">50</option>
+                    </select>
+                    <div id="infoText" class="text-muted ms-auto"></div>
+                </div>
+            </div>
+
+            <!-- Table -->
+            <!-- Product Grid -->
+<div class="card shadow-sm p-4">
+    <div class="row" id="itemsGrid">
+        <div class="col-12 text-center py-5">
+            <div class="spinner-border text-primary"></div>
         </div>
-
-        <div class="cards">
-
-            <div class="card">
-                <h3>Inventory</h3>
-                <p>View inventory list and check product details.</p>
-                <button>View Inventory</button>
-            </div>
-
-            <div class="card">
-                <h3>Transfer Requests</h3>
-                <p>Review and approve transfer requests.</p>
-                <button>View Requests</button>
-            </div>
-
-            <div class="card">
-                <h3>Receipts (GR)</h3>
-                <p>View receipt list and approve Goods Receipt.</p>
-                <button>View Receipts</button>
-            </div>
-
-            <div class="card">
-                <h3>Reports</h3>
-                <p>View, filter and export warehouse reports.</p>
-                <button>View Reports</button>
-            </div>
-
-        </div>
-
-        <footer>
-            © 2026 Electronic Components Warehouse Management System
-        </footer>
     </div>
+</div>
+
+<!-- Pagination -->
+<nav class="mt-4">
+    <ul class="pagination justify-content-center" id="paginationContainer"></ul>
+</nav>
+
+<footer class="text-center text-muted mt-5">
+    © 2026 Electronic Components Warehouse Management System
+</footer>
+
+<!-- Item Detail Modal -->
+<div class="modal fade" id="itemDetailModal" tabindex="-1" aria-labelledby="itemDetailLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="itemDetailLabel">Item Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="itemDetailContent">
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+        </main>
+    </div>
+</div>
+
+<script>
+let currentPage = 1;
+let pageSize = 10;
+let totalPages = 1;
+let itemDetailCache = {};
+
+document.addEventListener('DOMContentLoaded', function () {
+    loadItems(1);
+});
+
+async function loadItems(page) {
+    try {
+        currentPage = page;
+
+        const response = await fetch(`/api/manager/get-items?pageNumber=${page}&pageSize=${pageSize}`, {
+            method: 'GET',
+            credentials: 'include'
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            displayItems(result.data);
+            totalPages = result.data.totalPages;
+            updatePagination();
+        } else {
+            showMessage(result.message || 'Failed to load items', 'danger');
+        }
+
+    } catch (error) {
+        showMessage(error.message, 'danger');
+    }
+}
+
+function displayItems(data) {
+
+    const container = document.getElementById('itemsGrid');
+    const infoText = document.getElementById('infoText');
+
+    if (!data.data || data.data.length === 0) {
+        container.innerHTML =
+            `<div class="col-12 text-center py-5">No items found</div>`;
+        return;
+    }
+
+    infoText.textContent =
+        `Showing ${(currentPage - 1) * pageSize + 1}
+         to ${Math.min(currentPage * pageSize, data.totalCount)}
+         of ${data.totalCount} items`;
+
+    container.innerHTML = data.data.map(item => {
+
+        const name = item.definition?.metadata?.name || 'N/A';
+        const code = item.definition?.code || 'N/A';
+        const category = item.definition?.metadata?.category || 'N/A';
+        const quantity = item.quantity;
+        const price = item.definition?.price || 0;
+        const imageUrl = item.definition?.metadata?.image_url;
+        
+        // Only render image if URL exists, otherwise use placeholder div
+        const imageHtml = imageUrl && imageUrl.trim() !== '' 
+            ? `<img src="${imageUrl}" class="card-img-top p-3" style="height:150px;object-fit:contain;" onerror="this.style.display='none'">`
+            : `<div class="card-img-top p-3 d-flex align-items-center justify-content-center bg-light" style="height:150px;"><span class="text-muted">No Image</span></div>`;
+
+        return `
+        <div class="col-lg-3 col-md-4 col-sm-6 mb-4">
+            <div class="card product-card shadow-sm h-100">
+
+                ${imageHtml}
+
+                <div class="card-body d-flex flex-column">
+
+                    <h6 class="fw-bold">${name}</h6>
+
+                    <div class="small text-muted">Mã: ${code}</div>
+                    <div class="small text-muted">Loại: ${category}</div>
+
+                    <div class="small mt-2">
+                        Tồn:
+                        <span class="${quantity < 30 ? 'stock-low' : ''}">
+                            ${quantity}
+                        </span>
+                    </div>
+
+                    <div class="price mt-2">
+                        ${formatCurrency(price)}
+                    </div>
+
+                    <button class="btn btn-primary btn-sm mt-auto"
+                            onclick="viewDetail(${item.id})">
+                        Chi tiết
+                    </button>
+
+                </div>
+            </div>
+        </div>
+        `;
+    }).join('');
+}
+function formatCurrency(amount) {
+    return amount.toLocaleString('vi-VN') + " đ";
+}
+
+async function viewDetail(id) {
+    try {
+        const response = await fetch(`/api/manager/get-item/${id}?fullInfo=true`, {
+            method: 'GET',
+            credentials: 'include'
+        });
+
+        const result = await response.json();
+
+        if (!result.success) {
+            showMessage(result.message || 'Failed to load item details', 'danger');
+            return;
+        }
+
+        const item = result.data;
+        const name = item.definition?.metadata?.name || 'N/A';
+        const code = item.definition?.code || 'N/A';
+        const category = item.definition?.metadata?.category || 'N/A';
+        const description = item.definition?.metadata?.desc || 'N/A';
+        const manufacturer = item.definition?.metadata?.manufacter || 'N/A';
+        const manufacturingDate = item.definition?.metadata?.manufacting_date || 'N/A';
+        const imageUrl = item.definition?.metadata?.image_url;
+        const quantity = item.quantity;
+        const importDate = item.import_date || 'N/A';
+        const price = item.definition?.price || 0;
+        const unit = item.definition?.unit || 'pcs';
+
+        // Build bins HTML
+        let binsHtml = '<div class="mt-3"><strong>Bins:</strong>';
+        if (item.bins && item.bins.length > 0) {
+            binsHtml += '<ul class="list-group mt-2">';
+            item.bins.forEach(bin => {
+                binsHtml += `
+                    <li class="list-group-item">
+                        <strong>Location:</strong> ${bin.location_in_warehouse}<br>
+                        <strong>Warehouse:</strong> ${bin.warehouse?.name || 'N/A'}<br>
+                        <strong>Status:</strong> ${bin.status}
+                    </li>
+                `;
+            });
+            binsHtml += '</ul>';
+        } else {
+            binsHtml += '<p class="text-muted mt-2">No bins found</p>';
+        }
+        binsHtml += '</div>';
+
+        // Build image HTML
+        const imageHtml = imageUrl && imageUrl.trim() !== '' 
+            ? `<img src="${imageUrl}" class="img-fluid rounded" style="max-height:200px;object-fit:contain;">`
+            : `<div class="bg-light d-flex align-items-center justify-content-center rounded" style="height:200px;"><span class="text-muted">No Image</span></div>`;
+
+        // Build full detail HTML
+        const detailHtml = `
+            <div class="row">
+                <div class="col-md-4">
+                    ${imageHtml}
+                </div>
+                <div class="col-md-8">
+                    <table class="table table-sm">
+                        <tbody>
+                            <tr>
+                                <th>Name:</th>
+                                <td>${name}</td>
+                            </tr>
+                            <tr>
+                                <th>Code:</th>
+                                <td>${code}</td>
+                            </tr>
+                            <tr>
+                                <th>Category:</th>
+                                <td>${category}</td>
+                            </tr>
+                            <tr>
+                                <th>Description:</th>
+                                <td>${description}</td>
+                            </tr>
+                            <tr>
+                                <th>Manufacturer:</th>
+                                <td>${manufacturer}</td>
+                            </tr>
+                            <tr>
+                                <th>Manufacturing Date:</th>
+                                <td>${manufacturingDate}</td>
+                            </tr>
+                            <tr>
+                                <th>Quantity:</th>
+                                <td><span class="${quantity < 30 ? 'stock-low' : ''}">${quantity} ${unit}</span></td>
+                            </tr>
+                            <tr>
+                                <th>Import Date:</th>
+                                <td>${importDate}</td>
+                            </tr>
+                            <tr>
+                                <th>Unit Price:</th>
+                                <td><strong>${formatCurrency(price)}</strong></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            ${binsHtml}
+        `;
+
+        document.getElementById('itemDetailContent').innerHTML = detailHtml;
+        document.getElementById('itemDetailLabel').textContent = `Item Details - ${name}`;
+        
+        const modal = new bootstrap.Modal(document.getElementById('itemDetailModal'));
+        modal.show();
+
+    } catch (error) {
+        showMessage(error.message, 'danger');
+    }
+}
+
+async function toggleBinDetail(itemId) {
+    const detailDiv = document.getElementById(`bin-detail-${itemId}`);
+    const button = document.getElementById(`btn-${itemId}`);
+
+    if (detailDiv.innerHTML !== "") {
+        detailDiv.innerHTML = "";
+        button.textContent = "View";
+        return;
+    }
+
+    if (itemDetailCache[itemId]) {
+        detailDiv.innerHTML = itemDetailCache[itemId];
+        button.textContent = "Hide";
+        return;
+    }
+
+    button.innerHTML = `<span class="spinner-border spinner-border-sm"></span>`;
+
+    const response = await fetch(`/api/manager/get-item/${itemId}?fullInfo=true`, {
+        credentials: 'include'
+    });
+
+    const result = await response.json();
+
+    const item = result.data;
+    let html = "";
+
+    if (item.bins && item.bins.length > 0) {
+        html = item.bins.map(b => `• ${b.location_in_warehouse}`).join("<br>");
+    } else {
+        html = "No bins";
+    }
+
+    itemDetailCache[itemId] = html;
+    detailDiv.innerHTML = html;
+    button.textContent = "Hide";
+}
+
+function updatePagination() {
+    const container = document.getElementById('paginationContainer');
+    container.innerHTML = '';
+
+    for (let i = 1; i <= totalPages; i++) {
+        container.innerHTML += `
+            <li class="page-item ${i === currentPage ? 'active' : ''}">
+                <a class="page-link" href="#" onclick="loadItems(${i})">${i}</a>
+            </li>
+        `;
+    }
+}
+
+function formatDate(dateString) {
+    return new Date(dateString).toLocaleDateString('en-US');
+}
+
+function showMessage(message, type) {
+    document.getElementById('messageContainer').innerHTML =
+        `<div class="alert alert-${type}">${message}</div>`;
+}
+
+function changePageSize() {
+    pageSize = parseInt(document.getElementById('pageSize').value);
+    loadItems(1);
+}
+
+function logout() {
+    window.location.href = '/login';
+}
+</script>
+
+<!-- Bootstrap 5 JS CDN -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
 </body>
 </html>

@@ -135,9 +135,7 @@ public partial class EWMDbCtx : DbContext
 
             entity.ToTable("ItemDefinition");
 
-            entity.Property(e => e.ItemDefId)
-                .ValueGeneratedNever()
-                .HasColumnName("item_def_id");
+            entity.Property(e => e.ItemDefId).HasColumnName("item_def_id");
             entity.Property(e => e.MetadataJson)
                 .IsRequired()
                 .HasColumnName("metadata_json");

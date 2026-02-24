@@ -22,8 +22,8 @@ class AuthService : IAuthService
 
     public async Task<(ApiResult resp, User? user)> LoginAsync(LoginReq request)
     {
-        if (!request.Verify())
-            return (new ApiResult(ApiResultCode.InvalidRequest), null);
+        if (!request.Verify(out string failedReason))
+            return (new ApiResult(ApiResultCode.InvalidRequest, failedReason), null);
 
         var user = await _dbCtx.Users
             .Include(u => u.Roles)
@@ -61,8 +61,8 @@ class AuthService : IAuthService
 
     public async Task<ApiResult> ChangePasswordAsync(string username, ChangePasswordReq request)
     {
-        if (!request.Verify())
-            return new ApiResult(ApiResultCode.InvalidRequest);
+        if (!request.Verify(out string failedReason))
+            return new ApiResult(ApiResultCode.InvalidRequest, failedReason);
         if (request.OldPassword == request.NewPassword)
             return new ApiResult(ApiResultCode.InvalidRequest, "New password cannot be the same as the old password.");
         var user = await _dbCtx.Users.FirstOrDefaultAsync(u => u.Username == username);
@@ -79,8 +79,8 @@ class AuthService : IAuthService
 
     public async Task<ApiResult> ChangeLoginAsync(string username, ChangeLoginReq request)
     {
-        if (!request.Verify())
-            return new ApiResult(ApiResultCode.InvalidRequest);
+        if (!request.Verify(out string failedReason))
+            return new ApiResult(ApiResultCode.InvalidRequest, failedReason);
         var user = await _dbCtx.Users.FirstOrDefaultAsync(u => u.Username == username);
         if (user is null)
             return new ApiResult(ApiResultCode.NotFound);

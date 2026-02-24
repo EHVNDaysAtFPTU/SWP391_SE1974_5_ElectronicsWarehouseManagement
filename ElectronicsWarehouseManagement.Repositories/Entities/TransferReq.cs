@@ -18,7 +18,7 @@ public partial class TransferReq
 
     public DateOnly? ExecutionDate { get; set; }
 
-    [Obsolete("Use Status instead.")]
+    //[Obsolete("Use Status instead.")]
     public int StatusInt { get; set; }
 
     public int CreatorId { get; set; }
