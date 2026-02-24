@@ -1,7 +1,7 @@
-﻿using Azure.Core;
-using ElectronicsWarehouseManagement.Repositories.Entities;
+﻿using ElectronicsWarehouseManagement.Repositories.Entities;
 using ElectronicsWarehouseManagement.WebAPI.DTO;
 using Microsoft.EntityFrameworkCore;
+using System.Diagnostics.CodeAnalysis;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -16,6 +16,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
         Task<ApiResult> SetRoleAsync(SetRoleReq request);
         Task<ApiResult<GetUserResp>> GetUserAsync(int userId);
         Task<ApiResult<List<GetUsersResp>>> SearchUsersAsync(string query);
+        Task<ApiResult> SetStatusAsync(SetStatusReq setStatusReq);
     }
 
     public class AdminService : IAdminService
@@ -70,7 +71,9 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
 
         public async Task<ApiResult<List<GetRolesResp>>> GetRolesAsync() => new ApiResult<List<GetRolesResp>>((await _dbCtx.Roles.AsNoTracking().ToListAsync()).Select(r => new GetRolesResp(r)).ToList());
 
-        public async Task<ApiResult<List<GetUsersResp>>> GetUsersAsync() => new ApiResult<List<GetUsersResp>>((await _dbCtx.Users.AsNoTracking().Include(u => u.Roles).ToListAsync()).Select(u => new GetUsersResp(u)).ToList());
+#pragma warning disable CS0618 // Type or member is obsolete
+        public async Task<ApiResult<List<GetUsersResp>>> GetUsersAsync() => new ApiResult<List<GetUsersResp>>((await _dbCtx.Users.AsNoTracking().Include(u => u.Roles).Where(u => u.StatusInt != (int)UserStatus.Deleted).ToListAsync()).Select(u => new GetUsersResp(u)).ToList());
+#pragma warning restore CS0618 // Type or member is obsolete
 
         public async Task<ApiResult> SetRoleAsync(SetRoleReq request)
         {
@@ -100,7 +103,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
         public async Task<ApiResult<GetUserResp>> GetUserAsync(int userId)
         {
             var user = await _dbCtx.Users.AsNoTracking().Include(u => u.Roles).FirstOrDefaultAsync(u => u.UserId == userId);
-            if (user is null)
+            if (user is null || user.Status == UserStatus.Deleted)
                 return new ApiResult<GetUserResp>(ApiResultCode.InvalidRequest, "User does not exist.");
             return new ApiResult<GetUserResp>(new GetUserResp(user));
         }
@@ -111,6 +114,18 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
                 .Where(u => u.Username.Contains(query) || u.Email.Contains(query))
                 .ToListAsync();
             return new ApiResult<List<GetUsersResp>>(users.Select(u => new GetUsersResp(u)).ToList());
+        }
+
+        public async Task<ApiResult> SetStatusAsync(SetStatusReq setStatusReq)
+        {
+            if (!setStatusReq.Verify(out string failedReason))
+                return new ApiResult(ApiResultCode.InvalidRequest, failedReason);
+            var user = await _dbCtx.Users.FirstOrDefaultAsync(u => u.UserId == setStatusReq.UserId);
+            if (user is null)
+                return new ApiResult(ApiResultCode.InvalidRequest, "User does not exist.");
+            user.Status = (UserStatus)setStatusReq.Status;
+            await _dbCtx.SaveChangesAsync();
+            return new ApiResult();
         }
     }
 }
