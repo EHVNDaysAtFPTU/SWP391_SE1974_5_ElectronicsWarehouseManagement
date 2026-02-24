@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Đơn Xuất Kho</title>
+    <title>Đơn Chuyển Kho</title>
     <style>
         body {
             font-family: Arial;
@@ -62,13 +62,13 @@
             }
 
         .submit-btn {
-            background: #f97316;
+            background: #7c3aed;
             color: white;
             font-size: 16px
         }
 
             .submit-btn:hover {
-                background: #ea580c
+                background: #6d28d9
             }
 
         .form-row {
@@ -105,17 +105,17 @@
 
     <div class="container">
         <div class="topbar">
-            <h2>📤 ĐƠN XUẤT KHO</h2>
+            <h2>🔁 ĐƠN CHUYỂN KHO</h2>
             <button class="back-btn" onclick="goHome()">← Về Home</button>
         </div>
 
         <div class="form-row">
-            <input placeholder="Mã đơn xuất">
+            <input placeholder="Mã đơn chuyển">
             <input type="date">
-            <input placeholder="Kho xuất">
-            <input placeholder="BIN">
-            <input placeholder="Khách hàng">
-            <input placeholder="Nhân viên xuất">
+            <input placeholder="Kho nguồn">
+            <input placeholder="Kho đích">
+            <input placeholder="BIN nguồn">
+            <input placeholder="Nhân viên thực hiện">
         </div>
 
         <table>
@@ -145,10 +145,9 @@
 <textarea rows="3" placeholder="Ghi chú"></textarea>
         <br><br>
 
-        <button class="submit-btn">💾 Lưu đơn xuất</button>
+        <button class="submit-btn">💾 Lưu đơn chuyển</button>
 
     </div>
-
     <script>
         const BASE = "https://localhost:7297/api";
 
@@ -166,7 +165,7 @@
 
         function removeRow(btn) { btn.closest("tr").remove(); }
 
-        async function save() {
+        async function saveTransfer() {
 
             let rows = document.querySelectorAll("#bodyTable tr");
             let itemIds = [];
@@ -177,13 +176,14 @@
             });
 
             const payload = {
-                desc: "Outbound Order",
+                desc: "Transfer Order",
                 warehouse_from_id: 1,
+                warehouse_to_id: 2,
                 item_ids: itemIds
             };
 
             try {
-                const res = await fetch(BASE + "/storekeeper/create-outbound", {
+                const res = await fetch(BASE + "/storekeeper/create-transfer", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     credentials: "include",
@@ -196,8 +196,8 @@
                 }
 
                 const data = await res.json();
-                alert("Tạo đơn xuất thành công!");
-                window.location = "outbound-list.html";
+                alert("Tạo đơn chuyển thành công!");
+                window.location = "transfer-list.html";
             }
             catch (err) {
                 console.error(err);
@@ -205,7 +205,7 @@
             }
         }
 
-        document.querySelector(".submit-btn").onclick = save;
+        document.querySelector(".submit-btn").onclick = saveTransfer;
     </script>
 
 </body>

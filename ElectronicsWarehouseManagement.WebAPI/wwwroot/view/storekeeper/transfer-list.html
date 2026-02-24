@@ -1,0 +1,83 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Transfer List</title>
+    <style>
+        body {
+            font-family: Arial;
+            background: #f1f5f9;
+            padding: 30px
+        }
+
+        table {
+            width: 100%;
+            background: white;
+            border-collapse: collapse
+        }
+
+        th, td {
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+            text-align: center
+        }
+
+        th {
+            background: #2563eb;
+            color: white
+        }
+
+        button {
+            padding: 6px 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer
+        }
+    </style>
+</head>
+<body>
+
+    <h2>Transfer List</h2>
+    <button onclick="goCreate()">Create Transfer</button>
+
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Item</th>
+                <th>From</th>
+                <th>To</th>
+                <th>Qty</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody id="data"></tbody>
+    </table>
+    <script>
+        const BASE = "https://localhost:7297/api";
+
+        async function load() {
+            let res = await fetch(BASE + "/storekeeper/transfer-requests", { credentials: "include" });
+            let data = await res.json();
+            if (!data.success) return;
+
+            let html = "";
+            data.data
+                .filter(x => x.typeInt === 3)
+                .forEach(x => {
+                    html += `
+<tr>
+<td>${x.id}</td>
+<td>${x.itemTransfers?.length ?? 0}</td>
+<td>${x.fromWarehouseName}</td>
+<td>${x.toWarehouseName}</td>
+<td>${x.status}</td>
+</tr>`;
+                });
+            document.getElementById("data").innerHTML = html;
+        }
+        load();
+    </script>
+
+</body>
+</html>

@@ -2,224 +2,271 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Storekeeper Dashboard</title>
+    <title>Dashboard | Storekeeper</title>
 
     <style>
         body {
             margin: 0;
-            font-family: Arial, sans-serif;
-            background: #f5f6fa;
+            font-family: Arial;
+            background: #f1f5f9
         }
 
-        /* ===== SIDEBAR ===== */
+        .layout {
+            display: flex;
+            height: 100vh
+        }
+
+        /* SIDEBAR */
         .sidebar {
             width: 240px;
-            height: 100vh;
-            background: #ffffff;
-            border-right: 1px solid #ddd;
-            position: fixed;
-            top: 0;
-            left: 0;
-        }
-
-        .sidebar h2 {
-            padding: 20px;
-            margin: 0;
-            font-size: 18px;
-            background: #1a73e8;
+            background: #0f172a;
             color: white;
-            text-align: center;
+            padding: 20px;
         }
 
-        .sidebar a,
-        .menu-parent {
-            display: block;
-            padding: 12px 20px;
-            text-decoration: none;
-            color: #333;
-            cursor: pointer;
-        }
+            .sidebar h2 {
+                margin-bottom: 30px
+            }
 
-        .sidebar a:hover,
-        .menu-parent:hover {
-            background: #e8f0fe;
-            color: #1a73e8;
-        }
+            .sidebar ul {
+                list-style: none;
+                padding: 0;
+                margin: 0
+            }
 
-        .active {
-            background: #e8f0fe;
-            color: #1a73e8;
-            font-weight: bold;
-        }
+            .sidebar li {
+                padding: 12px;
+                border-radius: 6px;
+                cursor: pointer;
+                margin-bottom: 6px;
+            }
 
-        /* ===== SUB MENU ===== */
+                .sidebar li:hover {
+                    background: #1e293b
+                }
+
         .submenu {
             display: none;
-            background: #f9f9f9;
+            margin-left: 10px;
         }
 
-        .submenu a {
-            padding: 10px 40px;
-            font-size: 14px;
-            color: #555;
+            .submenu li {
+                background: #1e293b;
+                margin-bottom: 4px;
+                font-size: 14px;
+            }
+
+        .show {
+            display: block
         }
 
-        .submenu a:hover {
-            background: #e8f0fe;
-            color: #1a73e8;
-        }
-
-        /* ===== CONTENT ===== */
+        /* CONTENT */
         .content {
-            margin-left: 240px;
-            padding: 20px;
+            flex: 1;
+            padding: 30px
         }
 
         .topbar {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background: #ffffff;
-            padding: 10px 20px;
-            border-bottom: 1px solid #ddd;
+        }
+
+        /* AVATAR */
+        .avatar-box {
+            position: relative;
+            cursor: pointer;
         }
 
         .avatar {
-            cursor: pointer;
-            background: #1a73e8;
-            color: white;
-            padding: 8px 12px;
+            width: 45px;
+            height: 45px;
             border-radius: 50%;
+            background: #3b82f6;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             font-weight: bold;
         }
 
-        .dropdown {
+        .avatar-menu {
             position: absolute;
-            right: 20px;
-            top: 60px;
+            right: 0;
+            top: 55px;
             background: white;
-            border: 1px solid #ddd;
+            color: black;
+            width: 150px;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0,0,0,.2);
             display: none;
-            width: 200px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
 
-        .dropdown a {
-            display: block;
-            padding: 10px;
-            text-decoration: none;
-            color: #333;
+            .avatar-menu div {
+                padding: 10px;
+                cursor: pointer;
+            }
+
+                .avatar-menu div:hover {
+                    background: #f1f5f9;
+                }
+
+        .show-menu {
+            display: block
         }
 
-        .dropdown a:hover {
-            background: #e8f0fe;
-        }
-
-        /* ===== DASHBOARD CARDS ===== */
+        /* CARD */
         .cards {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            display: flex;
             gap: 20px;
-            margin-top: 20px;
+            margin-top: 30px
         }
 
         .card {
+            flex: 1;
             background: white;
             padding: 20px;
-            border-radius: 6px;
-            border: 1px solid #ddd;
+            border-radius: 12px;
+            box-shadow: 0 3px 10px rgba(0,0,0,.1)
         }
 
-        .card h3 {
-            margin-top: 0;
-        }
+            .card h3 {
+                margin: 0 0 10px
+            }
+
+            .card p {
+                font-size: 28px;
+                font-weight: bold
+            }
     </style>
 </head>
 
 <body>
 
-<!-- ===== SIDEBAR ===== -->
-<div class="sidebar">
-    <h2>Storekeeper</h2>
+    <div class="layout">
 
-    <a href="#" class="active">🏠 Tổng quan</a>
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+            <h2>ECWMS</h2>
+            <ul>
 
-    <!-- NHẬP KHO -->
-    <div class="menu-parent" onclick="toggleMenu('inboundMenu')">
-        📥 Nhập kho
-    </div>
-    <div class="submenu" id="inboundMenu">
-        <a href="inbound-create.html">➕ Tạo đơn nhập kho</a>
-        <a href="inbound-list.html">📄 Tất cả đơn nhập</a>
-    </div>
+                <li onclick="toggleMenu('inboundMenu')">Inbound ▾</li>
+                <ul id="inboundMenu" class="submenu">
+                    <li onclick="go('inbound-create.html')">Create Inbound</li>
+                    <li onclick="go('inbound-list.html')">Inbound List</li>
+                </ul>
 
-    <!-- XUẤT KHO -->
-    <div class="menu-parent" onclick="toggleMenu('outboundMenu')">
-        📤 Xuất kho
-    </div>
-    <div class="submenu" id="outboundMenu">
-        <a href="outbound-create.html">➖ Tạo đơn xuất kho</a>
-        <a href="outbound-list.html">📄 Tất cả đơn xuất</a>
-    </div>
+                <li onclick="toggleMenu('outboundMenu')">Outbound ▾</li>
+                <ul id="outboundMenu" class="submenu">
+                    <li onclick="go('outbound-create.html')">Create Outbound</li>
+                    <li onclick="go('outbound-list.html')">Outbound List</li>
+                </ul>
+                <li onclick="toggleMenu('transferMenu')">Transfer ▾</li>
+                <ul id="transferMenu" class="submenu">
+                    <li onclick="go('transfer-create.html')">Create Transfer</li>
+                    <li onclick="go('transfer-list.html')">Transfer List</li>
+                </ul>
+                <li onclick="go('components.html')">Inventory</li>
 
-    <a href="#">🔄 Chuyển kho nội bộ</a>
-    <a href="#">📦 Kiểm tra tồn kho</a>
-</div>
+            </ul>
+        </aside>
 
-<!-- ===== CONTENT ===== -->
-<div class="content">
+        <!-- MAIN -->
+        <main class="content">
 
-    <!-- TOP BAR -->
-    <div class="topbar">
-        <h3>Tổng quan kho</h3>
-        <div>
-            <span class="avatar" onclick="toggleAvatarMenu()">A</span>
-            <div class="dropdown" id="avatarMenu">
-                <a href="#">👤 Tài khoản</a>
-                <a href="#">⚙️ Cài đặt</a>
-                <a href="#">🚪 Đăng xuất</a>
+            <div class="topbar">
+                <h1>Warehouse Dashboard</h1>
+
+                <div class="avatar-box" onclick="toggleAvatar()">
+                    <div class="avatar">S</div>
+
+                    <div id="avatarMenu" class="avatar-menu">
+                        <div onclick="go('profile.html')">Profile</div>
+                        <div onclick="go('settings.html')">Settings</div>
+                        <div onclick="logout()">Logout</div>
+                    </div>
+
+                </div>
             </div>
-        </div>
+
+            <div class="cards">
+                <div class="card">
+                    <h3>Total Inbound</h3>
+                    <p id="inboundCount">0</p>
+                </div>
+
+                <div class="card">
+                    <h3>Total Outbound</h3>
+                    <p id="outboundCount">0</p>
+                </div>
+
+                <div class="card">
+                    <h3>Total Inventory</h3>
+                    <p id="inventoryCount">0</p>
+                </div>
+            </div>
+
+        </main>
     </div>
 
-    <!-- DASHBOARD -->
-    <div class="cards">
-        <div class="card">
-            <h3>Đơn nhập hôm nay</h3>
-           
-        </div>
+    <script>
+        const BASE = "https://localhost:7297/api";
 
-        <div class="card">
-            <h3>Đơn xuất hôm nay</h3>
-       
-        </div>
-
-        <div class="card">
-            <h3>Tồn kho</h3>
-        
-        </div>
-    </div>
-
-</div>
-
-<!-- ===== JS ===== -->
-<script>
-    function toggleMenu(menuId) {
-        const menu = document.getElementById(menuId);
-        menu.style.display = menu.style.display === "block" ? "none" : "block";
-    }
-
-    function toggleAvatarMenu() {
-        const menu = document.getElementById("avatarMenu");
-        menu.style.display = menu.style.display === "block" ? "none" : "block";
-    }
-
-    window.onclick = function(e) {
-        if (!e.target.classList.contains("avatar")) {
-            document.getElementById("avatarMenu").style.display = "none";
+        function go(page) {
+            window.location.href = page;
         }
-    }
-</script>
+
+        function toggleMenu(id) {
+            document.getElementById(id).classList.toggle("show");
+        }
+
+        function toggleAvatar() {
+            document.getElementById("avatarMenu").classList.toggle("show-menu");
+        }
+
+        async function logout() {
+            await fetch(BASE + "/auth/logout", {
+                method: "POST",
+                credentials: "include"
+            });
+            window.location = "login.html";
+        }
+
+        async function load() {
+            try {
+                let transferRes = await fetch(
+                    BASE + "/storekeeper/transfer-requests",
+                    { credentials: "include" }
+                );
+
+                let itemRes = await fetch(
+                    BASE + "/storekeeper/items",
+                    { credentials: "include" }
+                );
+
+                let transferData = await transferRes.json();
+                let itemData = await itemRes.json();
+
+                if (transferData.success) {
+                    document.getElementById("inboundCount").innerText =
+                        transferData.data.filter(x => x.typeInt === 1).length;
+
+                    document.getElementById("outboundCount").innerText =
+                        transferData.data.filter(x => x.typeInt === 2).length;
+                }
+
+                if (itemData.success) {
+                    document.getElementById("inventoryCount").innerText =
+                        itemData.data.length;
+                }
+            }
+            catch (err) {
+                console.error("Dashboard load error:", err);
+            }
+        }
+
+        load();
+    </script>
 
 </body>
 </html>

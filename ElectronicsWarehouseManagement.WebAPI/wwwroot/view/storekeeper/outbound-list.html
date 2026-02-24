@@ -1,0 +1,154 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Outbound Orders - Storekeeper</title>
+
+    <style>
+        body {
+            font-family: Arial;
+            background: #fdf2f2;
+            padding: 40px;
+        }
+
+        h2 {
+            margin-bottom: 20px;
+        }
+
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        button {
+            padding: 6px 12px;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        .home-btn {
+            background: #6c757d;
+            color: white;
+        }
+
+        .confirm-btn {
+            background: #c0392b;
+            color: white;
+        }
+
+        .disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+
+        th, td {
+            padding: 10px;
+            border: 1px solid #ddd;
+            text-align: center;
+        }
+
+        th {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .status-complete {
+            color: green;
+            font-weight: bold;
+        }
+
+        .status-pending {
+            color: orange;
+            font-weight: bold;
+        }
+
+        .pagination {
+            margin-top: 20px;
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="top-bar">
+        <h2>Outbound Orders</h2>
+        <button class="home-btn" onclick="goHome()">⬅ Back to Home</button>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Order Code</th>
+                <th>Date</th>
+                <th>Warehouse</th>
+                <th>Receiver</th>
+                <th>Total Items</th>
+                <th>Status</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody id="orderTable">
+        </tbody>
+    </table>
+
+    <div class="pagination">
+        <button onclick="prevPage()">Previous</button>
+        <span id="pageInfo"></span>
+        <button onclick="nextPage()">Next</button>
+    </div>
+
+    <script>
+        const BASE = "https://localhost:7297/api";
+
+        async function load() {
+            let res = await fetch(BASE + "/storekeeper/transfer-requests", { credentials: "include" });
+            let data = await res.json();
+            if (!data.success) return;
+
+            let html = "";
+            data.data
+                .filter(x => x.typeInt === 2)
+                .forEach(o => {
+
+                    let statusClass = o.status === "Completed" ? "status-complete" : "status-pending";
+
+                    let action = o.status === "Pending"
+                        ? `<button class="confirm-btn" onclick="confirmOrder(${o.id})">Confirm</button>`
+                        : `<button class="disabled" disabled>✔</button>`;
+
+                    html += `
+<tr>
+<td>${o.code}</td>
+<td>${o.creationDate}</td>
+<td>${o.fromWarehouseName}</td>
+<td>-</td>
+<td>${o.itemTransfers?.length ?? 0}</td>
+<td class="${statusClass}">${o.status}</td>
+<td>${action}</td>
+</tr>`;
+                });
+
+            document.getElementById("orderTable").innerHTML = html;
+        }
+
+        async function confirmOrder(id) {
+            await fetch(BASE + `/storekeeper/transfer-requests/${id}/complete`,
+                { method: "POST", credentials: "include" });
+            load();
+        }
+
+        function goHome() { window.location = "home.html"; }
+        load();
+    </script>
+
+</body>
+</html>

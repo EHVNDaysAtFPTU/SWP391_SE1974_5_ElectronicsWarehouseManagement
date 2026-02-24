@@ -2,36 +2,139 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Đơn Nhập Kho</title>
+    <title>Create Inbound | ECWMS</title>
+
     <style>
         body {
-            font-family: Arial, sans-serif;
-            background: #f4f6fb;
+            margin: 0;
+            font-family: Arial;
+            background: #f1f5f9;
+        }
+
+        .layout {
+            display: flex;
+            height: 100vh;
+        }
+
+        /* SIDEBAR */
+        .sidebar {
+            width: 240px;
+            background: #0f172a;
+            color: white;
             padding: 20px;
         }
 
+            .sidebar h2 {
+                margin-bottom: 30px
+            }
+
+            .sidebar ul {
+                list-style: none;
+                padding: 0
+            }
+
+            .sidebar li {
+                padding: 12px;
+                border-radius: 6px;
+                cursor: pointer;
+                margin-bottom: 6px;
+            }
+
+                .sidebar li:hover {
+                    background: #1e293b
+                }
+
+        .submenu {
+            display: none;
+            margin-left: 10px;
+        }
+
+            .submenu li {
+                background: #1e293b;
+                margin-bottom: 4px;
+                font-size: 14px;
+            }
+
+        .show {
+            display: block
+        }
+
+        /* CONTENT */
+        .content {
+            flex: 1;
+            padding: 30px;
+            overflow-y: auto;
+        }
+
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* AVATAR */
+        .avatar-box {
+            position: relative;
+            cursor: pointer
+        }
+
+        .avatar {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: #3b82f6;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
+        .avatar-menu {
+            position: absolute;
+            right: 0;
+            top: 55px;
+            background: white;
+            width: 150px;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0,0,0,.2);
+            display: none;
+        }
+
+            .avatar-menu div {
+                padding: 10px;
+                cursor: pointer;
+            }
+
+                .avatar-menu div:hover {
+                    background: #f1f5f9
+                }
+
+        .show-menu {
+            display: block
+        }
+
+        /* FORM AREA */
         .container {
-            max-width: 1100px;
-            margin: auto;
-            background: #fff;
-            padding: 20px;
-            border-radius: 10px;
-        }
-
-        h2 {
-            margin-bottom: 15px;
+            margin-top: 25px;
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 5px 20px rgba(0,0,0,.08);
         }
 
         .form-row {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
-            margin-bottom: 15px;
+            grid-template-columns: repeat(3,1fr);
+            gap: 15px;
+            margin-bottom: 20px;
         }
 
-        input, select, textarea {
+        input, textarea {
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
             width: 100%;
-            padding: 8px;
         }
 
         table {
@@ -39,100 +142,206 @@
             border-collapse: collapse;
             margin-top: 10px;
         }
+
         th, td {
-            border: 1px solid #ccc;
-            padding: 6px;
+            border: 1px solid #e5e7eb;
+            padding: 8px;
             text-align: center;
-            vertical-align: middle; 
         }
 
-
         th {
-            background: #f0f0f0;
+            background: #f3f4f6
         }
 
         button {
-            padding: 8px 15px;
-            margin-top: 10px;
+            padding: 8px 14px;
+            border: none;
+            border-radius: 6px;
             cursor: pointer;
+            transition: .2s;
         }
 
         .add-btn {
-            background: #4CAF50;
-            color: white;
+            background: #22c55e;
+            color: white
         }
+
+            .add-btn:hover {
+                background: #16a34a
+            }
 
         .remove-btn {
-            background: #f44336;
-            color: white;
+            background: #ef4444;
+            color: white
         }
 
+            .remove-btn:hover {
+                background: #dc2626
+            }
+
         .submit-btn {
-            background: #1976d2;
+            background: #2563eb;
             color: white;
             font-size: 16px;
         }
+
+            .submit-btn:hover {
+                background: #1d4ed8
+            }
     </style>
 </head>
+
 <body>
 
-    <div class="container">
-        <h2>📥 ĐƠN NHẬP KHO</h2>
+    <div class="layout">
 
-        <div class="form-row">
-            <input placeholder="Mã đơn nhập">
-            <input type="date">
-            <input placeholder="Kho nhập">
-            <input placeholder="BIN">
-            <input placeholder="Nhà cung cấp">
-            <input placeholder="Nhân viên nhập">
-        </div>
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+            <h2>ECWMS</h2>
+            <ul>
+                <li onclick="toggleMenu('inboundMenu')">Inbound ▾</li>
+                <ul id="inboundMenu" class="submenu show">
+                    <li onclick="go('inbound-create.html')">Create Inbound</li>
+                    <li onclick="go('inbound-list.html')">Inbound List</li>
+                </ul>
 
-        <table>
-            <thead>
-                <tr>
-                    <th>Product ID</th>
-                    <th>Tên sản phẩm</th>
-                    <th>Số lượng</th>
-                    <th>Đơn vị</th>
-                    <th>Hành động</th>
-                </tr>
-            </thead>
-            <tbody id="importBody">
-                <tr>
-                    <td><input></td>
-                    <td><input></td>
-                    <td><input type="number"></td>
-                    <td><input></td>
-                    <td><button class="remove-btn" onclick="removeRow(this)">X</button></td>
-                </tr>
-            </tbody>
-        </table>
+                <li onclick="toggleMenu('outboundMenu')">Outbound ▾</li>
+                <ul id="outboundMenu" class="submenu">
+                    <li onclick="go('outbound-create.html')">Create Outbound</li>
+                    <li onclick="go('outbound-list.html')">Outbound List</li>
+                </ul>
 
-        <button class="add-btn" onclick="addRow()">+ Thêm dòng</button>
+                <li onclick="toggleMenu('transferMenu')">Transfer ▾</li>
+                <ul id="transferMenu" class="submenu">
+                    <li onclick="go('transfer-create.html')">Create Transfer</li>
+                    <li onclick="go('transfer-list.html')">Transfer List</li>
+                </ul>
 
-        <br><br>
-<textarea rows="3" placeholder="Ghi chú"></textarea>
-        <br>
+                <li onclick="go('components.html')">Inventory</li>
+            </ul>
+        </aside>
 
-        <button class="submit-btn">Lưu đơn nhập kho</button>
+        <!-- MAIN -->
+        <main class="content">
+
+            <div class="topbar">
+                <h1>📥 Create Inbound</h1>
+
+                <div class="avatar-box" onclick="toggleAvatar()">
+                    <div class="avatar">S</div>
+                    <div id="avatarMenu" class="avatar-menu">
+                        <div onclick="go('profile.html')">Profile</div>
+                        <div onclick="logout()">Logout</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="container">
+
+                <div class="form-row">
+                    <input id="orderCode" placeholder="Mã đơn nhập">
+                    <input type="date" id="date">
+                    <input id="warehouse" placeholder="Kho nhập">
+                    <input id="bin" placeholder="BIN">
+                    <input id="supplier" placeholder="Nhà cung cấp">
+                    <input id="staff" placeholder="Nhân viên nhập">
+                </div>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Product ID</th>
+                            <th>Tên sản phẩm</th>
+                            <th>Số lượng</th>
+                            <th>Đơn vị</th>
+                            <th>Hành động</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bodyTable">
+                        <tr>
+                            <td><input></td>
+                            <td><input></td>
+                            <td><input type="number" min="1"></td>
+                            <td><input></td>
+                            <td><button class="remove-btn" onclick="removeRow(this)">X</button></td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <br>
+                <button class="add-btn" onclick="addRow()">+ Thêm dòng</button>
+
+                <br><br>
+                <textarea rows="3" id="note" placeholder="Ghi chú"></textarea>
+
+                <br><br>
+                <button class="submit-btn" onclick="submitInbound()">💾 Lưu đơn nhập</button>
+
+            </div>
+
+        </main>
     </div>
 
     <script>
-function addRow() {
-    const row = `
-    <tr>
-        <td><input></td>
-        <td><input></td>
-        <td><input type="number"></td>
-        <td><input></td>
-        <td><button class="remove-btn" onclick="removeRow(this)">X</button></td>
-    </tr>`;
-    document.getElementById("importBody").insertAdjacentHTML("beforeend", row);
-}
-function removeRow(btn) {
-    btn.closest("tr").remove();
-}
+        const BASE = "https://localhost:7297/api";
+
+        function go(page) { window.location = page }
+        function toggleMenu(id) { document.getElementById(id).classList.toggle("show") }
+        function toggleAvatar() { document.getElementById("avatarMenu").classList.toggle("show-menu") }
+
+        function addRow() {
+            const row = `
+<tr>
+<td><input type="number"></td>
+<td><input></td>
+<td><input type="number" min="1"></td>
+<td><input></td>
+<td><button class="remove-btn" onclick="removeRow(this)">X</button></td>
+</tr>`;
+            document.getElementById("bodyTable").insertAdjacentHTML("beforeend", row);
+        }
+
+        function removeRow(btn) { btn.closest("tr").remove(); }
+
+        async function submitInbound() {
+
+            let rows = document.querySelectorAll("#bodyTable tr");
+            let itemIds = [];
+
+            rows.forEach(r => {
+                let id = r.cells[0].querySelector("input").value;
+                if (id) itemIds.push(parseInt(id));
+            });
+
+            const payload = {
+                desc: document.getElementById("note").value || "Inbound Order",
+                warehouse_from_id: null,
+                warehouse_to_id: 1,
+                item_ids: itemIds
+            };
+
+            try {
+                const res = await fetch(BASE + "/storekeeper/create-inbound", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "include",
+                    body: JSON.stringify(payload)
+                });
+
+                if (!res.ok) {
+                    alert("Error: " + res.status);
+                    return;
+                }
+
+                const data = await res.json();
+                alert("Tạo đơn nhập thành công!");
+                window.location = "inbound-list.html";
+            }
+            catch (err) {
+                console.error(err);
+                alert("Lỗi kết nối server");
+            }
+        }
     </script>
 
 </body>
