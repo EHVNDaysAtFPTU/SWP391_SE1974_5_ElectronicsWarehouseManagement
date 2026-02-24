@@ -33,13 +33,9 @@ public partial class TransferReq
 
     public virtual User Creator { get; set; }
 
-    public virtual ICollection<Item> ItemInbounds { get; set; } = new List<Item>();
-
-    public virtual ICollection<Item> ItemOutbounds { get; set; } = new List<Item>();
-
-    public virtual ICollection<Item> ItemTransfers { get; set; } = new List<Item>();
-
     public virtual Warehouse WarehouseFrom { get; set; }
 
     public virtual Warehouse WarehouseTo { get; set; }
+
+    public virtual ICollection<Item> Items { get; set; } = new List<Item>();
 }

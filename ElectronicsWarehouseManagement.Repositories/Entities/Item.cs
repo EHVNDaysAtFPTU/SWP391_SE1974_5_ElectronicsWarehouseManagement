@@ -11,23 +11,11 @@ public partial class Item
 
     public float Quantity { get; set; }
 
-    public DateOnly ImportDate { get; set; }
-
-    public int? TransferId { get; set; }
-
-    public int? InboundId { get; set; }
-
-    public int? OutboundId { get; set; }
-
     public int ItemDefId { get; set; }
-
-    public virtual TransferReq Inbound { get; set; }
 
     public virtual ItemDefinition ItemDef { get; set; }
 
-    public virtual TransferReq Outbound { get; set; }
-
-    public virtual TransferReq Transfer { get; set; }
-
     public virtual ICollection<Bin> Bins { get; set; } = new List<Bin>();
+
+    public virtual ICollection<TransferReq> Transfers { get; set; } = new List<TransferReq>();
 }
