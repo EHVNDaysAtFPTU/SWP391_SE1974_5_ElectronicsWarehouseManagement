@@ -82,5 +82,14 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
                 return Ok(result);
             return BadRequest(result);
         }
+
+        [HttpPost("set-status")]
+        public async Task<IActionResult> SetStatus([FromBody] SetStatusReq setStatusReq)
+        {
+            var result = await _adminService.SetStatusAsync(setStatusReq);
+            if (result.Success)
+                return Ok(result);
+            return BadRequest(result);
+        }
     }
 }
