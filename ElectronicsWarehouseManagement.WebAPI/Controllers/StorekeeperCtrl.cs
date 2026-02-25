@@ -43,7 +43,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
         [HttpGet("item-defs/{itemId:int}")]
         public async Task<IActionResult> GetItemDefById([FromRoute] int itemId)
         {
-            var result = await _storekeeperService.GetItemDefByIdAsync(itemId);
+            var result = await _storekeeperService.GetItemDefAsync(itemId);
             if (result.Success)
                 return Ok(result);
             return BadRequest(result);
@@ -88,7 +88,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
         [HttpGet("items/{itemId:int}")]
         public async Task<IActionResult> GetItemById([FromRoute] int itemId)
         {
-            var result = await _storekeeperService.GetItemByIdAsync(itemId);
+            var result = await _storekeeperService.GetItemAsync(itemId);
             if (result.Success)
                 return Ok(result);
             return BadRequest(result);
@@ -115,7 +115,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
         [HttpGet("warehouses/{warehouseId:int}")]
         public async Task<IActionResult> GetWarehouseById([FromRoute] int warehouseId)
         {
-            var result = await _storekeeperService.GetWarehouseByIdAsync(warehouseId);
+            var result = await _storekeeperService.GetWarehouseAsync(warehouseId);
             if (result.Success)
                 return Ok(result);
             return BadRequest(result);
@@ -142,7 +142,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
         [HttpGet("bins/{binId:int}")]
         public async Task<IActionResult> GetBinById([FromRoute] int binId)
         {
-            var result = await _storekeeperService.GetBinByIdAsync(binId);
+            var result = await _storekeeperService.GetBinAsync(binId);
             if (result.Success)
                 return Ok(result);
             return BadRequest(result);
@@ -164,6 +164,33 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
         public async Task<IActionResult> CreateInternalTransferRequest([FromBody] CreateTransferReq request)
         {
             return await CreateTransferRequest(request, TransferType.InternalTransfer);
+        }
+        
+        [HttpPost("confirm-transfer")]
+        public async Task<IActionResult> ConfirmTransferRequest([FromBody] ConfirmTransferReq request)
+        {
+            var result = await _storekeeperService.ConfirmTransferRequestAsync(request, int.Parse(HttpContext.Session.GetString("UserId")!));
+            if (result.Success)
+                return Ok(result);
+            return BadRequest(result);
+        }
+
+        [HttpGet("transfers")]
+        public async Task<IActionResult> GetTransferRequests()
+        {
+            var result = await _storekeeperService.GetTransferRequestListAsync();
+            if (result.Success)
+                return Ok(result);
+            return BadRequest(result);
+        }
+
+        [HttpGet("transfers/{transferId:int}")]
+        public async Task<IActionResult> GetTransferRequestById([FromRoute] int transferId)
+        {
+            var result = await _storekeeperService.GetTransferRequestAsync(transferId);
+            if (result.Success)
+                return Ok(result);
+            return BadRequest(result);
         }
 
         async Task<IActionResult> CreateTransferRequest(CreateTransferReq request, TransferType type)

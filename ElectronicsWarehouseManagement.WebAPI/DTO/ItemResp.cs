@@ -26,10 +26,9 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
         [JsonPropertyName("def_id")]
         public int? ItemDefId { get; set; }
 
-        //TODO
-
-        //[JsonPropertyName("transfers")]
-        //public List<TransferReqResp> Transfers { get; set; }
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        [JsonPropertyName("transfers")]
+        public List<TransferReqResp>? Transfers { get; set; }
 
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         [JsonPropertyName("definition")]
@@ -48,8 +47,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
             {
                 ItemDef = item.ItemDef is null ? null : new ItemDefResp(item.ItemDef);
                 Bins = item.Bins.Select(b => new BinResp(b, true)).ToList();
-                // TODO
-                //Transfers = ...
+                Transfers = item.Transfers.Select(t => new TransferReqResp(t, true)).ToList();
             }
         }
     }

@@ -8,19 +8,22 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
     {
         Task<ApiResult<string>> UploadImageAsync(IFormFile image);
         Task<ApiResult<List<ItemDefResp>>> GetItemDefListAsync();
-        Task<ApiResult<ItemDefResp>> GetItemDefByIdAsync(int itemId);
+        Task<ApiResult<ItemDefResp>> GetItemDefAsync(int itemId);
         Task<ApiResult> CreateItemCategoryAsync(string categoryName);
         Task<ApiResult<List<CategoryResp>>> GetItemCategoriesAsync();
         Task<ApiResult> CreateItemDefAsync(CreateItemDefReq request);
         Task<ApiResult<List<ItemResp>>> GetItemListAsync();
-        Task<ApiResult<ItemResp>> GetItemByIdAsync(int itemId);
+        Task<ApiResult<ItemResp>> GetItemAsync(int itemId);
         Task<ApiResult> CreateBinAsync(CreateBinReq request);
         Task<ApiResult<List<BinResp>>> GetBinListAsync();
-        Task<ApiResult<BinResp>> GetBinByIdAsync(int binId);
+        Task<ApiResult<BinResp>> GetBinAsync(int binId);
         Task<ApiResult> CreateWarehouseAsync(CreateWarehouseReq request);
         Task<ApiResult<List<WarehouseResp>>> GetWarehouseListAsync();
-        Task<ApiResult<WarehouseResp>> GetWarehouseByIdAsync(int warehouseId);
+        Task<ApiResult<WarehouseResp>> GetWarehouseAsync(int warehouseId);
         Task<ApiResult> CreateTransferRequestAsync(CreateTransferReq request, TransferType type, int creatorId);
+        Task<ApiResult> ConfirmTransferRequestAsync(ConfirmTransferReq request, int approverId);
+        Task<ApiResult<List<TransferReqResp>>> GetTransferRequestListAsync();
+        Task<ApiResult<TransferReqResp>> GetTransferRequestAsync(int transferReqId);
     }
 
     public class StorekeeperService : IStorekeeperService
@@ -54,7 +57,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             return new ApiResult<List<ItemDefResp>>(components);
         }
 
-        public async Task<ApiResult<ItemDefResp>> GetItemDefByIdAsync(int itemId)
+        public async Task<ApiResult<ItemDefResp>> GetItemDefAsync(int itemId)
         {
             var component = await _dbCtx.ItemDefinitions.AsNoTracking().Where(i => i.ItemDefId == itemId).Select(i => new ItemDefResp(i)).FirstOrDefaultAsync();
             if (component is null)
@@ -118,7 +121,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             return new ApiResult<List<ItemResp>>(items);
         }
 
-        public async Task<ApiResult<ItemResp>> GetItemByIdAsync(int itemId)
+        public async Task<ApiResult<ItemResp>> GetItemAsync(int itemId)
         {
             var item = await _dbCtx.Items.AsNoTracking().Where(i => i.ItemId == itemId).Select(i => new ItemResp(i, true)).FirstOrDefaultAsync();
             if (item is null)
@@ -148,7 +151,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             return new ApiResult<List<WarehouseResp>>(warehouses);
         }
 
-        public async Task<ApiResult<WarehouseResp>> GetWarehouseByIdAsync(int warehouseId)
+        public async Task<ApiResult<WarehouseResp>> GetWarehouseAsync(int warehouseId)
         {
             var warehouse = await _dbCtx.Warehouses.AsNoTracking().Where(w => w.WarehouseId == warehouseId).Select(w => new WarehouseResp(w, true)).FirstOrDefaultAsync();
             if (warehouse is null)
@@ -179,7 +182,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             return new ApiResult<List<BinResp>>(bins);
         }
 
-        public async Task<ApiResult<BinResp>> GetBinByIdAsync(int binId)
+        public async Task<ApiResult<BinResp>> GetBinAsync(int binId)
         {
             var bin = await _dbCtx.Bins.AsNoTracking().Where(b => b.BinId == binId).Select(b => new BinResp(b, true)).FirstOrDefaultAsync();
             if (bin is null)
@@ -235,6 +238,33 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             _dbCtx.TransferReqs.Add(transferReq);
             await _dbCtx.SaveChangesAsync();
             return new ApiResult();
+        }
+
+        public async Task<ApiResult> ConfirmTransferRequestAsync(ConfirmTransferReq request, int approverId)
+        {
+            if (!request.Verify(out string failedReason))
+                return new ApiResult(ApiResultCode.InvalidRequest, failedReason);
+            var transferReq = await _dbCtx.TransferReqs.Include(tr => tr.Items).FirstOrDefaultAsync(tr => tr.TransferId == request.TransferId);
+            if (transferReq is null)
+                return new ApiResult(ApiResultCode.NotFound, $"Transfer request with ID '{request.TransferId}' does not exist.");
+            if (transferReq.Status != TransferStatus.ApprovedAndWaitForConfirm)
+                return new ApiResult(ApiResultCode.InvalidRequest, $"Transfer request with ID '{request.TransferId}' cannot be confirmed.");
+            transferReq.Status = TransferStatus.Confirmed;
+            transferReq.ApproverId = approverId;
+            transferReq.ExecutionDate = DateOnly.FromDateTime(DateTime.UtcNow);
+            await _dbCtx.SaveChangesAsync();
+            return new ApiResult();
+        }
+
+        public async Task<ApiResult<List<TransferReqResp>>> GetTransferRequestListAsync()
+        {
+            var transferReqs = _dbCtx.TransferReqs.AsNoTracking().Select(tr => new TransferReqResp(tr, false)).ToList();
+            return new ApiResult<List<TransferReqResp>>(transferReqs);
+        }
+
+        public async Task<ApiResult<TransferReqResp>> GetTransferRequestAsync(int transferReqId)
+        {
+            return new ApiResult<TransferReqResp>(await _dbCtx.TransferReqs.AsNoTracking().Where(tr => tr.TransferId == transferReqId).Select(tr => new TransferReqResp(tr, true)).FirstOrDefaultAsync());
         }
     }
 }
