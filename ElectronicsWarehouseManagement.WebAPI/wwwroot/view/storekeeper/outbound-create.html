@@ -5,208 +5,240 @@
     <title>Đơn Xuất Kho</title>
     <style>
         body {
-            font-family: Arial;
-            background: #eef2f7;
-            padding: 30px
+            margin: 0;
+            font-family: Segoe UI;
+            background: #f1f5f9;
         }
 
-        .container {
-            max-width: 1200px;
-            margin: auto;
+        .wrapper {
+            padding: 40px;
+        }
+
+        .card {
             background: white;
-            padding: 25px;
-            border-radius: 12px;
-            box-shadow: 0 5px 20px rgba(0,0,0,.08)
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,.08);
         }
 
-        .topbar {
+        .top-bar {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px
         }
-
-        button {
-            padding: 8px 14px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: .2s
-        }
-
-        .back-btn {
-            background: #6b7280;
-            color: white
-        }
-
-            .back-btn:hover {
-                background: #4b5563
-            }
-
-        .add-btn {
-            background: #22c55e;
-            color: white
-        }
-
-            .add-btn:hover {
-                background: #16a34a
-            }
-
-        .remove-btn {
-            background: #ef4444;
-            color: white
-        }
-
-            .remove-btn:hover {
-                background: #dc2626
-            }
-
-        .submit-btn {
-            background: #f97316;
-            color: white;
-            font-size: 16px
-        }
-
-            .submit-btn:hover {
-                background: #ea580c
-            }
 
         .form-row {
             display: grid;
-            grid-template-columns: repeat(3,1fr);
+            grid-template-columns: 2fr 1fr;
             gap: 15px;
-            margin-bottom: 20px
+            margin: 20px 0;
         }
 
-        input, textarea {
+        input, select {
             padding: 10px;
+            border-radius: 8px;
             border: 1px solid #ccc;
-            border-radius: 6px;
-            width: 100%
+        }
+
+        button {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .add-btn {
+            background: #2563eb;
+            color: white;
+        }
+
+        .submit-btn {
+            background: #dc2626;
+            color: white;
+            margin-top: 20px;
+        }
+
+        .back-btn {
+            background: #64748b;
+            color: white;
+        }
+
+        .remove-btn {
+            background: #ef4444;
+            color: white;
         }
 
         table {
             width: 100%;
-            border-collapse: collapse
+            border-collapse: collapse;
+            margin-top: 20px;
         }
 
         th, td {
-            border: 1px solid #e5e7eb;
-            padding: 8px;
-            text-align: center
+            padding: 10px;
+            border-bottom: 1px solid #e5e7eb;
+            text-align: center;
         }
 
         th {
-            background: #f3f4f6
+            background: #f8fafc;
         }
+
+        .modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background: white;
+            width: 600px;
+            max-height: 500px;
+            overflow: auto;
+            padding: 25px;
+            border-radius: 12px;
+        }
+
+        .modal-item {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+        }
+
+            .modal-item:hover {
+                background: #f1f5f9;
+            }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <div class="topbar">
-            <h2>📤 ĐƠN XUẤT KHO</h2>
-            <button class="back-btn" onclick="goHome()">← Về Home</button>
+    <div class="wrapper">
+        <div class="card">
+
+            <div class="top-bar">
+                <h2>📤 Tạo Đơn Xuất Kho</h2>
+                <button class="back-btn" onclick="location.href='home.html'">⬅ Back</button>
+            </div>
+
+            <div class="form-row">
+                <input id="desc" placeholder="Mô tả đơn xuất">
+                <select id="warehouseFrom"></select>
+            </div>
+
+            <button class="add-btn" onclick="openModal()">+ Thêm sản phẩm</button>
+
+            <table>
+                <thead>
+                    <tr><th>ID</th><th>Tên</th><th>Số lượng</th><th>X</th></tr>
+                </thead>
+                <tbody id="bodyTable"></tbody>
+            </table>
+
+            <button class="submit-btn" onclick="submitOutbound()">Tạo đơn xuất</button>
+
         </div>
+    </div>
 
-        <div class="form-row">
-            <input placeholder="Mã đơn xuất">
-            <input type="date">
-            <input placeholder="Kho xuất">
-            <input placeholder="BIN">
-            <input placeholder="Khách hàng">
-            <input placeholder="Nhân viên xuất">
+    <div id="productModal" class="modal">
+        <div class="modal-content">
+            <h3>Danh sách sản phẩm</h3>
+            <div id="productList"></div>
+            <br>
+            <button onclick="closeModal()">Đóng</button>
         </div>
-
-        <table>
-            <thead>
-                <tr>
-                    <th>Product ID</th>
-                    <th>Tên sản phẩm</th>
-                    <th>Số lượng</th>
-                    <th>Đơn vị</th>
-                    <th>Hành động</th>
-                </tr>
-            </thead>
-            <tbody id="bodyTable">
-                <tr>
-                    <td><input></td>
-                    <td><input></td>
-                    <td><input type="number" min="1"></td>
-                    <td><input></td>
-                    <td><button class="remove-btn" onclick="removeRow(this)">X</button></td>
-                </tr>
-            </tbody>
-        </table>
-
-        <button class="add-btn" onclick="addRow()">+ Thêm dòng</button>
-
-        <br><br>
-<textarea rows="3" placeholder="Ghi chú"></textarea>
-        <br><br>
-
-        <button class="submit-btn">💾 Lưu đơn xuất</button>
-
     </div>
 
     <script>
-        const BASE = "https://localhost:7297/api";
+        const BASE = "https://localhost:7297/api/storekeeper";
+        let products = [];
 
-        function addRow() {
-            const row = `
-<tr>
-<td><input type="number"></td>
-<td><input></td>
-<td><input type="number" min="1"></td>
-<td><input></td>
-<td><button class="remove-btn" onclick="removeRow(this)">X</button></td>
-</tr>`;
-            document.getElementById("bodyTable").insertAdjacentHTML("beforeend", row);
+        async function loadWarehouses() {
+            const res = await fetch(BASE + "/warehouses", { credentials: "include" });
+            const json = await res.json();
+            if (!json.success) return;
+            json.data.forEach(w => {
+                warehouseFrom.innerHTML += `<option value="${w.id}">${w.name}</option>`;
+            });
         }
 
-        function removeRow(btn) { btn.closest("tr").remove(); }
+        async function loadProducts() {
+            const res = await fetch(BASE + "/item-defs", { credentials: "include" });
+            const json = await res.json();
+            if (!json.success) return;
+            products = json.data;
+        }
 
-        async function save() {
+        function openModal() { renderProductList(); productModal.style.display = "flex"; }
+        function closeModal() { productModal.style.display = "none"; }
 
-            let rows = document.querySelectorAll("#bodyTable tr");
-            let itemIds = [];
+        function renderProductList() {
+            productList.innerHTML = "";
+            products.forEach(p => {
+                productList.innerHTML += `
+<div class="modal-item"
+onclick="addItem(${p.id},'${p.metadata.name.replace(/'/g, "")}')">
+<b>${p.metadata.name}</b><br>
+${p.metadata.desc || ""}<br>
+Giá: ${p.unit_price} / ${p.unit}
+</div>`;
+            });
+        }
 
+        function addItem(id, name) {
+            let existed = false;
+            document.querySelectorAll("#bodyTable tr").forEach(r => {
+                if (parseInt(r.cells[0].innerText) === id) existed = true;
+            });
+            if (existed) return alert("Sản phẩm đã tồn tại!");
+
+            bodyTable.insertAdjacentHTML("beforeend", `
+<tr>
+<td>${id}</td>
+<td>${name}</td>
+<td><input type="number" value="1" min="1"></td>
+<td><button class="remove-btn" onclick="this.closest('tr').remove()">X</button></td>
+</tr>`);
+            closeModal();
+        }
+
+        async function submitOutbound() {
+            const rows = document.querySelectorAll("#bodyTable tr");
+            if (rows.length === 0) return alert("Chưa có sản phẩm");
+
+            const items = [];
             rows.forEach(r => {
-                let id = r.cells[0].querySelector("input").value;
-                if (id) itemIds.push(parseInt(id));
+                items.push({
+                    def_id: parseInt(r.cells[0].innerText),
+                    quantity: parseInt(r.cells[2].querySelector("input").value)
+                });
             });
 
             const payload = {
-                desc: "Outbound Order",
-                warehouse_from_id: 1,
-                item_ids: itemIds
+                items: items,
+                desc: desc.value,
+                warehouse_from_id: parseInt(warehouseFrom.value),
+                warehouse_to_id: null
             };
 
-            try {
-                const res = await fetch(BASE + "/storekeeper/create-outbound", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    credentials: "include",
-                    body: JSON.stringify(payload)
-                });
+            const res = await fetch(BASE + "/create-outbound", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify(payload)
+            });
+            const json = await res.json();
+            if (!json.success) return alert("Thất bại");
 
-                if (!res.ok) {
-                    alert("Error: " + res.status);
-                    return;
-                }
-
-                const data = await res.json();
-                alert("Tạo đơn xuất thành công!");
-                window.location = "outbound-list.html";
-            }
-            catch (err) {
-                console.error(err);
-                alert("Lỗi kết nối server");
-            }
+            alert("Tạo đơn xuất thành công!");
+            location.reload();
         }
 
-        document.querySelector(".submit-btn").onclick = save;
+        loadWarehouses();
+        loadProducts();
     </script>
-
 </body>
 </html>

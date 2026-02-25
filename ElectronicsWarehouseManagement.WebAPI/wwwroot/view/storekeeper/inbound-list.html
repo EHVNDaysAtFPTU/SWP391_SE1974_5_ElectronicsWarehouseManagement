@@ -1,113 +1,27 @@
-﻿<!DOCTYPE html>
-<html lang="vi">
-<head>
-<meta charset="UTF-8">
-<title>Inbound Orders</title>
-
-<style>
-body{font-family:Arial;background:#f3f4f6;padding:30px}
-.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
-.back-btn{background:#6b7280;color:white;padding:8px 15px;border:none;border-radius:6px;cursor:pointer}
-table{width:100%;border-collapse:collapse;background:white}
-th,td{padding:12px;border:1px solid #ddd;text-align:center}
-th{background:#3b82f6;color:white}
-.status{
-font-weight:bold;
-}
-.pending{color:#f59e0b}
-.approved{color:#2563eb}
-.completed{color:#16a34a}
-.rejected{color:#dc2626}
-button{
-padding:6px 12px;
-border:none;
-border-radius:6px;
-cursor:pointer;
-}
-.confirm-btn{
-background:#16a34a;
-color:white;
-}
-.confirm-btn:hover{background:#15803d}
-.icon-btn{
-background:#d1d5db;
-}
-</style>
-</head>
-<body>
-
-<div class="topbar">
-<h2>Inbound Orders</h2>
-<button class="back-btn" onclick="goHome()">← Back to Home</button>
-</div>
-
-<table>
-<thead>
-<tr>
-<th>Order Code</th>
-<th>Date</th>
-<th>Warehouse</th>
-<th>Supplier</th>
-<th>Total Items</th>
-<th>Status</th>
-<th>Action</th>
-</tr>
-</thead>
-
-<tbody id="orderTable"></tbody>
+﻿<h2>📥 Danh Sách Đơn Nhập</h2>
+<button onclick="location.href='home.html'">⬅ Back</button>
+<table border="1" width="100%">
+    <thead>
+        <tr><th>ID</th><th>Mô tả</th><th>Ngày tạo</th><th>Kho nhận</th></tr>
+    </thead>
+    <tbody id="body"></tbody>
 </table>
 
 <script>
-    const BASE = "https://localhost:7297/api";
+    const BASE = "https://localhost:7297/api/storekeeper";
 
     async function load() {
-        try {
-            let res = await fetch(BASE + "/storekeeper/transfer-requests", { credentials: "include" });
-            let data = await res.json();
-            if (!data.success) return;
-
-            let html = "";
-            data.data
-                .filter(x => x.typeInt === 1)
-                .forEach(o => {
-
-                    let statusClass = o.status.toLowerCase();
-                    let action = "-";
-
-                    if (o.status === "Approved") {
-                        action = `<button class="confirm-btn" onclick="completeOrder(${o.id})">Confirm</button>`;
-                    }
-                    else if (o.status === "Completed") {
-                        action = `<button class="icon-btn">✓</button>`;
-                    }
-                    else if (o.status === "Rejected") {
-                        action = `<button class="icon-btn">✕</button>`;
-                    }
-
-                    html += `
+        const res = await fetch(BASE + "/transfer-reqs/1", { credentials: "include" });
+        const json = await res.json();
+        json.data.forEach(r => {
+            body.innerHTML += `
 <tr>
-<td>${o.code}</td>
-<td>${o.creationDate}</td>
-<td>${o.fromWarehouseName ?? ""}</td>
-<td>-</td>
-<td>${o.itemTransfers?.length ?? 0}</td>
-<td class="status ${statusClass}">${o.status}</td>
-<td>${action}</td>
+<td>${r.transferId}</td>
+<td>${r.description}</td>
+<td>${r.creationDate}</td>
+<td>${r.warehouseToId}</td>
 </tr>`;
-                });
-
-            document.getElementById("orderTable").innerHTML = html;
-        } catch (e) { console.error(e); }
+        });
     }
-
-    async function completeOrder(id) {
-        await fetch(BASE + `/storekeeper/transfer-requests/${id}/complete`,
-            { method: "POST", credentials: "include" });
-        load();
-    }
-
-    function goHome() { window.location = "home.html"; }
     load();
 </script>
-</body>
-</html>
