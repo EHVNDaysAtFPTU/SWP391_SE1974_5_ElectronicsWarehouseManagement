@@ -38,7 +38,7 @@
                     <li class="nav-item">
                         <a class="nav-link text-white active" href="itemlist.html">View Items</a>
                     </li>
-                    <li class="nav-item"><a class="nav-link text-white" href="#">Transfer Requests</a></li>
+                    <li class="nav-item"><a class="nav-link text-white" href="transferlist.html">Transfer Requests</a></li>
                     <li class="nav-item"><a class="nav-link text-white" href="#">Receipts</a></li>
                     <li class="nav-item"><a class="nav-link text-white" href="#">Approve GR</a></li>
                     <li class="nav-item"><a class="nav-link text-white" href="#">Reports</a></li>
@@ -175,7 +175,7 @@ function displayTransfers(data) {
         <tr>
             <td>${t.transfer_id}</td>
             <td>${t.description ?? ''}</td>
-            <td><span class="badge bg-info">${t.type ?? '-'}</span></td>
+            <td><span class="badge bg-info">${transferTypeIdCode(t.type) ?? '-'}</span></td>
             <td>${formatDate(t.creation_date)}</td>
             <td>${t.execution_date ? formatDate(t.execution_date) : '-'}</td>
             <td>
@@ -199,6 +199,23 @@ function displayTransfers(data) {
     `).join('');
     }
 
+    function transferTypeIdCode(t) {
+        switch (t) {
+            case 1:
+                return '<p>Inbound</p>';
+                break;
+            case 2:
+                return '<p>Outbound</p>'
+                break;
+            case 3:
+                return '<p>Internal Transfer</p>'
+                break;
+            default:
+                return '<p>Unknown</p>'
+                break;
+        
+        }
+    }
     function transferMonitorStatus(t) {
         let result = checkStatus(t);
         switch (result) {
@@ -207,12 +224,12 @@ function displayTransfers(data) {
                 break;
             case 1:
                 if (t.execution_date && t.execution_date.trim() !== "") {
-                    return '<button class="btn btn-sm">Done</button>'
+                    return '<button class="btn btn-sm">Done</button>';
                 }
-                return '<button class="btn btn-sm">Processing</button>'
+                return '<button class="btn btn-sm">Processing</button>';
                 break;
             case 2:
-                return '<button class="btn btn-sm">Canceled</button>'
+                return '<button class="btn btn-sm">Canceled</button>';
                 break;
             default:
                 return '<button class="btn btn-sm">Unknown</button>'

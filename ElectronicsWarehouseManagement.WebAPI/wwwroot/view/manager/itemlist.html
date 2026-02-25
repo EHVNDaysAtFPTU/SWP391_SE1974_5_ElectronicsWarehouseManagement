@@ -54,7 +54,7 @@
                     <li class="nav-item">
                         <a class="nav-link text-white active" href="itemlist.html">View Items</a>
                     </li>
-                    <li class="nav-item"><a class="nav-link text-white" href="#">Transfer Requests</a></li>
+                    <li class="nav-item"><a class="nav-link text-white" href="transferlist.html">Transfer Requests</a></li>
                     <li class="nav-item"><a class="nav-link text-white" href="#">Receipts</a></li>
                     <li class="nav-item"><a class="nav-link text-white" href="#">Approve GR</a></li>
                     <li class="nav-item"><a class="nav-link text-white" href="#">Reports</a></li>
@@ -186,7 +186,7 @@ function displayItems(data) {
         const code = item.definition?.code || 'N/A';
         const category = item.definition?.metadata?.category || 'N/A';
         const quantity = item.quantity;
-        const price = item.definition?.price || 0;
+        const price = item.definition?.unit_price || 0;
         const imageUrl = item.definition?.metadata?.image_url;
         
         // Only render image if URL exists, otherwise use placeholder div
@@ -204,7 +204,6 @@ function displayItems(data) {
 
                     <h6 class="fw-bold">${name}</h6>
 
-                    <div class="small text-muted">Mã: ${code}</div>
                     <div class="small text-muted">Loại: ${category}</div>
 
                     <div class="small mt-2">
@@ -220,7 +219,7 @@ function displayItems(data) {
 
                     <button class="btn btn-primary btn-sm mt-auto"
                             onclick="viewDetail(${item.id})">
-                        Chi tiết
+                        View Detail
                     </button>
 
                 </div>
@@ -257,7 +256,7 @@ async function viewDetail(id) {
         const imageUrl = item.definition?.metadata?.image_url;
         const quantity = item.quantity;
         const importDate = item.import_date || 'N/A';
-        const price = item.definition?.price || 0;
+        const price = item.definition?.unit_price || 0;
         const unit = item.definition?.unit || 'pcs';
 
         // Build bins HTML
@@ -297,10 +296,7 @@ async function viewDetail(id) {
                                 <th>Name:</th>
                                 <td>${name}</td>
                             </tr>
-                            <tr>
-                                <th>Code:</th>
-                                <td>${code}</td>
-                            </tr>
+                 
                             <tr>
                                 <th>Category:</th>
                                 <td>${category}</td>
@@ -320,11 +316,7 @@ async function viewDetail(id) {
                             <tr>
                                 <th>Quantity:</th>
                                 <td><span class="${quantity < 30 ? 'stock-low' : ''}">${quantity} ${unit}</span></td>
-                            </tr>
-                            <tr>
-                                <th>Import Date:</th>
-                                <td>${importDate}</td>
-                            </tr>
+                            </tr>      
                             <tr>
                                 <th>Unit Price:</th>
                                 <td><strong>${formatCurrency(price)}</strong></td>
