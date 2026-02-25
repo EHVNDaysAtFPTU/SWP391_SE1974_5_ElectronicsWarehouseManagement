@@ -8,24 +8,34 @@
 <body>
 
     <div class="layout">
+
         <div class="sidebar">
-            <h2>ECWMS</h2>
-            <p onclick="logout()">Logout</p>
+            <div>
+                <h2>ECWMS</h2>
+            </div>
+
+            <div class="menu">
+                <p>User Management</p>
+            </div>
+
+            <div class="logout-container">
+                <p onclick="logout()" class="logout-btn">Logout</p>
+            </div>
         </div>
 
         <div class="content">
 
-            <h2>User Management</h2>
-            <button class="btn-primary" onclick="openModal()">+ Add User</button>
+            <div class="header">
+                <h2>User Management</h2>
+                <button class="btn-primary" onclick="openModal()">+ Add User</button>
+            </div>
 
-            <br><br>
+            <div class="search-bar">
+                <input id="searchInput" placeholder="Search username or email">
+                <button class="btn-primary" onclick="searchUsers()">Search</button>
+            </div>
 
-            <input id="searchInput" placeholder="Search username or email">
-            <button onclick="searchUsers()">Search</button>
-
-            <br><br>
-
-            <table border="1" cellpadding="8">
+            <table>
                 <thead>
                     <tr>
                         <th>ID</th>
@@ -41,63 +51,65 @@
         </div>
     </div>
 
-    <!-- CREATE USER MODAL -->
+    <!-- CREATE MODAL -->
     <div id="modal" class="modal hidden">
-        <div class="modal-content">
+        <div class="modal-box">
             <h3>Create User</h3>
-            <input id="newUsername" placeholder="Username"><br><br>
-            <input id="newEmail" placeholder="Email"><br><br>
-            <input id="newPassword" type="password" placeholder="Password"><br><br>
+            <input id="newUsername" placeholder="Username">
+            <input id="newEmail" placeholder="Email">
+            <input id="newPassword" type="password" placeholder="Password">
+
             <select id="newRole">
                 <option value="2">Manager</option>
                 <option value="3">Storekeeper</option>
-            </select><br><br>
-            <button class="btn-primary" onclick="createUser()">Create</button>
-            <button onclick="closeModal()">Cancel</button>
+            </select>
+
+            <div class="modal-actions">
+                <button class="btn-primary" onclick="createUser()">Create</button>
+                <button onclick="closeModal()">Cancel</button>
+            </div>
         </div>
     </div>
 
-    <!-- VIEW USER MODAL -->
+    <!-- VIEW MODAL -->
     <div id="viewModal" class="modal hidden">
-        <div class="modal-content">
+        <div class="modal-box">
             <h3>User Information</h3>
-
             <p><b>Username:</b> <span id="viewUsername"></span></p>
             <p><b>Email:</b> <span id="viewEmail"></span></p>
             <p><b>Role:</b> <span id="viewRole"></span></p>
             <p><b>Status:</b> <span id="viewStatus"></span></p>
 
-            <br>
-            <button onclick="closeViewModal()">Close</button>
+            <div class="modal-actions">
+                <button onclick="closeViewModal()">Close</button>
+            </div>
         </div>
     </div>
 
-    <!-- EDIT USER MODAL -->
+    <!-- EDIT MODAL -->
     <div id="editModal" class="modal hidden">
-        <div class="modal-content">
+        <div class="modal-box">
             <h3>Edit User</h3>
 
             <input type="hidden" id="editUserId">
 
-            <label>Role</label><br>
+            <label>Role</label>
             <select id="editRole">
                 <option value="2">Manager</option>
                 <option value="3">Storekeeper</option>
             </select>
 
-            <br><br>
-
-            <label>Status</label><br>
+            <label>Status</label>
             <select id="editStatus">
                 <option value="1">Active</option>
                 <option value="2">Inactive</option>
                 <option value="3">Suspended</option>
             </select>
 
-            <br><br>
-
-            <button class="btn-primary" onclick="updateUser()">Save</button>
-            <button onclick="closeEditModal()">Cancel</button>
+            <div class="modal-actions">
+                <button class="btn-primary" onclick="updateUser()">Save</button>
+                <button onclick="closeEditModal()">Cancel</button>
+            </div>
         </div>
     </div>
 
@@ -119,28 +131,40 @@
             const r = await api("/admin/users");
             if (r.success) render(r.data);
         }
-
         function render(users) {
             const tbody = document.getElementById("userTableBody");
             tbody.innerHTML = "";
 
             users.forEach(u => {
-               let statusText = "Unknown";
 
-switch (u.status) {
-    case 1: statusText = "Active"; break;
-    case 2: statusText = "Inactive"; break;
-    case 3: statusText = "Suspended"; break;
-    case 4: statusText = "Deleted"; break;
-    default: statusText = u.status;
-}
+                let statusText = "";
+                let statusClass = "";
+
+                switch (u.status) {
+                    case 1:
+                        statusText = "Active";
+                        statusClass = "status active";
+                        break;
+                    case 2:
+                        statusText = "Inactive";
+                        statusClass = "status disabled";
+                        break;
+                    case 3:
+                        statusText = "Suspended";
+                        statusClass = "status locked";
+                        break;
+                    case 4:
+                        statusText = "Deleted";
+                        statusClass = "status disabled";
+                        break;
+                }
 
                 tbody.innerHTML += `
 <tr>
 <td>${u.user_id}</td>
 <td>${u.username}</td>
 <td>${u.email}</td>
-<td>${statusText}</td>
+<td><span class="${statusClass}">${statusText}</span></td>
 <td>
 <button onclick="viewUser(${u.user_id})">View</button>
 <button onclick="editUser(${u.user_id})">Edit</button>
