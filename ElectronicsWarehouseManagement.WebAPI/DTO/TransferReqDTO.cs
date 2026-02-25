@@ -72,9 +72,9 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
 
             Approver = entity.Approver;
             Creator = entity.Creator;
-            ItemInbounds = entity.ItemInbounds;
-            ItemOutbounds = entity.ItemOutbounds;
-            ItemTransfers = entity.ItemTransfers;
+            //ItemInbounds = entity.ItemInbounds;
+            //ItemOutbounds = entity.ItemOutbounds;
+            //ItemTransfers = entity.ItemTransfers;
             WarehouseFrom = entity.WarehouseFrom;
             WarehouseTo = entity.WarehouseTo;
         }

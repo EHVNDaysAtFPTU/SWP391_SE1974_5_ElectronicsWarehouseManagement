@@ -11,17 +11,17 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
         [JsonPropertyName("quantity")]
         public float Quantity { get; set; } 
 
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        [JsonPropertyName("transfer_id")]
-        public int? TransferId { get; set; }
+        //[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        //[JsonPropertyName("transfer_id")]
+        //public int? TransferId { get; set; }
 
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        [JsonPropertyName("inbound_id")]
-        public int? InboundId { get; set; }
+        //[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        //[JsonPropertyName("inbound_id")]
+        //public int? InboundId { get; set; }
 
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        [JsonPropertyName("outbound_id")]
-        public int? OutboundId { get; set; }
+        //[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        //[JsonPropertyName("outbound_id")]
+        //public int? OutboundId { get; set; }
 
         [JsonPropertyName("def_id")]
         public int? ItemDefId { get; set; }
@@ -54,5 +54,6 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
                 //Transfers = ...
             }
         }
+        public ItemResp() { }
     }
 }

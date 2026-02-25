@@ -183,10 +183,10 @@ function displayTransfers(data) {
                     ${getStatusText(t.status)}
                 </span>
             </td>
-            <td>${t.creator_id ?? '-'}</td>
-            <td>${t.approver_id ?? '-'}</td>
-            <td>${t.from_warehouse ?? '-'}</td>
-            <td>${t.to_warehouse ?? '-'}</td>
+            <td>${t.creator?.username ?? t.creator_id ?? '-'}</td>
+            <td>${t.approver?.username ?? t.approver_id ?? '-'}</td>
+            <td>${t.warehouse_from?.name ?? '-'}</td>
+            <td>${t.warehouse_to?.name ?? '-'}</td>
 
             <td>
                 ${renderDecisionButtons(t)}

@@ -32,9 +32,9 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
                 .Include(i => i.ItemDef)
                 .Include(i => i.Bins)
                     .ThenInclude(b => b.Warehouse)
-                .Include(i => i.Transfer)
-                .Include(i => i.Inbound)
-                .Include(i => i.Outbound)
+                //.Include(i => i.Transfer)
+                //.Include(i => i.Inbound)
+                //.Include(i => i.Outbound)
                 .Where(i => i.ItemId == itemId)
                 .Select(i => new ItemResp(i, fullInfo))
                 .FirstOrDefaultAsync();
@@ -50,10 +50,10 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             var itemList = _dbCtx.Items
                 .AsNoTracking().Include(i => i.ItemDef)
                 .Include(i => i.Bins)
-                .ThenInclude(b => b.Warehouse)
-                .Include(i => i.Transfer)
-                .Include(i => i.Inbound)
-                .Include(i => i.Outbound);
+                .ThenInclude(b => b.Warehouse);
+                //.Include(i => i.Transfer)
+                //.Include(i => i.Inbound)
+                //.Include(i => i.Outbound);
 
             int totalCount = await itemList.CountAsync();
 
