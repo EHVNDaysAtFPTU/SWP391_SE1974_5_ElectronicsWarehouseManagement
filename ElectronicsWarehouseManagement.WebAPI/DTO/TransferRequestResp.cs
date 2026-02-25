@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 
 namespace ElectronicsWarehouseManagement.WebAPI.DTO
 {
-    public class TransferReqResp
+    public class TransferRequestResp
     {
         [JsonPropertyName("id")]
         public int ID { get; set; }
@@ -15,10 +15,10 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
         public int Type { get; set; }
 
         [JsonPropertyName("creation_date")]
-        public DateOnly CreationDate { get; set; }
+        public DateTime CreationDate { get; set; }
 
         [JsonPropertyName("execution_date")]
-        public DateOnly? ExecutionDate { get; set; }
+        public DateTime? ExecutionDate { get; set; }
 
         [JsonPropertyName("status")]
         public int Status { get; set; }
@@ -31,12 +31,12 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
         public int? ApproverId { get; set; }
 
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        [JsonPropertyName("warehouse_from_id")]
-        public int? WarehouseFromId { get; set; }
+        [JsonPropertyName("bin_from_id")]
+        public int? BinFromId { get; set; }
 
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        [JsonPropertyName("warehouse_to_id")]
-        public int? WarehouseToId { get; set; }
+        [JsonPropertyName("bin_to_id")]
+        public int? BinToId { get; set; }
 
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         [JsonPropertyName("approver")]
@@ -47,36 +47,36 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
         public User? Creator { get; set; }
 
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        [JsonPropertyName("warehouse_from")]
-        public Warehouse? WarehouseFrom { get; set; }
+        [JsonPropertyName("bin_from")]
+        public Bin? BinFrom { get; set; }
 
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        [JsonPropertyName("warehouse_to")]
-        public Warehouse? WarehouseTo { get; set; }
+        [JsonPropertyName("bin_to")]
+        public Bin? BinTo { get; set; }
 
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        [JsonPropertyName("items")]
-        public List<ItemResp>? Items { get; set; }
+        [JsonPropertyName("components")]
+        public List<TransferRequestComponentResp>? Components { get; set; }
 
-        public TransferReqResp(TransferReq transferReq, bool fullInfo)
+        public TransferRequestResp(TransferRequest request, bool fullInfo)
         {
-            ID = transferReq.TransferId;
-            Description = transferReq.Description;
-            Type = (int)transferReq.Type;
-            CreationDate = transferReq.CreationDate;
-            ExecutionDate = transferReq.ExecutionDate;
-            Status = (int)transferReq.Status;
-            CreatorId = transferReq.CreatorId;
-            ApproverId = transferReq.ApproverId;
-            WarehouseFromId = transferReq.WarehouseFromId;
-            WarehouseToId = transferReq.WarehouseToId;
+            ID = request.RequestId;
+            Description = request.Description;
+            Type = (int)request.Type;
+            CreationDate = request.CreationTime;
+            ExecutionDate = request.ExecutionTime;
+            Status = (int)request.Status;
+            CreatorId = request.CreatorId;
+            ApproverId = request.ApproverId;
+            BinFromId = request.BinFromId;
+            BinToId = request.BinToId;
             if (fullInfo)
             {
-                Approver = transferReq.Approver;
-                Creator = transferReq.Creator;
-                WarehouseFrom = transferReq.WarehouseFrom;
-                WarehouseTo = transferReq.WarehouseTo;
-                Items = transferReq.Items.Select(i => new ItemResp(i, true)).ToList();
+                Approver = request.Approver;
+                Creator = request.Creator;
+                BinFrom = request.BinFrom;
+                BinTo = request.BinTo;
+                Components = request.TransferRequestComponents.Select(i => new TransferRequestComponentResp(i, true)).ToList();
             }
         }
     }

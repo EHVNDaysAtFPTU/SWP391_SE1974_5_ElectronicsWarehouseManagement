@@ -50,7 +50,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
         [HttpPost("set-role")]
         public async Task<IActionResult> SetRole([FromBody] SetRoleReq setRoleReq)
         {
-            var result = await _adminService.SetRoleAsync(setRoleReq);
+            var result = await _adminService.SetRoleAsync(setRoleReq, int.Parse(HttpContext.Session.GetString("UserId")!));
             if (result.Success)
                 return Ok(result);
             return BadRequest(result);

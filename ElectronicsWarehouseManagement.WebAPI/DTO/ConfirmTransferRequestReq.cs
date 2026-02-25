@@ -2,27 +2,27 @@
 
 namespace ElectronicsWarehouseManagement.WebAPI.DTO
 {
-    public class ConfirmTransferReq : IVerifiableRequest
+    public class ConfirmTransferRequestReq : IVerifiableRequest
     {
-        [JsonPropertyName("transfer_id")]
-        public int TransferId { get; set; }
+        [JsonPropertyName("request_id")]
+        public int RequestId { get; set; }
 
         [JsonPropertyName("bins")]
-        public List<ConfirmTransferBinReq> TransferBins { get; set; } = [];
+        public List<ConfirmTransferBinReq> Bins { get; set; } = [];
 
         public bool Verify(out string failedReason)
         {
-            if (TransferId <= 0)
+            if (RequestId <= 0)
             {
                 failedReason = "Invalid transfer ID.";
                 return false;
             }
-            if (TransferBins.Count == 0)
+            if (Bins.Count == 0)
             {
                 failedReason = "At least one bin must be provided.";
                 return false;
             }
-            foreach (var bin in TransferBins)
+            foreach (var bin in Bins)
             {
                 if (!bin.Verify(out failedReason))
                     return false;

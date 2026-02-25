@@ -7,8 +7,8 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
         [JsonPropertyName("bin_id")]
         public int BinId { get; set; }
 
-        [JsonPropertyName("quantity")]
-        public float Quantity { get; set; }
+        [JsonPropertyName("components")]
+        public List<ConfirmTransferRequestComponentReq> Components { get; set; } = [];
 
         public bool Verify(out string failedReason)
         {
@@ -17,10 +17,15 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
                 failedReason = "Invalid bin ID.";
                 return false;
             }
-            if (Quantity <= 0)
+            if (Components.Count <= 0)
             {
-                failedReason = "Quantity must be greater than zero.";
+                failedReason = "No components provided in transfer confirmation request.";
                 return false;
+            }
+            foreach (var component in Components) 
+            {
+                if (!component.Verify(out failedReason))
+                    return false;
             }
             failedReason = string.Empty;
             return true;
