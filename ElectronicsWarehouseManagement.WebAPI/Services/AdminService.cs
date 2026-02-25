@@ -10,7 +10,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
     public interface IAdminService
     {
         Task<ApiResult> CreateAccountAsync(CreateAccReq request);
-        Task<ApiResult> DeleteAccountAsync(int userId);
+        Task<ApiResult> DeleteAccountAsync(int userId, int currentUserId);
         Task<ApiResult<List<GetRolesResp>>> GetRolesAsync();
         Task<ApiResult<List<GetUsersResp>>> GetUsersAsync();
         Task<ApiResult> SetRoleAsync(SetRoleReq request);
@@ -91,11 +91,13 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             return new ApiResult();
         }
 
-        public async Task<ApiResult> DeleteAccountAsync(int userId)
+        public async Task<ApiResult> DeleteAccountAsync(int userId, int currentUserId)
         {
             var user = await _dbCtx.Users.FirstOrDefaultAsync(u => u.UserId == userId);
             if (user is null)
                 return new ApiResult(ApiResultCode.InvalidRequest, "User does not exist.");
+            if (user.UserId == currentUserId)
+                return new ApiResult(ApiResultCode.InvalidRequest, "Cannot delete own account.");
             user.Status = UserStatus.Deleted;
             await _dbCtx.SaveChangesAsync();
             return new ApiResult();

@@ -59,7 +59,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
         [HttpDelete("delete-account/{userId:int}")]
         public async Task<IActionResult> DeleteAccount([FromRoute] int userId)
         {
-            var result = await _adminService.DeleteAccountAsync(userId);
+            var result = await _adminService.DeleteAccountAsync(userId, int.Parse(HttpContext.Session.GetString("UserId")!));
             if (result.Success)
                 return Ok(result);
             return BadRequest(result);
