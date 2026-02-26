@@ -16,7 +16,11 @@ public partial class Bin
 
     public int WarehouseId { get; set; }
 
-    public virtual Warehouse Warehouse { get; set; }
+    public virtual ICollection<ComponentBin> ComponentBins { get; set; } = new List<ComponentBin>();
 
-    public virtual ICollection<Item> Items { get; set; } = new List<Item>();
+    public virtual ICollection<TransferRequest> TransferRequestBinFroms { get; set; } = new List<TransferRequest>();
+
+    public virtual ICollection<TransferRequest> TransferRequestBinTos { get; set; } = new List<TransferRequest>();
+
+    public virtual Warehouse Warehouse { get; set; }
 }

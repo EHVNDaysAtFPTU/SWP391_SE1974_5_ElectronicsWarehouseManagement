@@ -7,6 +7,9 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
         [JsonPropertyName("username")]
         public string Username { get; set; } = string.Empty;
 
+        [JsonPropertyName("display_name")]
+        public string DisplayName { get; set; } = string.Empty;
+
         [JsonPropertyName("email")]
         public string Email { get; set; } = string.Empty;
 
@@ -54,6 +57,8 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
                 failedReason = "Password is too short or too long.";
                 return false;
             }
+            if (string.IsNullOrEmpty(DisplayName))
+                DisplayName = Username;
             failedReason = string.Empty;
             return true;
         }

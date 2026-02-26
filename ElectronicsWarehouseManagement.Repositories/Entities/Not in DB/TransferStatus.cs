@@ -7,6 +7,9 @@ namespace ElectronicsWarehouseManagement.Repositories.Entities
     public enum TransferStatus
     {
         Unknown,
-        Pending
+        Pending,
+        ApprovedAndWaitForConfirm,
+        Rejected,
+        Confirmed,
     }
 }

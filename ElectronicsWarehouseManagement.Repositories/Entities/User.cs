@@ -11,6 +11,8 @@ public partial class User
 
     public string Username { get; set; }
 
+    public string DisplayName { get; set; }
+
     public string Email { get; set; }
 
     public string PasswordHash { get; set; }
@@ -18,9 +20,9 @@ public partial class User
     [Obsolete("Use Status instead.")]
     public int StatusInt { get; set; }
 
-    public virtual ICollection<TransferReq> TransferReqApprovers { get; set; } = new List<TransferReq>();
+    public virtual ICollection<TransferRequest> TransferRequestApprovers { get; set; } = new List<TransferRequest>();
 
-    public virtual ICollection<TransferReq> TransferReqCreators { get; set; } = new List<TransferReq>();
+    public virtual ICollection<TransferRequest> TransferRequestCreators { get; set; } = new List<TransferRequest>();
 
     public virtual ICollection<Role> Roles { get; set; } = new List<Role>();
 }
