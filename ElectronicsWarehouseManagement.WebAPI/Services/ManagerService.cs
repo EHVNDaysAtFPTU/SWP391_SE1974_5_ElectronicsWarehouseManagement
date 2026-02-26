@@ -159,14 +159,50 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             return new ApiResult();
         }
 
-        public Task<ApiResult<Bin>> GetBin(int binId, bool fullInfo)
+        public async Task<ApiResult<Bin>> GetBin(int binId, bool fullInfo)
         {
-            throw new NotImplementedException();
+            var query = _dbCtx.Bins.AsNoTracking();
+
+            if (fullInfo)
+            {
+                query = query
+                    .Include(b => b.Warehouse)
+                    .Include(b => b.ComponentBins)
+                        .ThenInclude(cb => cb.Component);
+            }
+
+            var bin = await query
+                .Where(b => b.BinId == binId)
+                .FirstOrDefaultAsync();
+
+            if (bin == null)
+                return new ApiResult<Bin>(ApiResultCode.NotFound, "Bin not found");
+
+            return new ApiResult<Bin>(bin);
         }
 
-        public Task<ApiResult<PagedResult<Bin>>> GetBinList(int warehouseId)
+        public async Task<ApiResult<PagedResult<Bin>>> GetBinList(int warehouseId)
         {
-            throw new NotImplementedException();
+            var query = _dbCtx.Bins.AsNoTracking()
+                .Where(b => b.WarehouseId == warehouseId)
+                .Include(b => b.Warehouse);
+
+            int totalCount = await query.CountAsync();
+
+            var data = await query
+                .Skip(0)
+                .Take(100)
+                .ToListAsync();
+
+            var pagedResult = new PagedResult<Bin>
+            {
+                data = data,
+                TotalCount = totalCount,
+                PageNumber = 1,
+                PageSize = 100
+            };
+
+            return new ApiResult<PagedResult<Bin>>(pagedResult);
         }
 
         //    public async Task<ApiResult<PagedResult<ItemResp>>> GetFilteredItemListAsync(PagingRequest request, FilteredCodeReq fReq)

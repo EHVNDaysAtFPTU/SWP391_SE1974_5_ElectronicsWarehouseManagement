@@ -84,17 +84,32 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
             }
             return BadRequest(result);
         }
-        //private int? GetCurrentUser()
-        //{
-        //    string? userIdStr = HttpContext.Session.GetString("UserId");
-        //    if (string.IsNullOrEmpty(userIdStr))
-        //        return null;
 
-        //    if (int.TryParse(userIdStr, out int userId))
-        //        return userId;
+        [HttpGet("get-bin/{binId:int}")]
+        public async Task<IActionResult> GetBin([FromRoute] int binId, [FromQuery] bool fullInfo)
+        {
+            var result = await _managerService.GetBin(binId, fullInfo);
 
-        //    return null;
-        //}
+            if (result.Success)
+            {
+                return Ok(result);
+            }
+
+            return BadRequest(result);
+        }
+
+        [HttpGet("get-bins/{warehouseId:int}")]
+        public async Task<IActionResult> GetBinList([FromRoute] int warehouseId)
+        {
+            var result = await _managerService.GetBinList(warehouseId);
+
+            if (result.Success)
+            {
+                return Ok(result);
+            }
+
+            return BadRequest(result);
+        }
 
 
 
