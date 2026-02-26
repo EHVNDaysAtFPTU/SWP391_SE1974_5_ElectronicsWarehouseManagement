@@ -21,10 +21,10 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
             _managerService = managerService;
             _logger = logger;
         }
-        [HttpGet("get-item/{itemId:int}")]
-        public async Task<IActionResult> GetItem([FromRoute]int itemId, [FromQuery] bool fullInfo)
+        [HttpGet("get-item/{componentId:int}")]
+        public async Task<IActionResult> GetItem([FromRoute]int componentId, [FromQuery] bool fullInfo)
         {
-            var result = await _managerService.GetItemAsync(itemId, fullInfo);
+            var result = await _managerService.GetComponentAsync(componentId, fullInfo);
 
             if (result.Success)
             {
@@ -36,7 +36,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
         [HttpGet("get-items")]
         public async Task<IActionResult> GetItemList([FromQuery] PagingRequest request)
         {
-            var result = await _managerService.GetItemListAsync(request);
+            var result = await _managerService.GetComponentListAsync(request);
 
             if (result.Success)
             {
@@ -69,24 +69,24 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
             return BadRequest(result);
         }
 
-        [HttpPost("transfer-requests/{transferId:int}/decisions")]
-        public async Task<IActionResult> PostTransferReq([FromRoute] int transferId, [FromBody] TransferDecisionRequest request)
-        {
-            //int? approverId = GetCurrentUserId();
-            //_logger.LogInformation("CurrentUserId (Session): {userId}", approverId);
-            //_logger.LogInformation("Authenticated: {auth}", User.Identity?.IsAuthenticated);
-            //_logger.LogInformation("Role: {role}", User.FindFirst(ClaimTypes.Role)?.Value);
-            //_logger.LogInformation("ModelState valid: {valid}", ModelState.IsValid);
-            //_logger.LogInformation("TransferId: {id}", transferId);
-            //_logger.LogInformation("Request null: {nullCheck}", request == null);
-            //_logger.LogInformation("Decision: {decision}", request?.Decision);
-            var result = await _managerService.PostTransferDecisionAsync(transferId, request.Decision);
-            if (result.Success)
-            {
-                return Ok(result);
-            }
-            return BadRequest(result);
-        }
+        //[HttpPost("transfer-requests/{transferId:int}/decisions")]
+        //public async Task<IActionResult> PostTransferReq([FromRoute] int transferId, [FromBody] TransferDecisionRequest request)
+        //{
+        //    //int? approverId = GetCurrentUserId();
+        //    //_logger.LogInformation("CurrentUserId (Session): {userId}", approverId);
+        //    //_logger.LogInformation("Authenticated: {auth}", User.Identity?.IsAuthenticated);
+        //    //_logger.LogInformation("Role: {role}", User.FindFirst(ClaimTypes.Role)?.Value);
+        //    //_logger.LogInformation("ModelState valid: {valid}", ModelState.IsValid);
+        //    //_logger.LogInformation("TransferId: {id}", transferId);
+        //    //_logger.LogInformation("Request null: {nullCheck}", request == null);
+        //    //_logger.LogInformation("Decision: {decision}", request?.Decision);
+        //    var result = await _managerService.PostTransferDecisionAsync(transferId, request.Decision);
+        //    if (result.Success)
+        //    {
+        //        return Ok(result);
+        //    }
+        //    return BadRequest(result);
+        //}
 
 
 
