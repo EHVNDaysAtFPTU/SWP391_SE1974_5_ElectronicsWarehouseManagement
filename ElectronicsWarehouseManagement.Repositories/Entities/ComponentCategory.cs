@@ -5,11 +5,11 @@ using System.Collections.Generic;
 
 namespace ElectronicsWarehouseManagement.Repositories.Entities;
 
-public partial class Category
+public partial class ComponentCategory
 {
     public int CategoryId { get; set; }
 
     public string CategoryName { get; set; }
 
-    public virtual ICollection<ItemDefinition> ItemDefs { get; set; } = new List<ItemDefinition>();
+    public virtual ICollection<Component> Components { get; set; } = new List<Component>();
 }

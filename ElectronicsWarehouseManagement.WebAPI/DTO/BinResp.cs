@@ -22,8 +22,8 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
         public WarehouseResp? Warehouse { get; set; }
 
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        [JsonPropertyName("items")]
-        public List<ItemResp>? Items { get; set; }
+        [JsonPropertyName("components")]
+        public List<ComponentBinResp>? Components { get; set; }
 
         public BinResp(Bin bin, bool fullInfo) 
         {
@@ -33,14 +33,8 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
             WarehouseId = bin.WarehouseId;
             if (fullInfo)
             {
-
-                Warehouse = bin.Warehouse == null
-                    ? null
-                    : new WarehouseResp(bin.Warehouse, false);
-
-                Items = bin.Items?
-                    .Select(i => new ItemResp(i, false))
-                    .ToList();
+                Warehouse = new WarehouseResp(bin.Warehouse, true);
+                Components = bin.ComponentBins.Select(i => new ComponentBinResp(i, true)).ToList();
             }
         }
     }

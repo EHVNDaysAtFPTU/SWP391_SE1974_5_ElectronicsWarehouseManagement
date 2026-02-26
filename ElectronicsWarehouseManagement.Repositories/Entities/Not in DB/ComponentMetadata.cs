@@ -13,11 +13,11 @@ namespace ElectronicsWarehouseManagement.Repositories.Entities
         [JsonPropertyName("image_url")]
         public string ImageUrl { get; set; } = "";
 
-        [JsonPropertyName("manufacter")]
-        public string Manufacter { get; set; } = "";
+        [JsonPropertyName("manufacturer")]
+        public string Manufacturer { get; set; } = "";
 
-        [JsonPropertyName("manufacting_date")]
-        public DateTime ManufactingDate { get; set; }
+        [JsonPropertyName("manufacturing_date")]
+        public DateTime ManufacturingDate { get; set; }
 
         [JsonPropertyName("datasheet_url")]
         public string DatasheetUrl { get; set; } = "";

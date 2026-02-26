@@ -31,64 +31,64 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
             return BadRequest(result);
         }
 
-        [HttpGet("item-defs")]
-        public async Task<IActionResult> GetItemDefList()
+        [HttpGet("components")]
+        public async Task<IActionResult> GetComponents()
         {
-            var result = await _storekeeperService.GetItemDefListAsync();
+            var result = await _storekeeperService.GetComponentsAsync();
             if (result.Success)
                 return Ok(result);
             return BadRequest(result);
         }
 
-        [HttpGet("item-defs/{itemId:int}")]
-        public async Task<IActionResult> GetItemDefById([FromRoute] int itemId)
+        [HttpGet("components/{itemId:int}")]
+        public async Task<IActionResult> GetComponent([FromRoute] int itemId)
         {
-            var result = await _storekeeperService.GetItemDefByIdAsync(itemId);
+            var result = await _storekeeperService.GetComponentAsync(itemId);
             if (result.Success)
                 return Ok(result);
             return BadRequest(result);
         }
 
-        [HttpPost("create-item-def")]
-        public async Task<IActionResult> CreateItemDef([FromBody] CreateItemDefReq request)
+        [HttpPost("create-component")]
+        public async Task<IActionResult> CreateComponent([FromBody] CreateComponentReq request)
         {
-            var result = await _storekeeperService.CreateItemDefAsync(request);
+            var result = await _storekeeperService.CreateComponentAsync(request);
             if (result.Success)
                 return Ok(result);
             return BadRequest(result);
         }
 
-        [HttpGet("item-categories")]
-        public async Task<IActionResult> GetItemCategories()
+        [HttpGet("component-categories")]
+        public async Task<IActionResult> GetComponentCategories()
         {
-            var result = await _storekeeperService.GetItemCategoriesAsync();
+            var result = await _storekeeperService.GetComponentCategoriesAsync();
             if (result.Success)
                 return Ok(result);
             return BadRequest(result);
         }
 
-        [HttpPost("create-item-category")]
-        public async Task<IActionResult> CreateItemCategory([FromBody] string categoryName)
+        [HttpPost("create-component-category")]
+        public async Task<IActionResult> CreateComponentCategory([FromBody] string categoryName)
         {
-            var result = await _storekeeperService.CreateItemCategoryAsync(categoryName);
+            var result = await _storekeeperService.CreateComponentCategoryAsync(categoryName);
             if (result.Success)
                 return Ok(result);
             return BadRequest(result);
         }
 
-        [HttpGet("items")]
-        public async Task<IActionResult> GetItemList()
+        [HttpGet("component-bins")]
+        public async Task<IActionResult> GetComponentInBins()
         {
-            var result = await _storekeeperService.GetItemListAsync();
+            var result = await _storekeeperService.GetComponentsInBinsAsync();
             if (result.Success)
                 return Ok(result);
             return BadRequest(result);
         }
 
-        [HttpGet("items/{itemId:int}")]
-        public async Task<IActionResult> GetItemById([FromRoute] int itemId)
+        [HttpGet("component-bins/{itemId:int}")]
+        public async Task<IActionResult> GetComponentInBin([FromRoute] int itemId)
         {
-            var result = await _storekeeperService.GetItemByIdAsync(itemId);
+            var result = await _storekeeperService.GetComponentInBinAsync(itemId);
             if (result.Success)
                 return Ok(result);
             return BadRequest(result);
@@ -115,7 +115,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
         [HttpGet("warehouses/{warehouseId:int}")]
         public async Task<IActionResult> GetWarehouseById([FromRoute] int warehouseId)
         {
-            var result = await _storekeeperService.GetWarehouseByIdAsync(warehouseId);
+            var result = await _storekeeperService.GetWarehouseAsync(warehouseId);
             if (result.Success)
                 return Ok(result);
             return BadRequest(result);
@@ -131,42 +131,69 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
         }
 
         [HttpGet("bins")]
-        public async Task<IActionResult> GetBinList()
+        public async Task<IActionResult> GetBins()
         {
-            var result = await _storekeeperService.GetBinListAsync();
+            var result = await _storekeeperService.GetBinsAsync();
             if (result.Success)
                 return Ok(result);
             return BadRequest(result);
         }
 
         [HttpGet("bins/{binId:int}")]
-        public async Task<IActionResult> GetBinById([FromRoute] int binId)
+        public async Task<IActionResult> GetBin([FromRoute] int binId)
         {
-            var result = await _storekeeperService.GetBinByIdAsync(binId);
+            var result = await _storekeeperService.GetBinAsync(binId);
             if (result.Success)
                 return Ok(result);
             return BadRequest(result);
         }
 
         [HttpPost("create-inbound")]
-        public async Task<IActionResult> CreateInboundRequest([FromBody] CreateTransferReq request)
+        public async Task<IActionResult> CreateInboundRequest([FromBody] CreateTransferRequestReq request)
         {
             return await CreateTransferRequest(request, TransferType.Inbound);
         }
 
         [HttpPost("create-outbound")]
-        public async Task<IActionResult> CreateOutboundRequest([FromBody] CreateTransferReq request)
+        public async Task<IActionResult> CreateOutboundRequest([FromBody] CreateTransferRequestReq request)
         {
             return await CreateTransferRequest(request, TransferType.Outbound);
         }
 
         [HttpPost("create-transfer")]
-        public async Task<IActionResult> CreateInternalTransferRequest([FromBody] CreateTransferReq request)
+        public async Task<IActionResult> CreateInternalTransferRequest([FromBody] CreateTransferRequestReq request)
         {
             return await CreateTransferRequest(request, TransferType.InternalTransfer);
         }
+        
+        [HttpPost("confirm-transfer")]
+        public async Task<IActionResult> ConfirmTransferRequest([FromBody] ConfirmTransferRequestReq request)
+        {
+            var result = await _storekeeperService.ConfirmTransferRequestAsync(request, int.Parse(HttpContext.Session.GetString("UserId")!));
+            if (result.Success)
+                return Ok(result);
+            return BadRequest(result);
+        }
 
-        async Task<IActionResult> CreateTransferRequest(CreateTransferReq request, TransferType type)
+        [HttpGet("transfers")]
+        public async Task<IActionResult> GetTransferRequests()
+        {
+            var result = await _storekeeperService.GetTransferRequestListAsync();
+            if (result.Success)
+                return Ok(result);
+            return BadRequest(result);
+        }
+
+        [HttpGet("transfers/{transferId:int}")]
+        public async Task<IActionResult> GetTransferRequest([FromRoute] int transferId)
+        {
+            var result = await _storekeeperService.GetTransferRequestAsync(transferId);
+            if (result.Success)
+                return Ok(result);
+            return BadRequest(result);
+        }
+
+        async Task<IActionResult> CreateTransferRequest(CreateTransferRequestReq request, TransferType type)
         {
             var result = await _storekeeperService.CreateTransferRequestAsync(request, type, int.Parse(HttpContext.Session.GetString("UserId")!));
             if (result.Success)

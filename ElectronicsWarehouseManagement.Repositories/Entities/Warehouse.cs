@@ -18,8 +18,4 @@ public partial class Warehouse
     public string ImageUrl { get; set; }
 
     public virtual ICollection<Bin> Bins { get; set; } = new List<Bin>();
-
-    public virtual ICollection<TransferReq> TransferReqWarehouseFroms { get; set; } = new List<TransferReq>();
-
-    public virtual ICollection<TransferReq> TransferReqWarehouseTos { get; set; } = new List<TransferReq>();
 }

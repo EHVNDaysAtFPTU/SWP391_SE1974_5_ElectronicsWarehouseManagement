@@ -5,8 +5,10 @@ using System.Text;
 namespace ElectronicsWarehouseManagement.Repositories.Entities 
 { public enum TransferStatus 
     {
-        Pending = 0, 
-        Approved = 1, 
-        Rejected = 2,
-    } 
+        Unknown,
+        Pending,
+        ApprovedAndWaitForConfirm,
+        Rejected,
+        Confirmed,
+    }
 }

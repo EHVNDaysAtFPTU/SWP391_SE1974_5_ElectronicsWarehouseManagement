@@ -1,5 +1,6 @@
 ﻿using ElectronicsWarehouseManagement.Repositories.Entities;
 using ElectronicsWarehouseManagement.WebAPI.DTO;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using System.Diagnostics.CodeAnalysis;
 using System.Security.Cryptography;
@@ -10,10 +11,10 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
     public interface IAdminService
     {
         Task<ApiResult> CreateAccountAsync(CreateAccReq request);
-        Task<ApiResult> DeleteAccountAsync(int userId);
+        Task<ApiResult> DeleteAccountAsync(int userId, int currentUserId);
         Task<ApiResult<List<GetRolesResp>>> GetRolesAsync();
         Task<ApiResult<List<GetUsersResp>>> GetUsersAsync();
-        Task<ApiResult> SetRoleAsync(SetRoleReq request);
+        Task<ApiResult> SetRoleAsync(SetRoleReq request, int currentUserId);
         Task<ApiResult<GetUserResp>> GetUserAsync(int userId);
         Task<ApiResult<List<GetUsersResp>>> SearchUsersAsync(string query);
         Task<ApiResult> SetStatusAsync(SetStatusReq setStatusReq);
@@ -40,32 +41,34 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
                 if (existingUser.Email == request.Email)
                     return new ApiResult(ApiResultCode.InvalidRequest, "Email already exists.");
             }
-            var hash = SHA256.HashData(Encoding.UTF8.GetBytes(request.Password));
             var role = await _dbCtx.Roles.FirstOrDefaultAsync(r => r.RoleId == request.RoleId);
             if (role is null)
                 return new ApiResult(ApiResultCode.InvalidRequest, "Role does not exist.");
             if (role.RoleId == 1)
                 return new ApiResult(ApiResultCode.InvalidRequest, "Cannot assign Admin role.");
+            var passwordHasher = new PasswordHasher<User>();
             if (existingUser is null)
             {
                 var user = new User
                 {
                     Username = request.Username,
+                    DisplayName = request.DisplayName,
                     Email = request.Email,
-                    PasswordHash = Convert.ToBase64String(hash),
                     Status = UserStatus.Active,
                     Roles = [role]
                 };
                 _dbCtx.Users.Add(user);
+                existingUser = user;
             }
             else
             {
-                existingUser.PasswordHash = Convert.ToBase64String(hash);
+                existingUser.DisplayName = request.DisplayName;
                 existingUser.Email = request.Email;
                 existingUser.Status = UserStatus.Active;
                 existingUser.Roles.Clear();
                 existingUser.Roles.Add(role);
             }
+            existingUser.PasswordHash = passwordHasher.HashPassword(existingUser, request.Password);
             await _dbCtx.SaveChangesAsync();
             return new ApiResult();
         }
@@ -76,7 +79,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
         public async Task<ApiResult<List<GetUsersResp>>> GetUsersAsync() => new ApiResult<List<GetUsersResp>>((await _dbCtx.Users.AsNoTracking().Include(u => u.Roles).Where(u => u.StatusInt != (int)UserStatus.Deleted).ToListAsync()).Select(u => new GetUsersResp(u)).ToList());
 #pragma warning restore CS0618 // Type or member is obsolete
 
-        public async Task<ApiResult> SetRoleAsync(SetRoleReq request)
+        public async Task<ApiResult> SetRoleAsync(SetRoleReq request, int currentUserId)
         {
             if (!request.Verify(out string failedReason))
                 return new ApiResult(ApiResultCode.InvalidRequest, failedReason);
@@ -86,16 +89,20 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             var role = await _dbCtx.Roles.FirstOrDefaultAsync(r => r.RoleId == request.RoleId);
             if (role is null)
                 return new ApiResult(ApiResultCode.InvalidRequest, "Role does not exist.");
+            if (user.UserId == currentUserId && role.RoleId != 1)
+                return new ApiResult(ApiResultCode.InvalidRequest, "Cannot change own role.");
             user.Roles = [role];
             await _dbCtx.SaveChangesAsync();
             return new ApiResult();
         }
 
-        public async Task<ApiResult> DeleteAccountAsync(int userId)
+        public async Task<ApiResult> DeleteAccountAsync(int userId, int currentUserId)
         {
             var user = await _dbCtx.Users.FirstOrDefaultAsync(u => u.UserId == userId);
             if (user is null)
                 return new ApiResult(ApiResultCode.InvalidRequest, "User does not exist.");
+            if (user.UserId == currentUserId)
+                return new ApiResult(ApiResultCode.InvalidRequest, "Cannot delete own account.");
             user.Status = UserStatus.Deleted;
             await _dbCtx.SaveChangesAsync();
             return new ApiResult();
