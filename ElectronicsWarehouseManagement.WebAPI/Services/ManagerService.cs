@@ -13,7 +13,8 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
         Task<ApiResult<PagedResult<ItemResp>>> GetItemListAsync(PagingRequest request);
         Task<ApiResult<TransferReqDTO>> GetTransferAsync(int transferId);
         Task<ApiResult<PagedResult<TransferReqDTO>>> GetTransferReqListAsync(PagingRequest request);
-        Task<ApiResult> PostTransferDecisionAsync(int transferId,TransferDecisionType decision);
+        Task<ApiResult> PostTransferDecisionAsync(int transferId, TransferDecisionType decision);
+        //Task<ApiResult<PagedResult<ItemDefResp>>> GetFilteredItemListAsync(PagingRequest request, FilteredCodeReq fReq);
     }
 
     public class ManagerService : IManagerService
@@ -51,16 +52,16 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
                 .AsNoTracking().Include(i => i.ItemDef)
                 .Include(i => i.Bins)
                 .ThenInclude(b => b.Warehouse);
-                //.Include(i => i.Transfer)
-                //.Include(i => i.Inbound)
-                //.Include(i => i.Outbound);
+            //.Include(i => i.Transfer)
+            //.Include(i => i.Inbound)
+            //.Include(i => i.Outbound);
 
             int totalCount = await itemList.CountAsync();
 
             var data = await itemList
                 .Skip((request.PageNumber - 1) * request.PageSize)
                 .Take(request.PageSize)
-                .Select(i => new ItemResp(i,false))
+                .Select(i => new ItemResp(i, false))
                 .ToListAsync();
 
             var pagedResult = new PagedResult<ItemResp>
@@ -111,17 +112,19 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
 
 
 
-        private TransferStatus MapDecisionToStatus(TransferDecisionType decision) { 
-            return decision switch { 
-                TransferDecisionType.Approve => TransferStatus.Approved, 
+        private TransferStatus MapDecisionToStatus(TransferDecisionType decision)
+        {
+            return decision switch
+            {
+                TransferDecisionType.Approve => TransferStatus.Approved,
                 TransferDecisionType.Reject => TransferStatus.Rejected,
-            }; 
+            };
         }
         public async Task<ApiResult> PostTransferDecisionAsync(int transferId, TransferDecisionType decision)
         {
             var transferReq = await _dbCtx.TransferReqs.FirstOrDefaultAsync(i => i.TransferId == transferId);
 
-            if(transferReq == null)
+            if (transferReq == null)
             {
                 return new ApiResult(ApiResultCode.NotFound);
             }
@@ -142,6 +145,40 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
 
             return new ApiResult();
         }
+
+        //    public async Task<ApiResult<PagedResult<ItemResp>>> GetFilteredItemListAsync(PagingRequest request, FilteredCodeReq fReq)
+        //    {
+        //        if (fReq.filtered)
+        //        {
+        //            return new ApiResult<PagedResult<ItemResp>>(ApiResultCode.NotFound);
+        //        }
+        //        switch (fReq.filterCode)
+        //        {
+        //            case 1:
+        //                {
+        //                    var item = await _dbCtx.Items
+        //           .AsNoTracking()
+        //           .Include(i => i.ItemDef)
+        //           .Include(i => i.Bins)
+        //               .ThenInclude(b => b.Warehouse)
+        //               .Where(i => i.item)
+        //           .Select(i => new ItemResp(i))
+        //                }
+        //        }
+
+
+        //        switch (fReq.filterCode)
+        //        {
+
+        //        }
+
+
+        //    }
+        //    public int? CountAsync()
+        //    {
+
+        //    }
+        //}
 
     }
 

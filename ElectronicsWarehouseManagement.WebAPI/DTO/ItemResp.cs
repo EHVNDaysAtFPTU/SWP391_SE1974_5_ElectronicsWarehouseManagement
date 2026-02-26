@@ -53,7 +53,8 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
                 // TODO
                 //Transfers = ...
             }
+            
         }
-        public ItemResp() { }
+        public ItemResp(ItemResp item) { }
     }
 }
