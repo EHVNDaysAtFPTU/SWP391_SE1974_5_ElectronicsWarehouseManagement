@@ -6,9 +6,11 @@
     }
     public enum TransferDecisionType
     {
-        Approve = 1,
-        Reject = 2,
-        Pending = 0
+        Unknown,
+        Pending,
+        ApprovedAndWaitForConfirm,
+        Rejected,
+        Confirmed,
     }
 
 

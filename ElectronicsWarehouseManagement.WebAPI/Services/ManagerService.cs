@@ -2,6 +2,7 @@
 using ElectronicsWarehouseManagement.WebAPI.DTO;
 using Microsoft.EntityFrameworkCore;
 using System.Linq;
+using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -10,11 +11,13 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
     public interface IManagerService
     {
         Task<ApiResult<ComponentResp>> GetComponentAsync(int componentId, bool fullInfo);
-        Task<ApiResult<PagedResult<Component>>> GetComponentListAsync(PagingRequest request);
-        Task<ApiResult<TransferRequestResp>> GetTransferAsync(int transferId);
+        Task<ApiResult<PagedResult<ComponentResp>>> GetComponentListAsync(PagingRequest request);
+        Task<ApiResult<TransferRequestResp>> GetTransferAsync(int transferId, bool fullInfo);
         Task<ApiResult<PagedResult<TransferRequestResp>>> GetTransferReqListAsync(PagingRequest request);
-        //Task<ApiResult> PostTransferDecisionAsync(int transferId, TransferDecisionType decision);
+        Task<ApiResult> PostTransferDecisionAsync(int transferId, TransferDecisionType decision, int? approverId);
         ////Task<ApiResult<PagedResult<ItemDefResp>>> GetFilteredItemListAsync(PagingRequest request, FilteredCodeReq fReq);
+        Task<ApiResult<Bin>> GetBin(int binId, bool fullInfo);
+        Task<ApiResult<PagedResult<Bin>>> GetBinList(int warehouseId);
     }
 
     public class ManagerService : IManagerService
@@ -41,122 +44,130 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             return new ApiResult<ComponentResp>(component);
         }
 
-        public Task<ApiResult<PagedResult<Component>>> GetComponentListAsync(PagingRequest request)
+        public async Task<ApiResult<PagedResult<ComponentResp>>> GetComponentListAsync(PagingRequest request)
+        {
+            var query = _dbCtx.Components
+             .Include(i => i.Categories);
+
+            int totalCount = await query.CountAsync();
+
+            var data = await query
+                .Skip((request.PageNumber - 1) * request.PageSize)
+                .Take(request.PageSize)
+                .Select(i => new ComponentResp(i, false))
+                .ToListAsync();
+
+            var pagedResult = new PagedResult<ComponentResp>
+            {
+                data = data,
+                TotalCount = totalCount,
+                PageNumber = request.PageNumber,
+                PageSize = request.PageSize
+            };
+
+            return new ApiResult<PagedResult<ComponentResp>>(pagedResult);
+        }
+
+
+        public async Task<ApiResult<TransferRequestResp>> GetTransferAsync(int requestId, bool fullInfo)
+        {
+            var query = _dbCtx.TransferRequests.AsNoTracking();
+
+            if (fullInfo)
+            {
+                query = query
+                    .Include(t => t.Approver)
+                    .Include(t => t.Creator)
+                    .Include(t => t.BinFrom)
+                    .Include(t => t.BinTo)
+                    .Include(t => t.TransferRequestComponents)
+                        .ThenInclude(c => c.Component);
+            }
+
+            var transfer = await query
+                .Where(t => t.RequestId == requestId)
+                .Select(t => new TransferRequestResp(t, fullInfo))
+                .FirstOrDefaultAsync();
+
+            if (transfer == null)
+                return new ApiResult<TransferRequestResp>(ApiResultCode.NotFound, "Transfer request not found");
+
+            return new ApiResult<TransferRequestResp>(transfer);
+        }
+
+        public async Task<ApiResult<PagedResult<TransferRequestResp>>> GetTransferReqListAsync(PagingRequest request)
+        {
+            var query = _dbCtx.TransferRequests.AsNoTracking();
+            int totalCount = await query.CountAsync();
+            var data = await query
+                .Skip((request.PageNumber - 1) * request.PageSize)
+                .Take(request.PageSize)
+                .Select(t => new TransferRequestResp(t, false))
+                .ToListAsync();
+
+            var pagedResult = new PagedResult<TransferRequestResp>
+            {
+                data = data,
+                TotalCount = totalCount,
+                PageNumber = request.PageNumber,
+                PageSize = request.PageSize
+            };
+
+            return new ApiResult<PagedResult<TransferRequestResp>>(pagedResult);
+        }
+
+
+
+        private TransferStatus MapDecisionToStatus(TransferDecisionType decision)
+        {
+            return decision switch
+            {
+                TransferDecisionType.ApprovedAndWaitForConfirm  => TransferStatus.ApprovedAndWaitForConfirm,
+                TransferDecisionType.Rejected => TransferStatus.Rejected,
+            };
+        }
+        public async Task<ApiResult> PostTransferDecisionAsync(int transferId, TransferDecisionType decision, int? approverId)
+        {
+
+            var transferReq = await _dbCtx.TransferRequests.Include(i => i.Approver).FirstOrDefaultAsync(i => i.RequestId == transferId);
+
+            if (transferReq == null)
+            {
+                return new ApiResult(ApiResultCode.NotFound);
+            }
+            var approver = await _dbCtx.Users.FirstOrDefaultAsync(u => u.UserId == approverId); 
+            if (approver == null) 
+            { 
+                return new ApiResult(ApiResultCode.NotFound, "Approver not found"); 
+            } 
+            string approverUsername = approver.Username;
+            switch (decision)
+            {
+                case TransferDecisionType.ApprovedAndWaitForConfirm:
+                    transferReq.StatusInt = (int)MapDecisionToStatus(decision);
+                    transferReq.ApproverId = approverId;
+                    break;
+                case TransferDecisionType.Rejected:
+                    transferReq.StatusInt = (int)MapDecisionToStatus(decision);
+                    transferReq.ApproverId = approverId;
+                    break;
+                default:
+                    return new ApiResult(ApiResultCode.InvalidRequest);
+            }
+            await _dbCtx.SaveChangesAsync();
+
+            return new ApiResult();
+        }
+
+        public Task<ApiResult<Bin>> GetBin(int binId, bool fullInfo)
         {
             throw new NotImplementedException();
         }
 
-        public Task<ApiResult<TransferRequestResp>> GetTransferAsync(int transferId)
+        public Task<ApiResult<PagedResult<Bin>>> GetBinList(int warehouseId)
         {
             throw new NotImplementedException();
         }
-
-        public Task<ApiResult<PagedResult<TransferRequestResp>>> GetTransferReqListAsync(PagingRequest request)
-        {
-            throw new NotImplementedException();
-        }
-
-        
-
-        //public async Task<ApiResult<PagedResult<ItemResp>>> GetItemListAsync(PagingRequest request)
-        //{
-        //    var itemList = _dbCtx.Items
-        //        .AsNoTracking().Include(i => i.ItemDef)
-        //        .Include(i => i.Bins)
-        //        .ThenInclude(b => b.Warehouse);
-        //    //.Include(i => i.Transfer)
-        //    //.Include(i => i.Inbound)
-        //    //.Include(i => i.Outbound);
-
-        //    int totalCount = await itemList.CountAsync();
-
-        //    var data = await itemList
-        //        .Skip((request.PageNumber - 1) * request.PageSize)
-        //        .Take(request.PageSize)
-        //        .Select(i => new ItemResp(i, false))
-        //        .ToListAsync();
-
-        //    var pagedResult = new PagedResult<ItemResp>
-        //    {
-        //        data = data,
-        //        TotalCount = totalCount,
-        //        PageNumber = request.PageNumber,
-        //        PageSize = request.PageSize
-        //    };
-
-        //    return new ApiResult<PagedResult<ItemResp>>(pagedResult);
-        //}
-
-        //public async Task<ApiResult<TransferReqDTO>> GetTransferAsync(int transferId)
-        //{
-        //    var transfer = await _dbCtx.TransferReqs.AsNoTracking()
-        //        .Where(t => t.TransferId == transferId)
-        //        .Select(t => new TransferReqDTO(t))
-        //        .FirstOrDefaultAsync();
-
-        //    if (transfer == null)
-        //        return new ApiResult<TransferReqDTO>(ApiResultCode.NotFound, "Transfer request not found");
-
-        //    return new ApiResult<TransferReqDTO>(transfer);
-        //}
-
-        //public async Task<ApiResult<PagedResult<TransferReqDTO>>> GetTransferReqListAsync(PagingRequest request)
-        //{
-        //    var query = _dbCtx.TransferReqs.AsNoTracking();
-
-        //    int totalCount = await query.CountAsync();
-        //    var data = await query
-        //        .Skip((request.PageNumber - 1) * request.PageSize)
-        //        .Take(request.PageSize)
-        //        .Select(t => new TransferReqDTO(t))
-        //        .ToListAsync();
-
-        //    var pagedResult = new PagedResult<TransferReqDTO>
-        //    {
-        //        data = data,
-        //        TotalCount = totalCount,
-        //        PageNumber = request.PageNumber,
-        //        PageSize = request.PageSize
-        //    };
-
-        //    return new ApiResult<PagedResult<TransferReqDTO>>(pagedResult);
-        //}
-
-
-
-        //private TransferStatus MapDecisionToStatus(TransferDecisionType decision)
-        //{
-        //    return decision switch
-        //    {
-        //        TransferDecisionType.Approve => TransferStatus.Approved,
-        //        TransferDecisionType.Reject => TransferStatus.Rejected,
-        //    };
-        //}
-        //public async Task<ApiResult> PostTransferDecisionAsync(int transferId, TransferDecisionType decision)
-        //{
-        //    var transferReq = await _dbCtx.TransferReqs.FirstOrDefaultAsync(i => i.TransferId == transferId);
-
-        //    if (transferReq == null)
-        //    {
-        //        return new ApiResult(ApiResultCode.NotFound);
-        //    }
-        //    switch (decision)
-        //    {
-        //        case TransferDecisionType.Approve:
-        //            transferReq.StatusInt = (int)MapDecisionToStatus(decision);
-        //            transferReq.ApproverId = 2;
-        //            break;
-        //        case TransferDecisionType.Reject:
-        //            transferReq.StatusInt = (int)MapDecisionToStatus(decision);
-        //            transferReq.ApproverId = 2;
-        //            break;
-        //        default:
-        //            return new ApiResult(ApiResultCode.InvalidRequest);
-        //    }
-        //    await _dbCtx.SaveChangesAsync();
-
-        //    return new ApiResult();
-        //}
 
         //    public async Task<ApiResult<PagedResult<ItemResp>>> GetFilteredItemListAsync(PagingRequest request, FilteredCodeReq fReq)
         //    {
