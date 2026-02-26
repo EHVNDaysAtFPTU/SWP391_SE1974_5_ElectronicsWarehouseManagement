@@ -7,7 +7,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
     public interface IStorekeeperService
     {
         Task<ApiResult<string>> UploadImageAsync(IFormFile image);
-
+        Task<ApiResult<List<BinResp>>> GetBinsByWarehouseAsync(int warehouseId);
         Task<ApiResult<List<ComponentResp>>> GetComponentsAsync();
         Task<ApiResult<ComponentResp>> GetComponentAsync(int componentId);
         Task<ApiResult<ComponentResp>> CreateComponentAsync(CreateComponentReq request);
@@ -41,7 +41,20 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
         {
             _dbCtx = dbCtx;
         }
+        public async Task<ApiResult<List<BinResp>>> GetBinsByWarehouseAsync(int warehouseId)
+        {
+            if (!await _dbCtx.Warehouses.AnyAsync(w => w.WarehouseId == warehouseId))
+                return new ApiResult<List<BinResp>>(ApiResultCode.NotFound,
+                    $"Warehouse with ID '{warehouseId}' does not exist.");
 
+            var bins = await _dbCtx.Bins
+                .AsNoTracking()
+                .Where(b => b.WarehouseId == warehouseId)
+                .Select(b => new BinResp(b, false))
+                .ToListAsync();
+
+            return new ApiResult<List<BinResp>>(bins);
+        }
         public async Task<ApiResult<string>> UploadImageAsync(IFormFile image)
         {
             if (image is null || image.Length == 0)

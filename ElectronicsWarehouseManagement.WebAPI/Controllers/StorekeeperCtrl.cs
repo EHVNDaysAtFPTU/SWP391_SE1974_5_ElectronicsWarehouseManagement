@@ -14,7 +14,15 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
         readonly IStorekeeperService _storekeeperService;
 
         private readonly ILogger<StorekeeperCtrl> _logger;
+        [HttpGet("bins/by-warehouse/{warehouseId:int}")]
+        public async Task<IActionResult> GetBinsByWarehouse(int warehouseId)
+        {
+            var result = await _storekeeperService.GetBinsByWarehouseAsync(warehouseId);
+            if (result.Success)
+                return Ok(result);
 
+            return BadRequest(result);
+        }
         public StorekeeperCtrl(IStorekeeperService storekeeperService, ILogger<StorekeeperCtrl> logger)
         {
             _storekeeperService = storekeeperService;

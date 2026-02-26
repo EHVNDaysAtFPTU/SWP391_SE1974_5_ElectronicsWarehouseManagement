@@ -2,109 +2,119 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Đơn Nhập Kho</title>
+    <title>Phiếu Nhập Kho</title>
+
     <style>
         body {
-            margin: 0;
             font-family: Segoe UI;
-            background: #f1f5f9;
-        }
-
-        .wrapper {
-            padding: 40px;
+            background: #eef2f7;
+            padding: 30px;
         }
 
         .card {
             background: white;
             padding: 30px;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,.08);
+            border-radius: 14px;
+            box-shadow: 0 8px 25px rgba(0,0,0,.08);
         }
 
-        .top-bar {
+        .top {
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
 
-        .back-btn {
-            background: #64748b;
-            color: white;
-        }
-
-        .form-row {
-            display: grid;
-            grid-template-columns: 2fr 1fr;
-            gap: 15px;
-            margin: 20px 0;
-        }
-
-        input, select {
-            padding: 10px;
-            border-radius: 8px;
-            border: 1px solid #ccc;
+        h2 {
+            margin: 0
         }
 
         button {
-            padding: 10px 15px;
+            padding: 8px 16px;
             border: none;
             border-radius: 8px;
             cursor: pointer;
             font-weight: 600;
         }
 
-        .add-btn {
-            background: #2563eb;
+        .back {
+            background: #64748b;
             color: white;
         }
 
-        .submit-btn {
+        .add {
+            background: #2563eb;
+            color: white;
+            margin-top: 15px;
+        }
+
+        .save {
             background: #16a34a;
             color: white;
             margin-top: 20px;
         }
 
-        .remove-btn {
+        .remove {
             background: #ef4444;
             color: white;
+        }
+
+        input, select {
+            padding: 8px;
+            border-radius: 6px;
+            border: 1px solid #d1d5db;
+            width: 100%;
+        }
+
+        .row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
             margin-top: 20px;
+            background: white;
         }
 
         th, td {
-            padding: 10px;
-            border-bottom: 1px solid #e5e7eb;
+            border: 1px solid #e5e7eb;
+            padding: 8px;
             text-align: center;
         }
 
         th {
-            background: #f8fafc;
+            background: #f1f5f9;
+        }
+
+        .total {
+            text-align: right;
+            font-weight: bold;
+            margin-top: 10px;
+            font-size: 16px;
         }
 
         .modal {
             position: fixed;
             inset: 0;
-            background: rgba(0,0,0,.5);
+            background: rgba(0,0,0,.4);
             display: none;
             justify-content: center;
             align-items: center;
         }
 
-        .modal-content {
+        .modal-box {
             background: white;
             width: 600px;
             max-height: 500px;
             overflow: auto;
-            padding: 25px;
+            padding: 20px;
             border-radius: 12px;
         }
 
         .modal-item {
-            padding: 12px;
+            padding: 10px;
             border-bottom: 1px solid #eee;
             cursor: pointer;
         }
@@ -116,44 +126,60 @@
 </head>
 <body>
 
-    <div class="wrapper">
-        <div class="card">
+    <div class="card">
 
-            <div class="top-bar">
-                <h2>📥 Tạo Đơn Nhập Kho</h2>
-                <button class="back-btn"
-                        onclick="location.href='home.html'">
-                    ⬅ Back
-                </button>
-            </div>
-
-            <div class="form-row">
-                <input id="desc" placeholder="Mô tả đơn nhập">
-                <select id="warehouseTo"></select>
-            </div>
-
-            <button class="add-btn" onclick="openModal()">+ Thêm sản phẩm</button>
-
-            <table>
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Tên</th>
-                        <th>Số lượng</th>
-                        <th>X</th>
-                    </tr>
-                </thead>
-                <tbody id="bodyTable"></tbody>
-            </table>
-
-            <button class="submit-btn" onclick="submitInbound()">Lưu đơn nhập</button>
-
+        <div class="top">
+            <h2>📥 PHIẾU NHẬP KHO</h2>
+            <button class="back" onclick="location.href='home.html'">⬅ Back</button>
         </div>
+
+        <br>
+
+        <label>Mô tả:</label>
+        <input id="desc" placeholder="Nhập mô tả đơn">
+
+        <br><br>
+
+        <div class="row">
+            <div>
+                <label>Chọn Kho:</label>
+                <select id="warehouse" onchange="loadBinsByWarehouse()"></select>
+            </div>
+
+            <div>
+                <label>Chọn Bin nhập:</label>
+                <select id="binTo"></select>
+            </div>
+        </div>
+
+        <button class="add" onclick="openModal()">+ Thêm sản phẩm</button>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>STT</th>
+                    <th>Tên hàng</th>
+                    <th>Đơn vị</th>
+                    <th>Số lượng</th>
+                    <th>Đơn giá</th>
+                    <th>Thành tiền</th>
+                    <th>X</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+
+        <div class="total">
+            Tổng tiền: <span id="totalMoney">0</span>
+        </div>
+
+        <button class="save" onclick="submitInbound()">Lưu Phiếu</button>
+
     </div>
 
     <!-- MODAL -->
-    <div id="productModal" class="modal">
-        <div class="modal-content">
+    <div id="modal" class="modal">
+        <div class="modal-box">
             <h3>Danh sách sản phẩm</h3>
             <div id="productList"></div>
             <br>
@@ -163,90 +189,190 @@
 
     <script>
         const BASE = "https://localhost:7297/api/storekeeper";
-        let products = [];
+        let components = [];
+        let count = 0;
 
         /* LOAD WAREHOUSE */
         async function loadWarehouses() {
-            const res = await fetch(BASE + "/warehouses", { credentials: "include" });
-            const json = await res.json();
-            if (!json.success) return alert("Không load được kho");
 
-            const select = document.getElementById("warehouseTo");
+            const res = await fetch(BASE + "/warehouses", {
+                credentials: "include"
+            });
+
+            if (!res.ok) {
+                console.log(await res.text());
+                return alert("API warehouse lỗi");
+            }
+
+            const json = await res.json();
+            if (!json.success) return alert("Không load được warehouse");
+
+            const select = document.getElementById("warehouse");
+            select.innerHTML = "";
+
             json.data.forEach(w => {
-                select.innerHTML += `<option value="${w.id}">${w.name}</option>`;
+
+                const id = w.warehouseId ?? w.id;
+                const name = w.warehouseName ?? w.name ?? id;
+
+                select.innerHTML += `
+            <option value="${id}">
+                ${name}
+            </option>`;
+            });
+
+            loadBinsByWarehouse();
+        }
+
+        /* LOAD BIN THEO WAREHOUSE */
+        async function loadBinsByWarehouse() {
+
+            const warehouseId = document.getElementById("warehouse").value;
+
+            if (!warehouseId) return;
+
+            const res = await fetch(
+                BASE + "/bins/by-warehouse/" + warehouseId,
+                { credentials: "include" }
+            );
+
+            if (!res.ok) {
+                console.log(await res.text());
+                return alert("API bins lỗi");
+            }
+
+            const json = await res.json();
+            if (!json.success) return alert("Không load được bin");
+
+            const binSelect = document.getElementById("binTo");
+            binSelect.innerHTML = "";
+
+            json.data.forEach(b => {
+
+                const id = b.binId ?? b.id;
+                const code = b.locationInWarehouse ?? b.binCode ?? id;
+
+                binSelect.innerHTML += `
+            <option value="${id}">
+                ${code}
+            </option>`;
             });
         }
 
-        /* LOAD ITEM-DEFS */
-        async function loadProducts() {
-            const res = await fetch(BASE + "/item-defs", { credentials: "include" });
+        /* LOAD COMPONENT */
+        async function loadComponents() {
+            const res = await fetch(BASE + "/components", { credentials: "include" });
             const json = await res.json();
             if (!json.success) return alert("Không load được sản phẩm");
-            products = json.data;
+            components = json.data;
         }
 
         /* MODAL */
         function openModal() {
-            renderProductList();
-            document.getElementById("productModal").style.display = "flex";
+            renderList();
+            document.getElementById("modal").style.display = "flex";
         }
         function closeModal() {
-            document.getElementById("productModal").style.display = "none";
+            document.getElementById("modal").style.display = "none";
         }
 
-        function renderProductList() {
+        /* RENDER PRODUCT LIST */
+        function renderList() {
             const list = document.getElementById("productList");
             list.innerHTML = "";
-            products.forEach(p => {
+
+            components.forEach(c => {
+
+                const id = c.componentId ?? c.id;
+                const name = c.metadata?.name ?? "No name";
+                const unit = c.unit ?? "N/A";
+                const price = c.unitPrice ?? 0;
+
                 list.innerHTML += `
-            <div class="modal-item"
-            onclick="addItem(${p.id}, '${p.metadata.name.replace(/'/g, "")}')">
-            <b>${p.metadata.name}</b><br>
-            ${p.metadata.desc || ""}<br>
-            Giá: ${p.unit_price} / ${p.unit}
-            </div>`;
+        <div class="modal-item"
+            onclick="addItem(${id},
+                             '${name}',
+                             ${price},
+                             '${unit}')">
+
+            <b>${name}</b><br>
+            Đơn vị: ${unit}<br>
+            Giá: ${price}
+        </div>`;
             });
         }
 
-        /* ADD ITEM */
-        function addItem(id, name) {
-            let existed = false;
-            document.querySelectorAll("#bodyTable tr").forEach(r => {
-                if (parseInt(r.cells[0].innerText) === id) existed = true;
-            });
-            if (existed) return alert("Sản phẩm đã tồn tại!");
+        /* ADD ROW */
+        function addItem(id, name, price, unit) {
+            count++;
 
             const row = `
         <tr>
-            <td>${id}</td>
-            <td>${name}</td>
-            <td><input type="number" value="1" min="1"></td>
-            <td><button class="remove-btn" onclick="removeRow(this)">X</button></td>
+            <td>${count}</td>
+            <td data-id="${id}">${name}</td>
+            <td>${unit}</td>
+            <td><input type="number" value="1" min="1" onchange="calc()"></td>
+            <td><input type="number" value="${price}" onchange="calc()"></td>
+            <td class="money">${price}</td>
+            <td><button class="remove" onclick="removeRow(this)">X</button></td>
         </tr>`;
-            document.getElementById("bodyTable").insertAdjacentHTML("beforeend", row);
+
+            document.getElementById("tableBody")
+                .insertAdjacentHTML("beforeend", row);
+
             closeModal();
+            calc();
         }
-        function removeRow(btn) { btn.closest("tr").remove(); }
+
+        function removeRow(btn) {
+            btn.closest("tr").remove();
+            calc();
+        }
+
+        /* CALCULATE TOTAL */
+        function calc() {
+
+            let total = 0;
+
+            document.querySelectorAll("#tableBody tr").forEach(r => {
+
+                const qty = parseFloat(r.cells[3].querySelector("input").value) || 0;
+                const price = parseFloat(r.cells[4].querySelector("input").value) || 0;
+
+                const money = qty * price;
+
+                r.querySelector(".money").innerText = money;
+
+                total += money;
+            });
+
+            document.getElementById("totalMoney").innerText = total;
+        }
 
         /* SUBMIT */
         async function submitInbound() {
-            const rows = document.querySelectorAll("#bodyTable tr");
+
+            const rows = document.querySelectorAll("#tableBody tr");
             if (rows.length === 0) return alert("Chưa có sản phẩm");
 
-            const items = [];
+            const componentList = [];
+
             rows.forEach(r => {
-                items.push({
-                    def_id: parseInt(r.cells[0].innerText),
-                    quantity: parseInt(r.cells[2].querySelector("input").value)
+                componentList.push({
+                    component_id: parseInt(r.cells[1].dataset.id),
+                    quantity: parseInt(r.cells[3].querySelector("input").value),
+                    unit_price: parseFloat(r.cells[4].querySelector("input").value)
                 });
             });
 
             const payload = {
-                items: items,
                 desc: document.getElementById("desc").value,
-                warehouse_from_id: null,
-                warehouse_to_id: parseInt(document.getElementById("warehouseTo").value)
+                bin_from_id: null,
+                bin_to_id: parseInt(document.getElementById("binTo").value),
+                components: componentList
             };
+
+            console.log("SEND:", payload);
 
             const res = await fetch(BASE + "/create-inbound", {
                 method: "POST",
@@ -256,19 +382,18 @@
             });
 
             const json = await res.json();
+            console.log("RESPONSE:", json);
+
             if (!json.success) {
-                console.log(json);
-                return alert("Tạo đơn thất bại");
+                return alert("Tạo thất bại: " + json.msg);
             }
 
-            alert("Tạo đơn thành công!");
-            document.getElementById("desc").value = "";
-            document.getElementById("bodyTable").innerHTML = "";
-            location.reload;
+            alert("Tạo phiếu thành công!");
+            location.reload();
         }
-
+        /* INIT */
         loadWarehouses();
-        loadProducts();
+        loadComponents();
     </script>
 
 </body>
