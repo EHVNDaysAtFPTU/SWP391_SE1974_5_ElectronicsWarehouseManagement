@@ -1,27 +1,137 @@
-﻿<h2>📥 Danh Sách Đơn Nhập</h2>
-<button onclick="location.href='home.html'">⬅ Back</button>
-<table border="1" width="100%">
-    <thead>
-        <tr><th>ID</th><th>Mô tả</th><th>Ngày tạo</th><th>Kho nhận</th></tr>
-    </thead>
-    <tbody id="body"></tbody>
-</table>
+﻿<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Danh sách Phiếu Nhập</title>
 
-<script>
-    const BASE = "https://localhost:7297/api/storekeeper";
+    <style>
+        body {
+            font-family: Segoe UI;
+            background: #eef2f7;
+            padding: 30px
+        }
 
-    async function load() {
-        const res = await fetch(BASE + "/transfer-reqs/1", { credentials: "include" });
-        const json = await res.json();
-        json.data.forEach(r => {
-            body.innerHTML += `
+        .card {
+            background: white;
+            padding: 30px;
+            border-radius: 14px;
+            box-shadow: 0 8px 25px rgba(0,0,0,.08)
+        }
+
+        .top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center
+        }
+
+        h2 {
+            margin: 0
+        }
+
+        input {
+            padding: 8px;
+            border-radius: 6px;
+            border: 1px solid #d1d5db
+        }
+
+        button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600
+        }
+
+        .back {
+            background: #64748b;
+            color: white
+        }
+
+        .refresh {
+            background: #2563eb;
+            color: white
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px
+        }
+
+        th, td {
+            border: 1px solid #e5e7eb;
+            padding: 8px;
+            text-align: center
+        }
+
+        th {
+            background: #f1f5f9
+        }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <div class="top">
+            <h2>📥 DANH SÁCH PHIẾU NHẬP</h2>
+            <button class="back" onclick="location.href='home.html'">⬅ Back</button>
+        </div>
+
+        <br>
+
+        <input id="keyword" placeholder="Tìm mô tả..." oninput="loadData()">
+        <button class="refresh" onclick="loadData()">Reload</button>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Mô tả</th>
+                    <th>Ngày tạo</th>
+                    <th>Trạng thái</th>
+                    <th>Xem</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
+
+    <script>
+        const BASE = "https://localhost:7297/api/storekeeper";
+
+        async function loadData() {
+
+            let keyword = document.getElementById("keyword").value.toLowerCase();
+
+            let res = await fetch(BASE + "/transfer-requests", { credentials: "include" });
+            let json = await res.json();
+
+            if (!json.success) return alert("Load thất bại");
+
+            let tb = document.getElementById("tableBody");
+            tb.innerHTML = "";
+
+            json.data
+                .filter(o => o.type === 1)
+                .filter(o => !keyword || o.description?.toLowerCase().includes(keyword))
+                .forEach(o => {
+                    tb.innerHTML += `
 <tr>
-<td>${r.transferId}</td>
-<td>${r.description}</td>
-<td>${r.creationDate}</td>
-<td>${r.warehouseToId}</td>
+<td>${o.requestId}</td>
+<td>${o.description}</td>
+<td>${o.creationTime}</td>
+<td>${o.status}</td>
+<td>
+<a href="order-detail.html?id=${o.requestId}">
+Chi tiết
+</a>
+</td>
 </tr>`;
-        });
-    }
-    load();
-</script>
+                });
+        }
+
+        loadData();
+    </script>
+
+</body>
+</html>
