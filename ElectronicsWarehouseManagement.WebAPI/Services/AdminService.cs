@@ -8,7 +8,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
     public interface IAdminService
     {
         Task<ApiResult> CreateAccountAsync(CreateAccReq request);
-        Task<ApiResult> DeleteAccountAsync(int userId, int currentUserId);
+        Task<ApiResult> DeleteUserAsync(int userId, int currentUserId);
         Task<ApiResult<List<RoleResp>>> GetRolesAsync();
         Task<ApiResult<List<UserResp>>> GetUsersAsync();
         Task<ApiResult> SetRoleAsync(SetRoleReq request, int currentUserId);
@@ -93,7 +93,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             return new ApiResult();
         }
 
-        public async Task<ApiResult> DeleteAccountAsync(int userId, int currentUserId)
+        public async Task<ApiResult> DeleteUserAsync(int userId, int currentUserId)
         {
             var user = await _dbCtx.Users.FirstOrDefaultAsync(u => u.UserId == userId);
             if (user is null)
