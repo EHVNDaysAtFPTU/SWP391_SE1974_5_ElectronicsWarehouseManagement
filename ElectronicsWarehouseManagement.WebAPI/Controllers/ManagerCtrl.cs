@@ -33,7 +33,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
 
             return BadRequest(result);
         }
-        [HttpGet("get-items")]
+        [HttpGet("get-components")]
         public async Task<IActionResult> GetItemList([FromQuery] PagingRequest request)
         {
             var result = await _managerService.GetComponentListAsync(request);
@@ -99,9 +99,21 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
         }
 
         [HttpGet("get-bins/{warehouseId:int}")]
-        public async Task<IActionResult> GetBinList([FromRoute] int warehouseId)
+        public async Task<IActionResult> GetBinList([FromRoute] int warehouseId, [FromQuery] PagingRequest request, [FromQuery]bool fullInfo)
         {
-            var result = await _managerService.GetBinList(warehouseId);
+            var result = await _managerService.GetBinList(request,warehouseId, fullInfo);
+
+            if (result.Success)
+            {
+                return Ok(result);
+            }
+
+            return BadRequest(result);
+        }
+        [HttpGet("get-warehouses")]
+        public async Task<IActionResult> GetWarehouseList([FromQuery] PagingRequest request)
+        {
+            var result = await _managerService.GetWareHouseListAsync(request);
 
             if (result.Success)
             {

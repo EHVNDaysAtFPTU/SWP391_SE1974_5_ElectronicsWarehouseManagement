@@ -34,7 +34,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
             if (fullInfo)
             {
                 Component = new ComponentResp(item.Component, true);
-                Bin = new BinResp(item.Bin, true);
+                Bin = new BinResp(item.Bin, false);  //SET FALSE TRANH STACK OVERFLOW
             }
         }
     }

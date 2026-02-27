@@ -16,8 +16,9 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
         Task<ApiResult<PagedResult<TransferRequestResp>>> GetTransferReqListAsync(PagingRequest request);
         Task<ApiResult> PostTransferDecisionAsync(int transferId, TransferDecisionType decision, int? approverId);
         ////Task<ApiResult<PagedResult<ItemDefResp>>> GetFilteredItemListAsync(PagingRequest request, FilteredCodeReq fReq);
-        Task<ApiResult<Bin>> GetBin(int binId, bool fullInfo);
-        Task<ApiResult<PagedResult<Bin>>> GetBinList(int warehouseId);
+        Task<ApiResult<BinResp>> GetBin(int binId, bool fullInfo);
+        Task<ApiResult<PagedResult<BinResp>>> GetBinList(PagingRequest request, int warehouseId, bool fullInfo);
+        Task<ApiResult<PagedResult<WarehouseResp>>> GetWareHouseListAsync(PagingRequest request);
     }
 
     public class ManagerService : IManagerService
@@ -159,50 +160,65 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             return new ApiResult();
         }
 
-        public async Task<ApiResult<Bin>> GetBin(int binId, bool fullInfo)
+        public async Task<ApiResult<BinResp>> GetBin(int binId, bool fullInfo)
         {
-            var query = _dbCtx.Bins.AsNoTracking();
-
-            if (fullInfo)
-            {
-                query = query
-                    .Include(b => b.Warehouse)
-                    .Include(b => b.ComponentBins)
-                        .ThenInclude(cb => cb.Component);
-            }
-
-            var bin = await query
-                .Where(b => b.BinId == binId)
-                .FirstOrDefaultAsync();
+            var bin = await _dbCtx.Bins.AsNoTracking()
+                .Include(b => b.Warehouse)
+                .Include(b => b.ComponentBins)
+                    .ThenInclude(cb => cb.Component)
+                .FirstOrDefaultAsync(b => b.BinId == binId);
 
             if (bin == null)
-                return new ApiResult<Bin>(ApiResultCode.NotFound, "Bin not found");
+                return new ApiResult<BinResp>(ApiResultCode.NotFound, "Bin not found");
 
-            return new ApiResult<Bin>(bin);
+            return new ApiResult<BinResp>(new BinResp(bin, fullInfo));
         }
 
-        public async Task<ApiResult<PagedResult<Bin>>> GetBinList(int warehouseId)
+        public async Task<ApiResult<PagedResult<BinResp>>> GetBinList(PagingRequest request, int warehouseId, bool fullInfo)
         {
             var query = _dbCtx.Bins.AsNoTracking()
                 .Where(b => b.WarehouseId == warehouseId)
-                .Include(b => b.Warehouse);
+                .Include(b => b.Warehouse)
+                .Include(b => b.ComponentBins).ThenInclude(c => c.Component);
 
             int totalCount = await query.CountAsync();
 
             var data = await query
-                .Skip(0)
-                .Take(100)
+                .Skip((request.PageNumber - 1) * request.PageSize)
+                .Take(request.PageSize)
                 .ToListAsync();
 
-            var pagedResult = new PagedResult<Bin>
+            var binRespList = data.Select(b => new BinResp(b, fullInfo)).ToList();
+
+            var pagedResult = new PagedResult<BinResp>
             {
-                data = data,
+                data = binRespList,
                 TotalCount = totalCount,
-                PageNumber = 1,
-                PageSize = 100
+                PageNumber = request.PageNumber,
+                PageSize = request.PageSize
             };
 
-            return new ApiResult<PagedResult<Bin>>(pagedResult);
+            return new ApiResult<PagedResult<BinResp>>(pagedResult);
+        }
+
+        public async Task<ApiResult<PagedResult<WarehouseResp>>> GetWareHouseListAsync(PagingRequest request)
+        {
+            var query = _dbCtx.Warehouses.AsNoTracking();
+            var totalCount = await query.CountAsync();
+            var data = await query
+                .Skip((request.PageNumber - 1) * request.PageSize)
+                .Take(request.PageSize).ToListAsync();
+
+            var warehouseList = data.Select(i => new WarehouseResp(i, false)).ToList();
+            var pagedResult = new PagedResult<WarehouseResp>
+            {
+                data = warehouseList,
+                TotalCount = totalCount,
+                PageNumber = request.PageNumber,
+                PageSize = request.PageSize
+            };
+            return new ApiResult<PagedResult<WarehouseResp>>(pagedResult);
+
         }
 
         //    public async Task<ApiResult<PagedResult<ItemResp>>> GetFilteredItemListAsync(PagingRequest request, FilteredCodeReq fReq)
@@ -241,4 +257,4 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
 
     }
 
-}
+    }
