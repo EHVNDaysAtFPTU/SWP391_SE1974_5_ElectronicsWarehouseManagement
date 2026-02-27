@@ -28,9 +28,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
             Unit = component.Unit;
             UnitPrice = component.UnitPrice;
             if (fullInfo)
-            {
                 Categories = component.Categories.Select(cc => new ComponentCategoryResp(cc)).ToList();
-            }
         }
     }
 }
