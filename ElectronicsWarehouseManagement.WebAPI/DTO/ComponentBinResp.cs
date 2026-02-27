@@ -33,8 +33,8 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
             BinId = item.BinId;
             if (fullInfo)
             {
-                Component = new ComponentResp(item.Component, true);
-                Bin = new BinResp(item.Bin, false);  //SET FALSE TRANH STACK OVERFLOW
+                Component = new ComponentResp(item.Component, false);
+                Bin = new BinResp(item.Bin, false);
             }
         }
     }

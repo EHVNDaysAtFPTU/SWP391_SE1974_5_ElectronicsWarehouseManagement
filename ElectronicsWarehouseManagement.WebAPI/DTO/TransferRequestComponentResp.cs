@@ -22,11 +22,11 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
 
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         [JsonPropertyName("component")]
-        public Component? Component { get; set; }
+        public ComponentResp? Component { get; set; }
 
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         [JsonPropertyName("request")]
-        public TransferRequest? Request { get; set; }
+        public TransferRequestResp? Request { get; set; }
 
         public TransferRequestComponentResp(TransferRequestComponent trc, bool fullInfo)
         {
@@ -37,8 +37,8 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
             UnitPrice = trc.UnitPrice;
             if (fullInfo)
             {
-                Component = trc.Component;
-                Request = trc.Request;
+                Component = new ComponentResp(trc.Component, false);
+                Request = new TransferRequestResp(trc.Request, false);
             }
         }
     }

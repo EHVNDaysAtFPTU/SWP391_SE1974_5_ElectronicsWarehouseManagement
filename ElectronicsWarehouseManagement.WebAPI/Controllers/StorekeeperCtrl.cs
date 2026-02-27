@@ -193,6 +193,15 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
             return BadRequest(result);
         }
 
+        [HttpPatch("bin/{binId:int}/status")]
+        public async Task<IActionResult> UpdateBinStatus([FromRoute] int binId, [FromBody] int status)
+        {
+            var result = await _storekeeperService.UpdateBinStatusAsync(binId, (BinStatus)status);
+            if (result.Success)
+                return Ok(result);
+            return BadRequest(result);
+        }
+
         async Task<IActionResult> CreateTransferRequest(CreateTransferRequestReq request, TransferType type)
         {
             var result = await _storekeeperService.CreateTransferRequestAsync(request, type, int.Parse(HttpContext.Session.GetString("UserId")!));
