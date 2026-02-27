@@ -235,12 +235,12 @@
         async function load() {
             try {
                 let transferRes = await fetch(
-                    BASE + "/storekeeper/transfer-requests",
+                    BASE + "/storekeeper/transfers",
                     { credentials: "include" }
                 );
 
                 let itemRes = await fetch(
-                    BASE + "/storekeeper/items",
+                    BASE + "/storekeeper/components",
                     { credentials: "include" }
                 );
 

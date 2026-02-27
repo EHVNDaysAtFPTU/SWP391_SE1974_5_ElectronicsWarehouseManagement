@@ -24,10 +24,6 @@
             align-items: center
         }
 
-        h2 {
-            margin: 0
-        }
-
         button {
             padding: 8px 16px;
             border: none;
@@ -74,8 +70,7 @@
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 20px;
-            background: white
+            margin-top: 20px
         }
 
         th, td {
@@ -91,8 +86,7 @@
         .total {
             text-align: right;
             font-weight: bold;
-            margin-top: 10px;
-            font-size: 16px
+            margin-top: 10px
         }
 
         .modal {
@@ -124,6 +118,7 @@
             }
     </style>
 </head>
+
 <body>
 
     <div class="card">
@@ -136,14 +131,14 @@
         <br>
 
         <label>Mô tả:</label>
-        <input id="desc" placeholder="Nhập mô tả đơn">
+        <input id="desc">
 
         <br><br>
 
         <div class="row">
             <div>
-                <label>Chọn Kho:</label>
-                <select id="warehouse" onchange="loadBins()"></select>
+                <label>Kho xuất:</label>
+                <select id="warehouseFrom" onchange="loadBinsFrom()"></select>
             </div>
 
             <div>
@@ -154,9 +149,16 @@
 
         <br>
 
-        <div>
-            <label>Bin nhập:</label>
-            <select id="binTo"></select>
+        <div class="row">
+            <div>
+                <label>Kho nhập:</label>
+                <select id="warehouseTo" onchange="loadBinsTo()"></select>
+            </div>
+
+            <div>
+                <label>Bin nhập:</label>
+                <select id="binTo"></select>
+            </div>
         </div>
 
         <button class="add" onclick="openModal()">+ Thêm sản phẩm</button>
@@ -195,6 +197,7 @@
     </div>
 
     <script>
+
         const BASE = "https://localhost:7297/api/storekeeper";
         let components = [];
         let count = 0;
@@ -205,37 +208,58 @@
             const json = await res.json();
             if (!json.success) return alert("Không load được warehouse");
 
-            const select = document.getElementById("warehouse");
-            select.innerHTML = "";
-
-            json.data.forEach(w => {
-                select.innerHTML += `
-<option value="${w.warehouseId}">
-${w.warehouseName}
-</option>`;
-            });
-
-            loadBins();
-        }
-
-        /* LOAD BIN */
-        async function loadBins() {
-            const id = document.getElementById("warehouse").value;
-            if (!id) return;
-
-            const res = await fetch(BASE + "/bins/by-warehouse/" + id, { credentials: "include" });
-            const json = await res.json();
-            if (!json.success) return alert("Không load được bin");
-
-            const from = document.getElementById("binFrom");
-            const to = document.getElementById("binTo");
+            const from = document.getElementById("warehouseFrom");
+            const to = document.getElementById("warehouseTo");
 
             from.innerHTML = "";
             to.innerHTML = "";
 
+            json.data.forEach(w => {
+                const id = w.warehouseId ?? w.id;
+                const name = w.warehouseName ?? w.name ?? id;
+                from.innerHTML += `<option value="${id}">${name}</option>`;
+                to.innerHTML += `<option value="${id}">${name}</option>`;
+            });
+
+            loadBinsFrom();
+            loadBinsTo();
+        }
+
+        /* LOAD BIN FROM */
+        async function loadBinsFrom() {
+            const wid = document.getElementById("warehouseFrom").value;
+            if (!wid) return;
+
+            const res = await fetch(BASE + "/bins/by-warehouse/" + wid, { credentials: "include" });
+            const json = await res.json();
+            if (!json.success) return alert("Không load được bin");
+
+            const select = document.getElementById("binFrom");
+            select.innerHTML = "";
+
             json.data.forEach(b => {
-                from.innerHTML += `<option value="${b.binId}">${b.locationInWarehouse}</option>`;
-                to.innerHTML += `<option value="${b.binId}">${b.locationInWarehouse}</option>`;
+                const id = b.binId ?? b.id;
+                const code = b.locationInWarehouse ?? b.binCode ?? id;
+                select.innerHTML += `<option value="${id}">${code}</option>`;
+            });
+        }
+
+        /* LOAD BIN TO */
+        async function loadBinsTo() {
+            const wid = document.getElementById("warehouseTo").value;
+            if (!wid) return;
+
+            const res = await fetch(BASE + "/bins/by-warehouse/" + wid, { credentials: "include" });
+            const json = await res.json();
+            if (!json.success) return alert("Không load được bin");
+
+            const select = document.getElementById("binTo");
+            select.innerHTML = "";
+
+            json.data.forEach(b => {
+                const id = b.binId ?? b.id;
+                const code = b.locationInWarehouse ?? b.binCode ?? id;
+                select.innerHTML += `<option value="${id}">${code}</option>`;
             });
         }
 
@@ -248,29 +272,24 @@ ${w.warehouseName}
         }
 
         /* MODAL */
-        function openModal() {
-            renderList();
-            document.getElementById("modal").style.display = "flex";
-        }
-        function closeModal() {
-            document.getElementById("modal").style.display = "none";
-        }
+        function openModal() { renderList(); document.getElementById("modal").style.display = "flex"; }
+        function closeModal() { document.getElementById("modal").style.display = "none"; }
 
         /* RENDER PRODUCT */
         function renderList() {
             const list = document.getElementById("productList");
             list.innerHTML = "";
-
             components.forEach(c => {
+                const id = c.componentId ?? c.id;
+                const name = c.name ?? c.metadata?.name ?? "No name";
+                const unit = c.unit ?? "N/A";
+                const price = c.unitPrice ?? 0;
                 list.innerHTML += `
 <div class="modal-item"
-onclick="addItem(${c.componentId},
-'${c.metadata?.name}',
-${c.unitPrice},
-'${c.unit}')">
-<b>${c.metadata?.name}</b><br>
-Đơn vị: ${c.unit}<br>
-Giá: ${c.unitPrice}
+onclick="addItem(${id},'${name}',${price},'${unit}')">
+<b>${name}</b><br>
+Đơn vị: ${unit}<br>
+Giá: ${price}
 </div>`;
             });
         }
@@ -278,7 +297,6 @@ Giá: ${c.unitPrice}
         /* ADD ROW */
         function addItem(id, name, price, unit) {
             count++;
-
             const row = `
 <tr>
 <td>${count}</td>
@@ -289,18 +307,12 @@ Giá: ${c.unitPrice}
 <td class="money">${price}</td>
 <td><button class="remove" onclick="removeRow(this)">X</button></td>
 </tr>`;
-
-            document.getElementById("tableBody")
-                .insertAdjacentHTML("beforeend", row);
-
+            document.getElementById("tableBody").insertAdjacentHTML("beforeend", row);
             closeModal();
             calc();
         }
 
-        function removeRow(btn) {
-            btn.closest("tr").remove();
-            calc();
-        }
+        function removeRow(btn) { btn.closest("tr").remove(); calc(); }
 
         /* CALC */
         function calc() {
@@ -325,24 +337,22 @@ Giá: ${c.unitPrice}
                 return alert("Bin xuất và bin nhập không được giống nhau");
 
             const rows = document.querySelectorAll("#tableBody tr");
-            if (rows.length === 0)
-                return alert("Chưa có sản phẩm");
-
-            const list = [];
-            rows.forEach(r => {
-                list.push({
-                    component_id: parseInt(r.cells[1].dataset.id),
-                    quantity: parseInt(r.cells[3].querySelector("input").value),
-                    unit_price: parseFloat(r.cells[4].querySelector("input").value)
-                });
-            });
+            if (rows.length === 0) return alert("Chưa có sản phẩm");
 
             const payload = {
                 desc: document.getElementById("desc").value,
                 bin_from_id: binFrom,
                 bin_to_id: binTo,
-                components: list
+                components: []
             };
+
+            rows.forEach(r => {
+                payload.components.push({
+                    component_id: parseInt(r.cells[1].dataset.id),
+                    quantity: parseInt(r.cells[3].querySelector("input").value),
+                    unit_price: parseFloat(r.cells[4].querySelector("input").value)
+                });
+            });
 
             const res = await fetch(BASE + "/create-transfer", {
                 method: "POST",
@@ -363,6 +373,7 @@ Giá: ${c.unitPrice}
         /* INIT */
         loadWarehouses();
         loadComponents();
+
     </script>
 
 </body>

@@ -222,13 +222,34 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
 
         public async Task<ApiResult<List<TransferRequestResp>>> GetTransferRequestListAsync()
         {
-            var transferReqs = _dbCtx.TransferRequests.AsNoTracking().Select(tr => new TransferRequestResp(tr, false)).ToList();
+            var transferReqs = await _dbCtx.TransferRequests
+                .Include(tr => tr.Creator)
+                .Include(tr => tr.BinTo)
+                    .ThenInclude(b => b.Warehouse)
+                .Include(tr => tr.TransferRequestComponents)
+                    .ThenInclude(c => c.Component)
+                .AsNoTracking()
+                .Select(tr => new TransferRequestResp(tr, true))
+                .ToListAsync();
+
             return new ApiResult<List<TransferRequestResp>>(transferReqs);
         }
 
         public async Task<ApiResult<TransferRequestResp>> GetTransferRequestAsync(int requestId)
         {
-            return new ApiResult<TransferRequestResp>(await _dbCtx.TransferRequests.AsNoTracking().Where(tr => tr.RequestId == requestId).Select(tr => new TransferRequestResp(tr, true)).FirstOrDefaultAsync());
+            var transfer = await _dbCtx.TransferRequests
+                .Include(tr => tr.Creator)
+                .Include(tr => tr.BinTo)
+                    .ThenInclude(b => b.Warehouse)
+                .Include(tr => tr.TransferRequestComponents)
+                    .ThenInclude(c => c.Component)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(tr => tr.RequestId == requestId);
+
+            if (transfer is null)
+                return new ApiResult<TransferRequestResp>(ApiResultCode.NotFound);
+
+            return new ApiResult<TransferRequestResp>(new TransferRequestResp(transfer, true));
         }
 
         public async Task<ApiResult<TransferRequestResp>> CreateTransferRequestAsync(CreateTransferRequestReq request, TransferType type, int creatorId)

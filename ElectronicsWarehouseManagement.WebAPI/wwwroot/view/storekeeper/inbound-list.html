@@ -1,137 +1,286 @@
 ﻿<!DOCTYPE html>
-<html lang="vi">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Danh sách Phiếu Nhập</title>
+    <title>Inbound Orders - Storekeeper</title>
 
     <style>
         body {
-            font-family: Segoe UI;
-            background: #eef2f7;
-            padding: 30px
+            font-family: Arial;
+            background: #eefaf2;
+            padding: 40px;
         }
 
-        .card {
-            background: white;
-            padding: 30px;
-            border-radius: 14px;
-            box-shadow: 0 8px 25px rgba(0,0,0,.08)
-        }
-
-        .top {
+        .top-bar {
             display: flex;
             justify-content: space-between;
-            align-items: center
-        }
-
-        h2 {
-            margin: 0
-        }
-
-        input {
-            padding: 8px;
-            border-radius: 6px;
-            border: 1px solid #d1d5db
+            margin-bottom: 20px;
         }
 
         button {
-            padding: 8px 16px;
+            padding: 6px 12px;
             border: none;
-            border-radius: 8px;
             cursor: pointer;
-            font-weight: 600
+            border-radius: 4px;
         }
 
-        .back {
-            background: #64748b;
-            color: white
+        .home-btn {
+            background: #6c757d;
+            color: white;
         }
 
-        .refresh {
-            background: #2563eb;
-            color: white
+        .confirm-btn {
+            background: #27ae60;
+            color: white;
+        }
+
+        .detail-btn {
+            background: #3498db;
+            color: white;
+        }
+
+        .disabled {
+            background: #ccc;
+            cursor: not-allowed;
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 20px
+            background: white;
         }
 
         th, td {
-            border: 1px solid #e5e7eb;
-            padding: 8px;
-            text-align: center
+            padding: 10px;
+            border: 1px solid #ddd;
+            text-align: center;
         }
 
         th {
-            background: #f1f5f9
+            background: #2ecc71;
+            color: white;
+        }
+
+        .status-complete {
+            color: green;
+            font-weight: bold;
+        }
+
+        .status-pending {
+            color: orange;
+            font-weight: bold;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background: white;
+            width: 800px;
+            padding: 20px;
+            border-radius: 8px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .close-btn {
+            float: right;
+            cursor: pointer;
+            color: red;
+            font-weight: bold;
         }
     </style>
 </head>
+
 <body>
 
-    <div class="card">
-        <div class="top">
-            <h2>📥 DANH SÁCH PHIẾU NHẬP</h2>
-            <button class="back" onclick="location.href='home.html'">⬅ Back</button>
+    <div class="top-bar">
+        <h2>Inbound Orders</h2>
+        <button class="home-btn" onclick="goHome()">⬅ Back to Home</button>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Order Code</th>
+                <th>Date</th>
+                <th>Warehouse</th>
+                <th>Bin</th>
+                <th>Total Items</th>
+                <th>Status</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody id="orderTable"></tbody>
+    </table>
+
+    <!-- DETAIL MODAL -->
+    <div class="modal" id="detailModal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeModal()">X</span>
+            <h3>Order Detail</h3>
+            <div id="detailContent"></div>
         </div>
-
-        <br>
-
-        <input id="keyword" placeholder="Tìm mô tả..." oninput="loadData()">
-        <button class="refresh" onclick="loadData()">Reload</button>
-
-        <table>
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Mô tả</th>
-                    <th>Ngày tạo</th>
-                    <th>Trạng thái</th>
-                    <th>Xem</th>
-                </tr>
-            </thead>
-            <tbody id="tableBody"></tbody>
-        </table>
     </div>
 
     <script>
-        const BASE = "https://localhost:7297/api/storekeeper";
 
-        async function loadData() {
+        const BASE = "https://localhost:7297/api";
 
-            let keyword = document.getElementById("keyword").value.toLowerCase();
-
-            let res = await fetch(BASE + "/transfer-requests", { credentials: "include" });
-            let json = await res.json();
-
-            if (!json.success) return alert("Load thất bại");
-
-            let tb = document.getElementById("tableBody");
-            tb.innerHTML = "";
-
-            json.data
-                .filter(o => o.type === 1)
-                .filter(o => !keyword || o.description?.toLowerCase().includes(keyword))
-                .forEach(o => {
-                    tb.innerHTML += `
-<tr>
-<td>${o.requestId}</td>
-<td>${o.description}</td>
-<td>${o.creationTime}</td>
-<td>${o.status}</td>
-<td>
-<a href="order-detail.html?id=${o.requestId}">
-Chi tiết
-</a>
-</td>
-</tr>`;
-                });
+        function goHome() {
+            window.location = "home.html";
         }
 
-        loadData();
-    </script>
+        function getStatusText(status) {
+            switch (status) {
+                case 0: return "Pending";
+                case 1: return "Approved";
+                case 2: return "Approved - Waiting Confirm";
+                case 3: return "Completed";
+                default: return "Unknown";
+            }
+        }
 
+        async function load() {
+
+            let res = await fetch(BASE + "/storekeeper/transfers", { credentials: "include" });
+            let result = await res.json();
+
+            let inboundList = result.data.filter(x => x.type === 1);
+
+            let html = "";
+
+            inboundList.forEach(o => {
+
+                let statusText = getStatusText(o.status);
+
+                let statusClass =
+                    statusText === "Completed"
+                        ? "status-complete"
+                        : "status-pending";
+
+                let warehouse = o.bin_to?.warehouse?.warehouseName ?? "-";
+                let bin = o.bin_to?.locationInWarehouse ?? "-";
+
+                let totalItems = 0;
+                if (o.components)
+                    totalItems = o.components.reduce((s, c) => s + c.quantity, 0);
+
+                let action = `
+<button class="detail-btn" onclick="viewDetail(${o.id})">Detail</button>
+`;
+
+                if (o.status === 2) {
+                    action += `<button class="confirm-btn" onclick="confirmOrder(${o.id})">Confirm</button>`;
+                }
+
+                html += `
+<tr>
+<td>${o.description}</td>
+<td>${formatDate(o.creation_date)}</td>
+<td>${warehouse}</td>
+<td>${bin}</td>
+<td>${totalItems}</td>
+<td class="${statusClass}">${statusText}</td>
+<td>${action}</td>
+</tr>`;
+            });
+
+            document.getElementById("orderTable").innerHTML = html;
+        }
+
+        async function viewDetail(id) {
+
+            let res = await fetch(BASE + "/storekeeper/transfers/" + id, { credentials: "include" });
+            let result = await res.json();
+            let o = result.data;
+
+            let html = `
+<p><b>Order Code:</b> ${o.description}</p>
+<p><b>Creator:</b> ${o.creator?.fullName ?? o.creator?.username ?? "-"}</p>
+<p><b>Warehouse:</b> ${o.bin_to?.warehouse?.warehouseName ?? "-"}</p>
+<p><b>Bin:</b> ${o.bin_to?.locationInWarehouse ?? "-"}</p>
+<p><b>Creation Date:</b> ${formatDate(o.creation_date)}</p>
+<hr>
+<h4>Products:</h4>
+<table>
+<tr>
+<th>Name</th>
+<th>Quantity</th>
+<th>Unit Price</th>
+<th>Total</th>
+</tr>
+`;
+
+            o.components.forEach(c => {
+                let total = c.quantity * c.unit_price;
+                html += `
+<tr>
+<td>${c.name ?? "Component #" + c.component_id}</td>
+<td>${c.quantity}</td>
+<td>${c.unit_price}</td>
+<td>${total.toFixed(2)}</td>
+</tr>`;
+            });
+
+            html += "</table>";
+
+            document.getElementById("detailContent").innerHTML = html;
+            document.getElementById("detailModal").style.display = "flex";
+        }
+
+        function closeModal() {
+            document.getElementById("detailModal").style.display = "none";
+        }
+
+        async function confirmOrder(id) {
+
+            let detailRes = await fetch(BASE + "/storekeeper/transfers/" + id, { credentials: "include" });
+            let detail = await detailRes.json();
+            let transfer = detail.data;
+
+            let confirmPayload = {
+                request_id: transfer.id,
+                bins: [{
+                    bin_id: transfer.bin_to_id,
+                    components: transfer.components.map(c => ({
+                        component_id: c.component_id,
+                        quantity: c.quantity
+                    }))
+                }]
+            };
+
+            let res = await fetch(BASE + "/storekeeper/confirm-transfer", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify(confirmPayload)
+            });
+
+            let data = await res.json();
+
+            if (data.success) {
+                alert("Confirmed successfully!");
+                load();
+            } else {
+                alert(data.message);
+            }
+        }
+
+        function formatDate(dateStr) {
+            let d = new Date(dateStr);
+            return d.toLocaleString();
+        }
+
+        load();
+
+    </script>
 </body>
 </html>

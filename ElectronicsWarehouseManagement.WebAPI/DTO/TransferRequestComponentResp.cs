@@ -5,6 +5,8 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
 {
     public class TransferRequestComponentResp
     {
+        [JsonPropertyName("name")]
+        public string? Name { get; set; }
         [JsonPropertyName("id")]
         public int ID { get; set; }
 
@@ -35,10 +37,14 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
             ComponentId = trc.ComponentId;
             Quantity = trc.Quantity;
             UnitPrice = trc.UnitPrice;
+
+            // 🔥 thêm dòng này
+            Name = trc.Component?.Metadata?.Name;
+
             if (fullInfo)
             {
-                Component = trc.Component;
-                Request = trc.Request;
+                Component = null;   // 🚫 không trả nguyên entity nữa
+                Request = null;
             }
         }
     }
