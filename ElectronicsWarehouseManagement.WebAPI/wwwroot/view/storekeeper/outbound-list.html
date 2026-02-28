@@ -11,10 +11,6 @@
             padding: 40px;
         }
 
-        h2 {
-            margin-bottom: 20px;
-        }
-
         .top-bar {
             display: flex;
             justify-content: space-between;
@@ -33,14 +29,14 @@
             color: white;
         }
 
-        .confirm-btn {
-            background: #c0392b;
+        .detail-btn {
+            background: #3498db;
             color: white;
         }
 
-        .disabled {
-            background: #ccc;
-            cursor: not-allowed;
+        .confirm-btn {
+            background: #e74c3c;
+            color: white;
         }
 
         table {
@@ -70,9 +66,22 @@
             font-weight: bold;
         }
 
-        .pagination {
-            margin-top: 20px;
-            text-align: center;
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background: white;
+            width: 800px;
+            padding: 20px;
+            border-radius: 8px;
+            max-height: 90vh;
+            overflow-y: auto;
         }
     </style>
 </head>
@@ -90,65 +99,170 @@
                 <th>Order Code</th>
                 <th>Date</th>
                 <th>Warehouse</th>
-                <th>Receiver</th>
+                <th>Bin</th>
                 <th>Total Items</th>
                 <th>Status</th>
                 <th>Action</th>
             </tr>
         </thead>
-        <tbody id="orderTable">
-        </tbody>
+        <tbody id="orderTable"></tbody>
     </table>
 
-    <div class="pagination">
-        <button onclick="prevPage()">Previous</button>
-        <span id="pageInfo"></span>
-        <button onclick="nextPage()">Next</button>
+    <div class="modal" id="detailModal">
+        <div class="modal-content">
+            <span onclick="closeModal()" style="float:right;cursor:pointer;color:red;font-weight:bold;">X</span>
+            <h3>Outbound Detail</h3>
+            <div id="detailContent"></div>
+        </div>
     </div>
 
     <script>
+
         const BASE = "https://localhost:7297/api";
 
+        function goHome() {
+            window.location = "home.html";
+        }
+
+        function getStatusText(status) {
+            switch (status) {
+                case 0: return "Pending";
+                case 1: return "Approved";
+                case 2: return "Approved - Waiting Confirm";
+                case 3: return "Completed";
+                default: return "Unknown";
+            }
+        }
+
         async function load() {
-            let res = await fetch(BASE + "/storekeeper/transfer-requests", { credentials: "include" });
-            let data = await res.json();
-            if (!data.success) return;
+
+            let res = await fetch(BASE + "/storekeeper/transfers", { credentials: "include" });
+            let result = await res.json();
+
+            // 🔥 Outbound = type === 2
+            let outboundList = result.data.filter(x => x.type === 2);
 
             let html = "";
-            data.data
-                .filter(x => x.typeInt === 2)
-                .forEach(o => {
 
-                    let statusClass = o.status === "Completed" ? "status-complete" : "status-pending";
+            outboundList.forEach(o => {
 
-                    let action = o.status === "Pending"
-                        ? `<button class="confirm-btn" onclick="confirmOrder(${o.id})">Confirm</button>`
-                        : `<button class="disabled" disabled>✔</button>`;
+                let statusText = getStatusText(o.status);
+                let statusClass = o.status === 3 ? "status-complete" : "status-pending";
 
-                    html += `
+                let warehouse = o.bin_from?.warehouse?.warehouseName ?? "-";
+                let bin = o.bin_from?.locationInWarehouse ?? "-";
+
+                let totalItems = 0;
+                if (o.components)
+                    totalItems = o.components.reduce((s, c) => s + c.quantity, 0);
+
+                let action = `
+<button class="detail-btn" onclick="viewDetail(${o.id})">Detail</button>
+`;
+
+                if (o.status === 2) {
+                    action += `<button class="confirm-btn" onclick="confirmOrder(${o.id})">Confirm</button>`;
+                }
+
+                html += `
 <tr>
-<td>${o.code}</td>
-<td>${o.creationDate}</td>
-<td>${o.fromWarehouseName}</td>
-<td>-</td>
-<td>${o.itemTransfers?.length ?? 0}</td>
-<td class="${statusClass}">${o.status}</td>
+<td>${o.description}</td>
+<td>${formatDate(o.creation_date)}</td>
+<td>${warehouse}</td>
+<td>${bin}</td>
+<td>${totalItems}</td>
+<td class="${statusClass}">${statusText}</td>
 <td>${action}</td>
 </tr>`;
-                });
+            });
 
             document.getElementById("orderTable").innerHTML = html;
         }
 
-        async function confirmOrder(id) {
-            await fetch(BASE + `/storekeeper/transfer-requests/${id}/complete`,
-                { method: "POST", credentials: "include" });
-            load();
+        async function viewDetail(id) {
+
+            let res = await fetch(BASE + "/storekeeper/transfers/" + id, { credentials: "include" });
+            let result = await res.json();
+            let o = result.data;
+
+            let html = `
+<p><b>Order Code:</b> ${o.description}</p>
+<p><b>Creator:</b> ${o.creator?.fullName ?? o.creator?.username ?? "-"}</p>
+<p><b>Warehouse:</b> ${o.bin_from?.warehouse?.warehouseName ?? "-"}</p>
+<p><b>Bin:</b> ${o.bin_from?.locationInWarehouse ?? "-"}</p>
+<p><b>Creation Date:</b> ${formatDate(o.creation_date)}</p>
+<hr>
+<h4>Products:</h4>
+<table>
+<tr>
+<th>Name</th>
+<th>Quantity</th>
+<th>Unit Price</th>
+<th>Total</th>
+</tr>
+`;
+
+            o.components.forEach(c => {
+                let total = c.quantity * c.unit_price;
+                html += `
+<tr>
+<td>${c.name ?? "Component #" + c.component_id}</td>
+<td>${c.quantity}</td>
+<td>${c.unit_price}</td>
+<td>${total.toFixed(2)}</td>
+</tr>`;
+            });
+
+            html += "</table>";
+
+            document.getElementById("detailContent").innerHTML = html;
+            document.getElementById("detailModal").style.display = "flex";
         }
 
-        function goHome() { window.location = "home.html"; }
-        load();
-    </script>
+        function closeModal() {
+            document.getElementById("detailModal").style.display = "none";
+        }
 
+        async function confirmOrder(id) {
+
+            let detailRes = await fetch(BASE + "/storekeeper/transfers/" + id, { credentials: "include" });
+            let detail = await detailRes.json();
+            let transfer = detail.data;
+
+            let confirmPayload = {
+                request_id: transfer.id,
+                bins: [{
+                    bin_id: transfer.bin_from_id,
+                    components: transfer.components.map(c => ({
+                        component_id: c.component_id,
+                        quantity: c.quantity
+                    }))
+                }]
+            };
+
+            let res = await fetch(BASE + "/storekeeper/confirm-transfer", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify(confirmPayload)
+            });
+
+            let data = await res.json();
+
+            if (data.success) {
+                alert("Confirmed successfully!");
+                load();
+            } else {
+                alert(data.message);
+            }
+        }
+
+        function formatDate(dateStr) {
+            return new Date(dateStr).toLocaleString();
+        }
+
+        load();
+
+    </script>
 </body>
 </html>

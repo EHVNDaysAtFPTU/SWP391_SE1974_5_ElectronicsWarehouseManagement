@@ -2,81 +2,248 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Transfer List</title>
+    <title>Transfer Orders - Storekeeper</title>
+
     <style>
         body {
             font-family: Arial;
-            background: #f1f5f9;
-            padding: 30px
+            background: #eef2ff;
+            padding: 40px;
+        }
+
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        button {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .home-btn {
+            background: #6c757d;
+            color: white;
+        }
+
+        .detail-btn {
+            background: #2563eb;
+            color: white;
         }
 
         table {
             width: 100%;
+            border-collapse: collapse;
             background: white;
-            border-collapse: collapse
         }
 
         th, td {
             padding: 10px;
-            border-bottom: 1px solid #ddd;
-            text-align: center
+            border: 1px solid #ddd;
+            text-align: center;
         }
 
         th {
             background: #2563eb;
-            color: white
+            color: white;
         }
 
-        button {
-            padding: 6px 10px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer
+        .status-complete {
+            color: green;
+            font-weight: bold;
+        }
+
+        .status-pending {
+            color: orange;
+            font-weight: bold;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background: white;
+            width: 900px;
+            padding: 20px;
+            border-radius: 8px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .close-btn {
+            float: right;
+            cursor: pointer;
+            color: red;
+            font-weight: bold;
         }
     </style>
 </head>
+
 <body>
 
-    <h2>Transfer List</h2>
-    <button onclick="goCreate()">Create Transfer</button>
+    <div class="top-bar">
+        <h2>Transfer Orders</h2>
+        <button class="home-btn" onclick="goHome()">⬅ Back to Home</button>
+    </div>
 
     <table>
         <thead>
             <tr>
-                <th>ID</th>
-                <th>Item</th>
-                <th>From</th>
-                <th>To</th>
-                <th>Qty</th>
+                <th>Order Code</th>
+                <th>Date</th>
+                <th>From Warehouse</th>
+                <th>From Bin</th>
+                <th>To Warehouse</th>
+                <th>To Bin</th>
+                <th>Total Items</th>
                 <th>Status</th>
+                <th>Action</th>
             </tr>
         </thead>
         <tbody id="data"></tbody>
     </table>
+
+    <div class="modal" id="detailModal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeModal()">X</span>
+            <h3>Transfer Detail</h3>
+            <div id="detailContent"></div>
+        </div>
+    </div>
+
     <script>
+
         const BASE = "https://localhost:7297/api";
 
+        function goHome() {
+            window.location = "home.html";
+        }
+
+        function getStatusText(status) {
+            switch (status) {
+                case 0: return "Pending";
+                case 1: return "Approved";
+                case 2: return "Approved - Waiting Confirm";
+                case 3: return "Completed";
+                default: return "Unknown";
+            }
+        }
+
         async function load() {
-            let res = await fetch(BASE + "/storekeeper/transfer-requests", { credentials: "include" });
-            let data = await res.json();
-            if (!data.success) return;
+
+            let res = await fetch(BASE + "/storekeeper/transfers",
+                { credentials: "include" });
+
+            let result = await res.json();
+
+            // 🔥 Transfer type = 3
+            let list = result.data.filter(x => x.type === 3);
 
             let html = "";
-            data.data
-                .filter(x => x.typeInt === 3)
-                .forEach(x => {
-                    html += `
+
+            list.forEach(o => {
+
+                let totalItems = 0;
+                if (o.components)
+                    totalItems = o.components.reduce((s, c) => s + c.quantity, 0);
+
+                let statusText = getStatusText(o.status);
+                let statusClass = o.status === 3
+                    ? "status-complete"
+                    : "status-pending";
+
+                html += `
 <tr>
-<td>${x.id}</td>
-<td>${x.itemTransfers?.length ?? 0}</td>
-<td>${x.fromWarehouseName}</td>
-<td>${x.toWarehouseName}</td>
-<td>${x.status}</td>
+<td>${o.description}</td>
+<td>${formatDate(o.creation_date)}</td>
+
+<td>${o.bin_from?.warehouse?.warehouseName ?? "-"}</td>
+<td>${o.bin_from?.locationInWarehouse ?? "-"}</td>
+
+<td>${o.bin_to?.warehouse?.warehouseName ?? "-"}</td>
+<td>${o.bin_to?.locationInWarehouse ?? "-"}</td>
+
+<td>${totalItems}</td>
+<td class="${statusClass}">${statusText}</td>
+<td>
+<button class="detail-btn"
+onclick="viewDetail(${o.id})">Detail</button>
+</td>
 </tr>`;
-                });
+            });
+
             document.getElementById("data").innerHTML = html;
         }
+
+        async function viewDetail(id) {
+
+            let res = await fetch(BASE + "/storekeeper/transfers/" + id,
+                { credentials: "include" });
+
+            let result = await res.json();
+            let o = result.data;
+
+            let html = `
+<p><b>Order Code:</b> ${o.description}</p>
+<p><b>Creator:</b> ${o.creator?.fullName ?? o.creator?.username ?? "-"}</p>
+
+<p><b>From Warehouse:</b> ${o.bin_from?.warehouse?.warehouseName ?? "-"}</p>
+<p><b>From Bin:</b> ${o.bin_from?.locationInWarehouse ?? "-"}</p>
+
+<p><b>To Warehouse:</b> ${o.bin_to?.warehouse?.warehouseName ?? "-"}</p>
+<p><b>To Bin:</b> ${o.bin_to?.locationInWarehouse ?? "-"}</p>
+
+<p><b>Creation Date:</b> ${formatDate(o.creation_date)}</p>
+
+<hr>
+<h4>Products:</h4>
+
+<table>
+<tr>
+<th>Name</th>
+<th>Quantity</th>
+<th>Unit Price</th>
+<th>Total</th>
+</tr>`;
+
+            o.components?.forEach(c => {
+
+                let total = c.quantity * c.unit_price;
+
+                html += `
+<tr>
+<td>${c.name ?? "Component " + c.component_id}</td>
+<td>${c.quantity}</td>
+<td>${c.unit_price}</td>
+<td>${total.toFixed(2)}</td>
+</tr>`;
+            });
+
+            html += "</table>";
+
+            document.getElementById("detailContent").innerHTML = html;
+            document.getElementById("detailModal").style.display = "flex";
+        }
+
+        function closeModal() {
+            document.getElementById("detailModal").style.display = "none";
+        }
+
+        function formatDate(d) {
+            return new Date(d).toLocaleString();
+        }
+
         load();
+
     </script>
 
 </body>

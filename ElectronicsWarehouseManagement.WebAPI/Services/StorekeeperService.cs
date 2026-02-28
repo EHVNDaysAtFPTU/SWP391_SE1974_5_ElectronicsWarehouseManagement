@@ -223,6 +223,8 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
         public async Task<ApiResult<List<TransferRequestResp>>> GetTransferRequestListAsync()
         {
             var transferReqs = await _dbCtx.TransferRequests
+                 .Include(tr => tr.BinFrom)
+        .ThenInclude(b => b.Warehouse)
                 .Include(tr => tr.Creator)
                 .Include(tr => tr.BinTo)
                     .ThenInclude(b => b.Warehouse)
@@ -238,6 +240,8 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
         public async Task<ApiResult<TransferRequestResp>> GetTransferRequestAsync(int requestId)
         {
             var transfer = await _dbCtx.TransferRequests
+                 .Include(tr => tr.BinFrom)
+        .ThenInclude(b => b.Warehouse)
                 .Include(tr => tr.Creator)
                 .Include(tr => tr.BinTo)
                     .ThenInclude(b => b.Warehouse)

@@ -239,7 +239,13 @@
 
             json.data.forEach(b => {
                 const id = b.binId ?? b.id;
-                const code = b.locationInWarehouse ?? b.binCode ?? id;
+
+                const code =
+                    b.location_in_warehouse ??
+                    b.locationInWarehouse ??
+                    b.binCode ??
+                    "Bin #" + id;
+
                 select.innerHTML += `<option value="${id}">${code}</option>`;
             });
         }
@@ -258,7 +264,13 @@
 
             json.data.forEach(b => {
                 const id = b.binId ?? b.id;
-                const code = b.locationInWarehouse ?? b.binCode ?? id;
+
+                const code =
+                    b.location_in_warehouse ??
+                    b.locationInWarehouse ??
+                    b.binCode ??
+                    "Bin #" + id;
+
                 select.innerHTML += `<option value="${id}">${code}</option>`;
             });
         }
