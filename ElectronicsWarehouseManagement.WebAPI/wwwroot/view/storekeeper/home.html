@@ -166,7 +166,7 @@
                     <li onclick="go('transfer-create.html')">Create Transfer</li>
                     <li onclick="go('transfer-list.html')">Transfer List</li>
                 </ul>
-                <li onclick="go('components.html')">Inventory</li>
+                <li onclick="go('component.html')">Inventory</li>
 
             </ul>
         </aside>
@@ -240,7 +240,7 @@
                 );
 
                 let itemRes = await fetch(
-                    BASE + "/storekeeper/components",
+                    BASE + "/storekeeper/component",
                     { credentials: "include" }
                 );
 

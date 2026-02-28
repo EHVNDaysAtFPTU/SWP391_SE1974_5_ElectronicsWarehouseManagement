@@ -151,6 +151,8 @@ namespace ElectronicsWarehouseManagement.WebAPI
             app.UseSession();
             app.UseAuthentication();
             app.UseAuthorization();
+            app.UseDefaultFiles();
+            app.UseStaticFiles();
             //app.UseDefaultFiles();
 
             //app.UseStaticFiles(new StaticFileOptions

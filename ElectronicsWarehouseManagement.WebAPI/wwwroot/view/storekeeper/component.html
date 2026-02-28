@@ -1,0 +1,209 @@
+﻿<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Component Management</title>
+
+    <style>
+        body {
+            font-family: Arial;
+            padding: 40px;
+            background: #f8fafc;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+
+        th {
+            background: #2563eb;
+            color: white;
+        }
+
+        .form-box {
+            background: white;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 6px;
+            margin-bottom: 8px;
+        }
+
+        button {
+            padding: 8px 15px;
+            background: #2563eb;
+            color: white;
+            border: none;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>📦 Component List</h2>
+    <button onclick="loadComponents()">Refresh</button>
+
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Unit</th>
+                <th>Price</th>
+            </tr>
+        </thead>
+        <tbody id="componentBody"></tbody>
+    </table>
+
+    <div class="form-box">
+        <h3>➕ Create Component</h3>
+
+        <input id="name" placeholder="Name">
+        <input id="desc" placeholder="Description">
+        <input id="manufacturer" placeholder="Manufacturer">
+        <input id="unit" placeholder="Unit (pcs, kg...)">
+        <input id="price" type="number" placeholder="Unit Price">
+        <input id="datasheet" placeholder="Datasheet URL">
+        <input type="date" id="mfgDate">
+
+        <select id="categorySelect"></select>
+
+        <input type="file" id="imageFile">
+
+        <button onclick="createComponent()">Create</button>
+    </div>
+
+    <script>
+
+        const BASE = "https://localhost:7297/api";
+
+        /* ================= API ================= */
+        async function api(endpoint, method = "GET", body = null, isForm = false) {
+
+            const options = {
+                method,
+                credentials: "include"
+            };
+
+            if (!isForm) {
+                options.headers = { "Content-Type": "application/json" };
+                if (body) options.body = JSON.stringify(body);
+            } else {
+                options.body = body;
+            }
+
+            const res = await fetch(BASE + endpoint, options);
+            return await res.json();
+        }
+
+        /* ================= LOAD COMPONENTS ================= */
+        async function loadComponents() {
+
+            const result = await api("/storekeeper/components");
+
+            if (!result.success) return alert(result.message);
+
+            const tbody = document.getElementById("componentBody");
+            tbody.innerHTML = "";
+
+            result.data.forEach(c => {
+
+                tbody.innerHTML += `
+        <tr>
+            <td>${c.id}</td>
+            <td>${c.metadata?.name ?? ""}</td>
+            <td>${c.unit}</td>
+            <td>${c.unit_price}</td>
+        </tr>`;
+            });
+        }
+
+        /* ================= LOAD CATEGORY ================= */
+        async function loadCategories() {
+
+            const result = await api("/storekeeper/component-categories");
+            console.log(result);
+            if (!result.success) return;
+
+            const select = document.getElementById("categorySelect");
+            select.innerHTML = "";
+
+            result.data.forEach(c => {
+                select.innerHTML += `
+            <option value="${c.id}">
+                ${c.name}
+            </option>`;
+            });
+        }
+
+        /* ================= CREATE COMPONENT ================= */
+        async function createComponent() {
+
+            const file = document.getElementById("imageFile").files[0];
+            let imageUrl = "";
+
+            if (file) {
+                const form = new FormData();
+                form.append("image", file);
+
+                const uploadRes = await api(
+                    "/storekeeper/upload-image",
+                    "POST",
+                    form,
+                    true
+                );
+
+                if (uploadRes.success)
+                    imageUrl = uploadRes.data;
+                else
+                    return alert(uploadRes.message);
+            }
+
+            const body = {
+                name: document.getElementById("name").value,
+                desc: document.getElementById("desc").value,
+                image_url: imageUrl,
+                manufacturer: document.getElementById("manufacturer").value,
+                manufacturing_date: new Date(
+                    document.getElementById("mfgDate").value
+                ).toISOString(),
+                datasheet_url: document.getElementById("datasheet").value,
+                unit: document.getElementById("unit").value,
+                unit_price: parseFloat(document.getElementById("price").value),
+                category_ids: [
+                    parseInt(document.getElementById("categorySelect").value)
+                ]
+            };
+
+            const result = await api(
+                "/storekeeper/create-component",
+                "POST",
+                body
+            );
+
+            if (result.success) {
+                alert("Created successfully");
+                loadComponents();
+            } else {
+                alert(result.message);
+            }
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            loadComponents();
+            loadCategories();
+        });
+
+    </script>
+</body>
+</html>
