@@ -11,10 +11,17 @@
             background: #f8fafc;
         }
 
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
         table {
             width: 100%;
             border-collapse: collapse;
             background: white;
+            margin-top: 15px;
         }
 
         th, td {
@@ -45,18 +52,43 @@
             background: #2563eb;
             color: white;
             border: none;
+            cursor: pointer;
+            margin-right: 5px;
         }
+
+            button:hover {
+                opacity: 0.9;
+            }
+
+        .thumbnail {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+            .thumbnail:hover {
+                transform: scale(1.1);
+            }
     </style>
 </head>
 <body>
 
-    <h2>📦 Component List</h2>
-    <button onclick="loadComponents()">Refresh</button>
+    <div class="top-bar">
+        <h2>📦 Component List</h2>
+        <div>
+            <button onclick="goHome()">⬅ Back Home</button>
+            <button onclick="loadComponents()">Refresh</button>
+        </div>
+    </div>
 
     <table>
         <thead>
             <tr>
                 <th>ID</th>
+                <th>Image</th>
                 <th>Name</th>
                 <th>Unit</th>
                 <th>Price</th>
@@ -87,6 +119,11 @@
 
         const BASE = "https://localhost:7297/api";
 
+        /* ================= BACK HOME ================= */
+        function goHome() {
+            window.location.href = "home.html"; // sửa nếu page home khác tên
+        }
+
         /* ================= API ================= */
         async function api(endpoint, method = "GET", body = null, isForm = false) {
 
@@ -95,11 +132,13 @@
                 credentials: "include"
             };
 
-            if (!isForm) {
-                options.headers = { "Content-Type": "application/json" };
-                if (body) options.body = JSON.stringify(body);
-            } else {
-                options.body = body;
+            if (body) {
+                if (!isForm) {
+                    options.headers = { "Content-Type": "application/json" };
+                    options.body = JSON.stringify(body);
+                } else {
+                    options.body = body;
+                }
             }
 
             const res = await fetch(BASE + endpoint, options);
@@ -118,13 +157,26 @@
 
             result.data.forEach(c => {
 
+                let imageUrl = c.metadata?.image_url ?? "";
+
+                // nếu backend trả /uploads/abc.jpg
+                if (imageUrl && imageUrl.startsWith("/")) {
+                    imageUrl = BASE.replace("/api", "") + imageUrl;
+                }
+
                 tbody.innerHTML += `
-        <tr>
-            <td>${c.id}</td>
-            <td>${c.metadata?.name ?? ""}</td>
-            <td>${c.unit}</td>
-            <td>${c.unit_price}</td>
-        </tr>`;
+            <tr>
+                <td>${c.id}</td>
+                <td>
+                    ${imageUrl
+                        ? `<img src="${imageUrl}" class="thumbnail" onclick="window.open('${imageUrl}','_blank')">`
+                        : "No Image"
+                    }
+                </td>
+                <td>${c.metadata?.name ?? ""}</td>
+                <td>${c.unit}</td>
+                <td>${c.unit_price}</td>
+            </tr>`;
             });
         }
 
@@ -132,7 +184,6 @@
         async function loadCategories() {
 
             const result = await api("/storekeeper/component-categories");
-            console.log(result);
             if (!result.success) return;
 
             const select = document.getElementById("categorySelect");
@@ -140,17 +191,39 @@
 
             result.data.forEach(c => {
                 select.innerHTML += `
-            <option value="${c.id}">
-                ${c.name}
-            </option>`;
+                <option value="${c.id}">
+                    ${c.name}
+                </option>`;
             });
         }
 
         /* ================= CREATE COMPONENT ================= */
         async function createComponent() {
 
-            const file = document.getElementById("imageFile").files[0];
+            const name = document.getElementById("name").value.trim();
+            const description = document.getElementById("desc").value.trim();
+            const manufacturer = document.getElementById("manufacturer").value.trim();
+            const unit = document.getElementById("unit").value.trim();
+            const priceValue = document.getElementById("price").value;
+            const datasheet = document.getElementById("datasheet").value.trim();
+            const dateValue = document.getElementById("mfgDate").value;
+            const categoryId = document.getElementById("categorySelect").value;
+
+            if (!name || !unit || !priceValue) {
+                return alert("Name, Unit và Price là bắt buộc");
+            }
+
+            const unitPrice = parseFloat(priceValue);
+            if (isNaN(unitPrice)) {
+                return alert("Price không hợp lệ");
+            }
+
+            let manufacturingDate = dateValue
+                ? new Date(dateValue).toISOString()
+                : null;
+
             let imageUrl = "";
+            const file = document.getElementById("imageFile").files[0];
 
             if (file) {
                 const form = new FormData();
@@ -163,26 +236,20 @@
                     true
                 );
 
-                if (uploadRes.success)
-                    imageUrl = uploadRes.data;
-                else
-                    return alert(uploadRes.message);
+                if (!uploadRes.success) return alert(uploadRes.message);
+                imageUrl = uploadRes.data;
             }
 
             const body = {
-                name: document.getElementById("name").value,
-                desc: document.getElementById("desc").value,
+                name,
+                description,
                 image_url: imageUrl,
-                manufacturer: document.getElementById("manufacturer").value,
-                manufacturing_date: new Date(
-                    document.getElementById("mfgDate").value
-                ).toISOString(),
-                datasheet_url: document.getElementById("datasheet").value,
-                unit: document.getElementById("unit").value,
-                unit_price: parseFloat(document.getElementById("price").value),
-                category_ids: [
-                    parseInt(document.getElementById("categorySelect").value)
-                ]
+                manufacturer,
+                manufacturing_date: manufacturingDate,
+                datasheet_url: datasheet,
+                unit,
+                unit_price: unitPrice,
+                category_ids: categoryId ? [parseInt(categoryId)] : []
             };
 
             const result = await api(
@@ -193,12 +260,14 @@
 
             if (result.success) {
                 alert("Created successfully");
+                document.querySelectorAll(".form-box input").forEach(i => i.value = "");
                 loadComponents();
             } else {
                 alert(result.message);
             }
         }
 
+        /* ================= INIT ================= */
         document.addEventListener("DOMContentLoaded", () => {
             loadComponents();
             loadCategories();
