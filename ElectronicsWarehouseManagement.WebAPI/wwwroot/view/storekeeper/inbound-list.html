@@ -39,11 +39,6 @@
             color: white;
         }
 
-        .disabled {
-            background: #ccc;
-            cursor: not-allowed;
-        }
-
         table {
             width: 100%;
             border-collapse: collapse;
@@ -71,7 +66,6 @@
             font-weight: bold;
         }
 
-        /* Modal */
         .modal {
             display: none;
             position: fixed;
@@ -121,7 +115,6 @@
         <tbody id="orderTable"></tbody>
     </table>
 
-    <!-- DETAIL MODAL -->
     <div class="modal" id="detailModal">
         <div class="modal-content">
             <span class="close-btn" onclick="closeModal()">X</span>
@@ -160,11 +153,7 @@
             inboundList.forEach(o => {
 
                 let statusText = getStatusText(o.status);
-
-                let statusClass =
-                    statusText === "Completed"
-                        ? "status-complete"
-                        : "status-pending";
+                let statusClass = o.status === 3 ? "status-complete" : "status-pending";
 
                 let warehouse = o.bin_to?.warehouse?.warehouseName ?? "-";
                 let bin = o.bin_to?.locationInWarehouse ?? "-";
@@ -173,11 +162,10 @@
                 if (o.components)
                     totalItems = o.components.reduce((s, c) => s + c.quantity, 0);
 
-                let action = `
-<button class="detail-btn" onclick="viewDetail(${o.id})">Detail</button>
-`;
+                let action = `<button class="detail-btn" onclick="viewDetail(${o.id})">Detail</button>`;
 
-                if (o.status === 2) {
+                // 👇 hiện confirm khi Approved hoặc Waiting Confirm
+                if (o.status === 1 || o.status === 2) {
                     action += `<button class="confirm-btn" onclick="confirmOrder(${o.id})">Confirm</button>`;
                 }
 
@@ -242,6 +230,8 @@
 
         async function confirmOrder(id) {
 
+            if (!confirm("Are you sure to confirm this order?")) return;
+
             let detailRes = await fetch(BASE + "/storekeeper/transfers/" + id, { credentials: "include" });
             let detail = await detailRes.json();
             let transfer = detail.data;
@@ -257,6 +247,8 @@
                 }]
             };
 
+            console.log(confirmPayload);
+
             let res = await fetch(BASE + "/storekeeper/confirm-transfer", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -264,7 +256,7 @@
                 body: JSON.stringify(confirmPayload)
             });
 
-            let data = await res.json(); 
+            let data = await res.json();
 
             if (data.success) {
                 alert("Confirmed successfully!");
@@ -275,12 +267,12 @@
         }
 
         function formatDate(dateStr) {
-            let d = new Date(dateStr);
-            return d.toLocaleString();
+            return new Date(dateStr).toLocaleString();
         }
 
         load();
 
     </script>
+
 </body>
 </html>

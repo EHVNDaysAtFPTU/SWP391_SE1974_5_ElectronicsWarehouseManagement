@@ -307,82 +307,114 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             return new ApiResult<TransferRequestResp>(new TransferRequestResp(transferRequest, true));
         }
 
-        public async Task<ApiResult<TransferRequestResp>> ConfirmTransferRequestAsync(ConfirmTransferRequestReq request, int approverId)
+        public async Task<ApiResult<TransferRequestResp>> ConfirmTransferRequestAsync(
+      ConfirmTransferRequestReq request,
+      int approverId)
         {
             if (!request.Verify(out string failedReason))
-                return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, failedReason);
-            TransferRequest? transferReq = await _dbCtx.TransferRequests.Include(tr => tr.TransferRequestComponents).FirstOrDefaultAsync(tr => tr.RequestId == request.RequestId);
+                return new ApiResult<TransferRequestResp>(
+                    ApiResultCode.InvalidRequest, failedReason);
+
+            var transferReq = await _dbCtx.TransferRequests
+                .Include(tr => tr.TransferRequestComponents)
+                .FirstOrDefaultAsync(tr => tr.RequestId == request.RequestId);
+
             if (transferReq is null)
-                return new ApiResult<TransferRequestResp>(ApiResultCode.NotFound, $"Transfer request with ID '{request.RequestId}' does not exist.");
+                return new ApiResult<TransferRequestResp>(
+                    ApiResultCode.NotFound,
+                    $"Transfer request with ID '{request.RequestId}' does not exist.");
+
             if (transferReq.Status != TransferStatus.ApprovedAndWaitForConfirm)
-                return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Transfer request with ID '{request.RequestId}' cannot be confirmed.");
-            // verify components in confirmation request to match those in original transfer request
-            List<TransferRequestComponent> originalComponentsInTransferRequest = transferReq.TransferRequestComponents.OrderBy(c => c.ComponentId).ToList();
-            List<ConfirmTransferRequestComponentReq> confirmComponents = [];
-            foreach (ConfirmTransferBinReq ctBinReq in request.Bins)
+                return new ApiResult<TransferRequestResp>(
+                    ApiResultCode.InvalidRequest,
+                    $"Transfer request with ID '{request.RequestId}' cannot be confirmed.");
+
+            var originalComponents = transferReq.TransferRequestComponents.ToList();
+
+            // ===== VERIFY QUANTITY =====
+            var confirmDict = new Dictionary<int, double>();
+
+            foreach (var binReq in request.Bins)
             {
-                var bin = await _dbCtx.Bins.FindAsync(ctBinReq.BinId);
-                if (bin is null)
-                    return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Bin with ID '{ctBinReq.BinId}' does not exist.");
-                foreach (ConfirmTransferRequestComponentReq ctComponentReq in ctBinReq.Components.OrderBy(c => c.ComponentId))
+                foreach (var comp in binReq.Components)
                 {
-                    if (!originalComponentsInTransferRequest.Any(c => c.ComponentId == ctComponentReq.ComponentId))
-                        return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Component with ID '{ctComponentReq.ComponentId}' is not in the original transfer request.");
-                    var confirmComponent = confirmComponents.FirstOrDefault(c => c.ComponentId == ctComponentReq.ComponentId);
-                    if (confirmComponent is null)
-                    {
-                        confirmComponents.Add(new ConfirmTransferRequestComponentReq
-                        {
-                            ComponentId = ctComponentReq.ComponentId,
-                            Quantity = ctComponentReq.Quantity
-                        });
-                    }
+                    if (!originalComponents.Any(c => c.ComponentId == comp.ComponentId))
+                        return new ApiResult<TransferRequestResp>(
+                            ApiResultCode.InvalidRequest,
+                            $"Component ID {comp.ComponentId} not in original request.");
+
+                    if (!confirmDict.ContainsKey(comp.ComponentId))
+                        confirmDict[comp.ComponentId] = comp.Quantity;
                     else
-                        confirmComponent.Quantity += ctComponentReq.Quantity;
+                        confirmDict[comp.ComponentId] += comp.Quantity;
                 }
             }
-            foreach (ConfirmTransferRequestComponentReq confirmComponent in confirmComponents)
+
+            foreach (var original in originalComponents)
             {
-                var originalComponent = originalComponentsInTransferRequest.First(c => c.ComponentId == confirmComponent.ComponentId);
-                if (confirmComponent.Quantity != originalComponent.Quantity)
-                    return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Confirmed quantity for component with ID '{confirmComponent.ComponentId}' does not match the original transfer request.");
+                if (!confirmDict.ContainsKey(original.ComponentId) ||
+                    confirmDict[original.ComponentId] != original.Quantity)
+                    return new ApiResult<TransferRequestResp>(
+                        ApiResultCode.InvalidRequest,
+                        $"Confirmed quantity mismatch for component {original.ComponentId}");
             }
 
+            // ===== UPDATE STATUS =====
             transferReq.Status = TransferStatus.Confirmed;
             transferReq.ExecutionTime = DateTime.UtcNow;
 
-            // add components to bins
-            foreach (ConfirmTransferBinReq binReq in request.Bins)
+            // ===== UPDATE BIN & AVERAGE PRICE =====
+            foreach (var binReq in request.Bins)
             {
-                Bin bin = await _dbCtx.Bins.Include(b => b.ComponentBins).FirstAsync(b => b.BinId == binReq.BinId);
-                foreach (ConfirmTransferRequestComponentReq componentReq in binReq.Components)
+                var bin = await _dbCtx.Bins
+                    .Include(b => b.ComponentBins)
+                    .FirstAsync(b => b.BinId == binReq.BinId);
+
+                foreach (var compReq in binReq.Components)
                 {
-                    ComponentBin? componentBin = bin.ComponentBins.FirstOrDefault(cb => cb.ComponentId == componentReq.ComponentId);
-                    if (componentBin is null)
+                    var componentBin = bin.ComponentBins
+                        .FirstOrDefault(cb => cb.ComponentId == compReq.ComponentId);
+
+                    var component = await _dbCtx.Components
+                        .FirstAsync(c => c.ComponentId == compReq.ComponentId);
+
+                    double oldQty = componentBin?.Quantity ?? 0;
+                    double importQty = compReq.Quantity;
+                    double newQty = oldQty + importQty;
+
+                    double oldPrice = component.UnitPrice;
+                    double importPrice = originalComponents
+                        .First(c => c.ComponentId == compReq.ComponentId)
+                        .UnitPrice;
+
+                    if (componentBin == null)
                     {
                         componentBin = new ComponentBin
                         {
                             BinId = bin.BinId,
-                            ComponentId = componentReq.ComponentId,
-                            Quantity = componentReq.Quantity
+                            ComponentId = compReq.ComponentId,
+                            Quantity = importQty
                         };
                         _dbCtx.ComponentBins.Add(componentBin);
                     }
                     else
-                        componentBin.Quantity += componentReq.Quantity;
+                    {
+                        componentBin.Quantity = newQty;
+                    }
+
+                    if (newQty > 0)
+                    {
+                        component.UnitPrice =
+                            ((oldPrice * oldQty) + (importPrice * importQty))
+                            / newQty;
+                    }
                 }
             }
 
-            // calculate new average price for the component after transfer
-            foreach (TransferRequestComponent tComponent in originalComponentsInTransferRequest)
-            {
-                Component component = await _dbCtx.Components.FirstAsync(c => c.ComponentId == tComponent.ComponentId);
-                double newPrice = (component.TotalPrice + tComponent.Quantity * tComponent.UnitPrice) / (component.TotalQuantity + tComponent.Quantity);
-                component.UnitPrice = newPrice;
-            }
-
             await _dbCtx.SaveChangesAsync();
-            return new ApiResult<TransferRequestResp>(new TransferRequestResp(transferReq, true));
+
+            return new ApiResult<TransferRequestResp>(
+                new TransferRequestResp(transferReq, true));
         }
     }
 }
