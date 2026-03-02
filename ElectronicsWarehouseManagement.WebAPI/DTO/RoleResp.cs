@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 
 namespace ElectronicsWarehouseManagement.WebAPI.DTO
 {
-    public class GetRolesResp
+    public class RoleResp
     {
         [JsonPropertyName("role_id")]
         public int RoleId { get; set; }
@@ -14,14 +14,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
         [JsonPropertyName("desc")]
         public string Description { get; set; }
 
-        public GetRolesResp(int roleId, string roleName, string description)
-        {
-            RoleId = roleId;
-            RoleName = roleName;
-            Description = description;
-        }
-
-        public GetRolesResp(Role role)
+        public RoleResp(Role role)
         {
             RoleId = role.RoleId;
             RoleName = role.RoleName;

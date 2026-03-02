@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 
 namespace ElectronicsWarehouseManagement.WebAPI.DTO
 {
-    public class CategoryResp
+    public class ComponentCategoryResp
     {
         [JsonPropertyName("id")]
         public int Id { get; set; }
@@ -11,16 +11,10 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
         [JsonPropertyName("name")]
         public string Name { get; set; } = "";
 
-        public CategoryResp(Category category)
+        public ComponentCategoryResp(ComponentCategory category)
         {
             Id = category.CategoryId;
             Name = category.CategoryName;
-        }
-
-        public CategoryResp(int id, string name)
-        {
-            Id = id;
-            Name = name;
         }
     }
 }

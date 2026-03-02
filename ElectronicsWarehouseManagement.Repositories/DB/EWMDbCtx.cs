@@ -17,15 +17,17 @@ public partial class EWMDbCtx : DbContext
 
     public virtual DbSet<Bin> Bins { get; set; }
 
-    public virtual DbSet<Category> Categories { get; set; }
+    public virtual DbSet<Component> Components { get; set; }
 
-    public virtual DbSet<Item> Items { get; set; }
+    public virtual DbSet<ComponentBin> ComponentBins { get; set; }
 
-    public virtual DbSet<ItemDefinition> ItemDefinitions { get; set; }
+    public virtual DbSet<ComponentCategory> ComponentCategories { get; set; }
 
     public virtual DbSet<Role> Roles { get; set; }
 
-    public virtual DbSet<TransferReq> TransferReqs { get; set; }
+    public virtual DbSet<TransferRequest> TransferRequests { get; set; }
+
+    public virtual DbSet<TransferRequestComponent> TransferRequestComponents { get; set; }
 
     public virtual DbSet<User> Users { get; set; }
 
@@ -48,97 +50,13 @@ public partial class EWMDbCtx : DbContext
                 .HasForeignKey(d => d.WarehouseId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_Bin_Warehouse");
-
-            entity.HasMany(d => d.Items).WithMany(p => p.Bins)
-                .UsingEntity<Dictionary<string, object>>(
-                    "ItemBin",
-                    r => r.HasOne<Item>().WithMany()
-                        .HasForeignKey("ItemId")
-                        .OnDelete(DeleteBehavior.ClientSetNull)
-                        .HasConstraintName("FK_ItemBin_Item"),
-                    l => l.HasOne<Bin>().WithMany()
-                        .HasForeignKey("BinId")
-                        .OnDelete(DeleteBehavior.ClientSetNull)
-                        .HasConstraintName("FK_ItemBin_Bin"),
-                    j =>
-                    {
-                        j.HasKey("BinId", "ItemId");
-                        j.ToTable("ItemBin");
-                        j.IndexerProperty<int>("BinId").HasColumnName("bin_id");
-                        j.IndexerProperty<int>("ItemId").HasColumnName("item_id");
-                    });
         });
 
-        modelBuilder.Entity<Category>(entity =>
+        modelBuilder.Entity<Component>(entity =>
         {
-            entity.ToTable("Category");
+            entity.ToTable("Component");
 
-            entity.Property(e => e.CategoryId).HasColumnName("category_id");
-            entity.Property(e => e.CategoryName)
-                .IsRequired()
-                .HasMaxLength(50)
-                .HasColumnName("category_name");
-
-            entity.HasMany(d => d.ItemDefs).WithMany(p => p.Categories)
-                .UsingEntity<Dictionary<string, object>>(
-                    "ItemCategory",
-                    r => r.HasOne<ItemDefinition>().WithMany()
-                        .HasForeignKey("ItemDefId")
-                        .OnDelete(DeleteBehavior.ClientSetNull)
-                        .HasConstraintName("FK_ItemCategory_ItemDefinition"),
-                    l => l.HasOne<Category>().WithMany()
-                        .HasForeignKey("CategoryId")
-                        .OnDelete(DeleteBehavior.ClientSetNull)
-                        .HasConstraintName("FK_ItemCategory_Category"),
-                    j =>
-                    {
-                        j.HasKey("CategoryId", "ItemDefId");
-                        j.ToTable("ItemCategory");
-                        j.IndexerProperty<int>("CategoryId").HasColumnName("category_id");
-                        j.IndexerProperty<int>("ItemDefId").HasColumnName("item_def_id");
-                    });
-        });
-
-        modelBuilder.Entity<Item>(entity =>
-        {
-            entity.ToTable("Item");
-
-            entity.Property(e => e.ItemId).HasColumnName("item_id");
-            entity.Property(e => e.ItemDefId).HasColumnName("item_def_id");
-            entity.Property(e => e.Quantity).HasColumnName("quantity");
-
-            entity.HasOne(d => d.ItemDef).WithMany(p => p.Items)
-                .HasForeignKey(d => d.ItemDefId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_Item_ItemDefinition");
-
-            entity.HasMany(d => d.Transfers).WithMany(p => p.Items)
-                .UsingEntity<Dictionary<string, object>>(
-                    "TransferReqItem",
-                    r => r.HasOne<TransferReq>().WithMany()
-                        .HasForeignKey("TransferId")
-                        .OnDelete(DeleteBehavior.ClientSetNull)
-                        .HasConstraintName("FK_TransferReqItem_TransferReq"),
-                    l => l.HasOne<Item>().WithMany()
-                        .HasForeignKey("ItemId")
-                        .OnDelete(DeleteBehavior.ClientSetNull)
-                        .HasConstraintName("FK_TransferReqItem_Item"),
-                    j =>
-                    {
-                        j.HasKey("ItemId", "TransferId");
-                        j.ToTable("TransferReqItem");
-                        j.IndexerProperty<int>("ItemId").HasColumnName("item_id");
-                        j.IndexerProperty<int>("TransferId").HasColumnName("transfer_id");
-                    });
-        });
-
-        modelBuilder.Entity<ItemDefinition>(entity =>
-        {
-            entity.HasKey(e => e.ItemDefId);
-
-            entity.ToTable("ItemDefinition");
-
-            entity.Property(e => e.ItemDefId).HasColumnName("item_def_id");
+            entity.Property(e => e.ComponentId).HasColumnName("component_id");
             entity.Property(e => e.MetadataJson)
                 .IsRequired()
                 .HasColumnName("metadata_json");
@@ -147,6 +65,58 @@ public partial class EWMDbCtx : DbContext
                 .HasMaxLength(50)
                 .HasColumnName("unit");
             entity.Property(e => e.UnitPrice).HasColumnName("unit_price");
+
+            entity.HasMany(d => d.Categories).WithMany(p => p.Components)
+                .UsingEntity<Dictionary<string, object>>(
+                    "CC",
+                    r => r.HasOne<ComponentCategory>().WithMany()
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.ClientSetNull)
+                        .HasConstraintName("FK_C_C_ComponentCategory"),
+                    l => l.HasOne<Component>().WithMany()
+                        .HasForeignKey("ComponentId")
+                        .OnDelete(DeleteBehavior.ClientSetNull)
+                        .HasConstraintName("FK_C_C_Component"),
+                    j =>
+                    {
+                        j.HasKey("ComponentId", "CategoryId");
+                        j.ToTable("C_C");
+                        j.IndexerProperty<int>("ComponentId").HasColumnName("component_id");
+                        j.IndexerProperty<int>("CategoryId").HasColumnName("category_id");
+                    });
+        });
+
+        modelBuilder.Entity<ComponentBin>(entity =>
+        {
+            entity.ToTable("ComponentBin");
+
+            entity.Property(e => e.ComponentBinId).HasColumnName("component_bin_id");
+            entity.Property(e => e.BinId).HasColumnName("bin_id");
+            entity.Property(e => e.ComponentId).HasColumnName("component_id");
+            entity.Property(e => e.Quantity).HasColumnName("quantity");
+
+            entity.HasOne(d => d.Bin).WithMany(p => p.ComponentBins)
+                .HasForeignKey(d => d.BinId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_ComponentBin_Bin");
+
+            entity.HasOne(d => d.Component).WithMany(p => p.ComponentBins)
+                .HasForeignKey(d => d.ComponentId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_ComponentBin_Component");
+        });
+
+        modelBuilder.Entity<ComponentCategory>(entity =>
+        {
+            entity.HasKey(e => e.CategoryId);
+
+            entity.ToTable("ComponentCategory");
+
+            entity.Property(e => e.CategoryId).HasColumnName("category_id");
+            entity.Property(e => e.CategoryName)
+                .IsRequired()
+                .HasMaxLength(50)
+                .HasColumnName("category_name");
         });
 
         modelBuilder.Entity<Role>(entity =>
@@ -159,62 +129,68 @@ public partial class EWMDbCtx : DbContext
                 .IsRequired()
                 .HasMaxLength(50)
                 .HasColumnName("role_name");
-
-            entity.HasMany(d => d.Users).WithMany(p => p.Roles)
-                .UsingEntity<Dictionary<string, object>>(
-                    "UserRole",
-                    r => r.HasOne<User>().WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.ClientSetNull)
-                        .HasConstraintName("FK_UserRole_User"),
-                    l => l.HasOne<Role>().WithMany()
-                        .HasForeignKey("RoleId")
-                        .OnDelete(DeleteBehavior.ClientSetNull)
-                        .HasConstraintName("FK_UserRole_Role"),
-                    j =>
-                    {
-                        j.HasKey("RoleId", "UserId");
-                        j.ToTable("UserRole");
-                        j.IndexerProperty<int>("RoleId").HasColumnName("role_id");
-                        j.IndexerProperty<int>("UserId").HasColumnName("user_id");
-                    });
         });
 
-        modelBuilder.Entity<TransferReq>(entity =>
+        modelBuilder.Entity<TransferRequest>(entity =>
         {
-            entity.HasKey(e => e.TransferId);
+            entity.HasKey(e => e.RequestId);
 
-            entity.ToTable("TransferReq");
+            entity.ToTable("TransferRequest");
 
-            entity.Property(e => e.TransferId).HasColumnName("transfer_id");
+            entity.Property(e => e.RequestId).HasColumnName("request_id");
             entity.Property(e => e.ApproverId).HasColumnName("approver_id");
-            entity.Property(e => e.CreationDate).HasColumnName("creation_date");
+            entity.Property(e => e.BinFromId).HasColumnName("bin_from_id");
+            entity.Property(e => e.BinToId).HasColumnName("bin_to_id");
+            entity.Property(e => e.CreationTime)
+                .HasColumnType("datetime")
+                .HasColumnName("creation_time");
             entity.Property(e => e.CreatorId).HasColumnName("creator_id");
             entity.Property(e => e.Description)
                 .IsRequired()
                 .HasColumnName("description");
-            entity.Property(e => e.ExecutionDate).HasColumnName("execution_date");
+            entity.Property(e => e.ExecutionTime)
+                .HasColumnType("datetime")
+                .HasColumnName("execution_time");
             entity.Property(e => e.StatusInt).HasColumnName("status_int");
             entity.Property(e => e.TypeInt).HasColumnName("type_int");
-            entity.Property(e => e.WarehouseFromId).HasColumnName("warehouse_from_id");
-            entity.Property(e => e.WarehouseToId).HasColumnName("warehouse_to_id");
 
-            entity.HasOne(d => d.Approver).WithMany(p => p.TransferReqApprovers)
+            entity.HasOne(d => d.Approver).WithMany(p => p.TransferRequestApprovers)
                 .HasForeignKey(d => d.ApproverId)
-                .HasConstraintName("FK_TransferReq_User1");
+                .HasConstraintName("FK_TransferRequest_User_Approver");
 
-            entity.HasOne(d => d.Creator).WithMany(p => p.TransferReqCreators)
+            entity.HasOne(d => d.BinFrom).WithMany(p => p.TransferRequestBinFroms)
+                .HasForeignKey(d => d.BinFromId)
+                .HasConstraintName("FK_TransferRequest_Bin_From");
+
+            entity.HasOne(d => d.BinTo).WithMany(p => p.TransferRequestBinTos)
+                .HasForeignKey(d => d.BinToId)
+                .HasConstraintName("FK_TransferRequest_Bin_To");
+
+            entity.HasOne(d => d.Creator).WithMany(p => p.TransferRequestCreators)
                 .HasForeignKey(d => d.CreatorId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_TransferReq_User");
+                .HasConstraintName("FK_TransferRequest_User_Creator");
+        });
 
-            entity.HasOne(d => d.WarehouseFrom).WithMany(p => p.TransferReqWarehouseFroms)
-                .HasForeignKey(d => d.WarehouseFromId)
-                .HasConstraintName("FK_TransferReq_Warehouse");
+        modelBuilder.Entity<TransferRequestComponent>(entity =>
+        {
+            entity.ToTable("TransferRequestComponent");
 
-            entity.HasOne(d => d.WarehouseTo).WithMany(p => p.TransferReqWarehouseTos)
-                .HasForeignKey(d => d.WarehouseToId)
-                .HasConstraintName("FK_TransferReq_Warehouse1");
+            entity.Property(e => e.TransferRequestComponentId).HasColumnName("transfer_request_component_id");
+            entity.Property(e => e.ComponentId).HasColumnName("component_id");
+            entity.Property(e => e.Quantity).HasColumnName("quantity");
+            entity.Property(e => e.RequestId).HasColumnName("request_id");
+            entity.Property(e => e.UnitPrice).HasColumnName("unit_price");
+
+            entity.HasOne(d => d.Component).WithMany(p => p.TransferRequestComponents)
+                .HasForeignKey(d => d.ComponentId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_TransferRequestComponent_Component");
+
+            entity.HasOne(d => d.Request).WithMany(p => p.TransferRequestComponents)
+                .HasForeignKey(d => d.RequestId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_TransferRequestComponent_TransferRequest");
         });
 
         modelBuilder.Entity<User>(entity =>
@@ -222,19 +198,44 @@ public partial class EWMDbCtx : DbContext
             entity.ToTable("User");
 
             entity.Property(e => e.UserId).HasColumnName("user_id");
-            entity.Property(e => e.Email)
+            entity.Property(e => e.DisplayName)
                 .IsRequired()
                 .HasMaxLength(100)
+                .HasColumnName("display_name");
+            entity.Property(e => e.Email)
+                .IsRequired()
+                .HasMaxLength(320)
                 .HasColumnName("email");
             entity.Property(e => e.PasswordHash)
                 .IsRequired()
-                .HasMaxLength(100)
+                .HasMaxLength(255)
+                .IsUnicode(false)
                 .HasColumnName("password_hash");
             entity.Property(e => e.StatusInt).HasColumnName("status_int");
             entity.Property(e => e.Username)
                 .IsRequired()
-                .HasMaxLength(50)
+                .HasMaxLength(25)
+                .IsUnicode(false)
                 .HasColumnName("username");
+
+            entity.HasMany(d => d.Roles).WithMany(p => p.Users)
+                .UsingEntity<Dictionary<string, object>>(
+                    "UR",
+                    r => r.HasOne<Role>().WithMany()
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.ClientSetNull)
+                        .HasConstraintName("FK_U_R_Role"),
+                    l => l.HasOne<User>().WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.ClientSetNull)
+                        .HasConstraintName("FK_U_R_User"),
+                    j =>
+                    {
+                        j.HasKey("UserId", "RoleId");
+                        j.ToTable("U_R");
+                        j.IndexerProperty<int>("UserId").HasColumnName("user_id");
+                        j.IndexerProperty<int>("RoleId").HasColumnName("role_id");
+                    });
         });
 
         modelBuilder.Entity<Warehouse>(entity =>
@@ -246,7 +247,7 @@ public partial class EWMDbCtx : DbContext
                 .IsRequired()
                 .HasColumnName("description");
             entity.Property(e => e.ImageUrl)
-                .HasMaxLength(4000)
+                .HasMaxLength(1000)
                 .HasColumnName("image_url");
             entity.Property(e => e.PhysicalLocation)
                 .IsRequired()

@@ -1,8 +1,9 @@
 using ElectronicsWarehouseManagement.Repositories.Entities;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
-using System.Text.Json.Serialization; // Thêm namespace này
+using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 
 namespace ElectronicsWarehouseManagement.WebAPI
@@ -11,7 +12,7 @@ namespace ElectronicsWarehouseManagement.WebAPI
     {
         static TimeSpan sessionTimeout = TimeSpan.FromMinutes(10);
 
-        public static void Main(string[] args)
+        public static async Task Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
 
@@ -110,6 +111,34 @@ namespace ElectronicsWarehouseManagement.WebAPI
             });
 
             var app = builder.Build();
+
+            using (var scope = app.Services.CreateScope())
+            {
+                var dbCtx = scope.ServiceProvider.GetRequiredService<EWMDbCtx>();
+                if (!await dbCtx.Users.AnyAsync())
+                {
+                    var adminRole = await dbCtx.Roles.FirstOrDefaultAsync(r => r.RoleId == 1);
+                    if (adminRole is null)
+                    {
+                        adminRole = new Role { RoleName = "Admin", Description = "Administrator" };
+                        dbCtx.Roles.Add(adminRole);
+                        await dbCtx.SaveChangesAsync();
+                    }
+
+                    var admin = new User
+                    {
+                        Username = "admin",
+                        DisplayName = "Administrator",
+                        Email = "",
+                        Status = UserStatus.Active,
+                        Roles = [adminRole]
+                    };
+                    var passwordHasher = new PasswordHasher<User>();
+                    admin.PasswordHash = passwordHasher.HashPassword(admin, "Admin@123");
+                    dbCtx.Users.Add(admin);
+                    await dbCtx.SaveChangesAsync();
+                }
+            }
 
             if (app.Environment.IsDevelopment())
             {

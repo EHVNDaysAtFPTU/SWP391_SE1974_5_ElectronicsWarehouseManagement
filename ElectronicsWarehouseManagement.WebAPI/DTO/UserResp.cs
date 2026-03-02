@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 
 namespace ElectronicsWarehouseManagement.WebAPI.DTO
 {
-    public class GetUsersResp
+    public class UserResp
     {
         [JsonPropertyName("user_id")]
         public int UserId { get; set; }
@@ -17,20 +17,18 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
         [JsonPropertyName("status")]
         public UserStatus Status { get; set; }
 
-        public GetUsersResp(int userId, string username, string email, UserStatus status)
-        {
-            UserId = userId;
-            Username = username;
-            Email = email;
-            Status = status;
-        }
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        [JsonPropertyName("role")]
+        public List<RoleResp>? Roles { get; set; }
 
-        public GetUsersResp(User user)
+        public UserResp(User user, bool fullInfo)
         {
             UserId = user.UserId;
             Username = user.Username;
             Email = user.Email;
             Status = user.Status;
+            if (fullInfo)
+                Roles = user.Roles.Select(r => new RoleResp(r)).ToList();
         }
     }
 }

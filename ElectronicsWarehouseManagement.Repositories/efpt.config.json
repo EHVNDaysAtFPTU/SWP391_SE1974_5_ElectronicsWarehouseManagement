@@ -23,23 +23,19 @@
          "ObjectType": 0
       },
       {
-         "Name": "[dbo].[Category]",
+         "Name": "[dbo].[C_C]",
          "ObjectType": 0
       },
       {
-         "Name": "[dbo].[Item]",
+         "Name": "[dbo].[Component]",
          "ObjectType": 0
       },
       {
-         "Name": "[dbo].[ItemBin]",
+         "Name": "[dbo].[ComponentBin]",
          "ObjectType": 0
       },
       {
-         "Name": "[dbo].[ItemCategory]",
-         "ObjectType": 0
-      },
-      {
-         "Name": "[dbo].[ItemDefinition]",
+         "Name": "[dbo].[ComponentCategory]",
          "ObjectType": 0
       },
       {
@@ -47,19 +43,19 @@
          "ObjectType": 0
       },
       {
-         "Name": "[dbo].[TransferReq]",
+         "Name": "[dbo].[TransferRequest]",
          "ObjectType": 0
       },
       {
-         "Name": "[dbo].[TransferReqItem]",
+         "Name": "[dbo].[TransferRequestComponent]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[U_R]",
          "ObjectType": 0
       },
       {
          "Name": "[dbo].[User]",
-         "ObjectType": 0
-      },
-      {
-         "Name": "[dbo].[UserRole]",
          "ObjectType": 0
       },
       {

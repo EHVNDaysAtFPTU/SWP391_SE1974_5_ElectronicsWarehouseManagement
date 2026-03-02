@@ -1,8 +1,7 @@
 using ElectronicsWarehouseManagement.Repositories.Entities;
 using ElectronicsWarehouseManagement.WebAPI.DTO;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using System.Security.Cryptography;
-using System.Text;
 
 public interface IAuthService
 {
@@ -33,14 +32,9 @@ class AuthService : IAuthService
 
         if (user is null)
             return (new ApiResult(ApiResultCode.NotFound), null);
-
-        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(request.Password));
-
-        if (!string.Equals(user.PasswordHash,
-            Convert.ToBase64String(hash),
-            StringComparison.Ordinal))
+        var passwordHasher = new PasswordHasher<User>();
+        if (passwordHasher.VerifyHashedPassword(user, user.PasswordHash, request.Password) != PasswordVerificationResult.Success)
             return (new ApiResult(ApiResultCode.IncorrectCred), null);
-
         switch (user.Status)
         {
             case UserStatus.Inactive:
@@ -68,11 +62,10 @@ class AuthService : IAuthService
         var user = await _dbCtx.Users.FirstOrDefaultAsync(u => u.Username == username);
         if (user is null)
             return new ApiResult(ApiResultCode.NotFound);
-        var oldHash = SHA256.HashData(Encoding.UTF8.GetBytes(request.OldPassword));
-        if (!string.Equals(user.PasswordHash, Convert.ToBase64String(oldHash), StringComparison.Ordinal))
+        var passwordHasher = new PasswordHasher<User>();
+        if (passwordHasher.VerifyHashedPassword(user, user.PasswordHash, request.OldPassword) != PasswordVerificationResult.Success)
             return new ApiResult(ApiResultCode.IncorrectCred);
-        var newHash = SHA256.HashData(Encoding.UTF8.GetBytes(request.NewPassword));
-        user.PasswordHash = Convert.ToBase64String(newHash);
+        user.PasswordHash = passwordHasher.HashPassword(user, request.NewPassword);
         await _dbCtx.SaveChangesAsync();
         return new ApiResult();
     }
@@ -84,7 +77,6 @@ class AuthService : IAuthService
         var user = await _dbCtx.Users.FirstOrDefaultAsync(u => u.Username == username);
         if (user is null)
             return new ApiResult(ApiResultCode.NotFound);
-        // Check if new username or email already exists
         bool usernameExists = await _dbCtx.Users.AnyAsync(u => u.Username == request.Username && u.UserId != user.UserId);
         if (usernameExists)
             return new ApiResult(ApiResultCode.InvalidRequest, "Username already exists.");
@@ -97,10 +89,3 @@ class AuthService : IAuthService
         return new ApiResult();
     }
 }
-
-
-/*
-#r "System.Security.Cryptography.Algorithms.dll"
-using System.Security.Cryptography;
-Convert.ToBase64String(SHA256.HashData(Encoding.UTF8.GetBytes("P@ssW0rd")))
- */

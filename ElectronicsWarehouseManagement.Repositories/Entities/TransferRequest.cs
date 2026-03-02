@@ -5,18 +5,18 @@ using System.Collections.Generic;
 
 namespace ElectronicsWarehouseManagement.Repositories.Entities;
 
-public partial class TransferReq
+public partial class TransferRequest
 {
-    public int TransferId { get; set; }
+    public int RequestId { get; set; }
 
     public string Description { get; set; }
 
     [Obsolete("Use Type instead.")]
     public int TypeInt { get; set; }
 
-    public DateOnly CreationDate { get; set; }
+    public DateTime CreationTime { get; set; }
 
-    public DateOnly? ExecutionDate { get; set; }
+    public DateTime? ExecutionTime { get; set; }
 
     [Obsolete("Use Status instead.")]
     public int StatusInt { get; set; }
@@ -25,17 +25,17 @@ public partial class TransferReq
 
     public int? ApproverId { get; set; }
 
-    public int? WarehouseFromId { get; set; }
+    public int? BinFromId { get; set; }
 
-    public int? WarehouseToId { get; set; }
+    public int? BinToId { get; set; }
 
     public virtual User Approver { get; set; }
 
+    public virtual Bin BinFrom { get; set; }
+
+    public virtual Bin BinTo { get; set; }
+
     public virtual User Creator { get; set; }
 
-    public virtual Warehouse WarehouseFrom { get; set; }
-
-    public virtual Warehouse WarehouseTo { get; set; }
-
-    public virtual ICollection<Item> Items { get; set; } = new List<Item>();
+    public virtual ICollection<TransferRequestComponent> TransferRequestComponents { get; set; } = new List<TransferRequestComponent>();
 }

@@ -5,13 +5,17 @@ namespace ElectronicsWarehouseManagement.Repositories.Entities
 {
     public static class EntitiesExt
     {
-        extension(ItemDefinition itemDef)
+        extension(Component component)
         {
             public ComponentMetadata? Metadata
             {
-                get => JsonSerializer.Deserialize<ComponentMetadata>(itemDef.MetadataJson);
-                set => itemDef.MetadataJson = JsonSerializer.Serialize(value);
+                get => JsonSerializer.Deserialize<ComponentMetadata>(component.MetadataJson);
+                set => component.MetadataJson = JsonSerializer.Serialize(value);
             }
+
+            public double TotalQuantity => component.ComponentBins.Sum(cb => cb.Quantity);
+
+            public double TotalPrice => component.TotalQuantity * component.UnitPrice;
         }
 
         extension(User user)
@@ -23,18 +27,18 @@ namespace ElectronicsWarehouseManagement.Repositories.Entities
             }
         }
 
-        extension(TransferReq transferReq)
+        extension(TransferRequest transferRequest)
         {
             public TransferStatus Status
             {
-                get => (TransferStatus)transferReq.StatusInt;
-                set => transferReq.StatusInt = (int)value;
+                get => (TransferStatus)transferRequest.StatusInt;
+                set => transferRequest.StatusInt = (int)value;
             }
 
             public TransferType Type
             {
-                get => (TransferType)transferReq.TypeInt;
-                set => transferReq.TypeInt = (int)value;
+                get => (TransferType)transferRequest.TypeInt;
+                set => transferRequest.TypeInt = (int)value;
             }
         }
 

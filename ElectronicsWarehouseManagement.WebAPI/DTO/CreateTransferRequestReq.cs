@@ -3,60 +3,60 @@ using System.Text.Json.Serialization;
 
 namespace ElectronicsWarehouseManagement.WebAPI.DTO
 {
-    public class CreateTransferReq : IVerifiableRequest
+    public class CreateTransferRequestReq : IVerifiableRequest
     {
-        [JsonPropertyName("items")]
-        public List<ItemReq> Items { get; set; } = [];
+        [JsonPropertyName("components")]
+        public List<TransferRequestComponentReq> Components { get; set; } = [];
 
         [JsonPropertyName("desc")]
         public string Description { get; set; } = "";
 
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        [JsonPropertyName("warehouse_from_id")]
-        public int? WarehouseFromId { get; set; }
+        [JsonPropertyName("bin_from_id")]
+        public int? BinFromId { get; set; }
 
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        [JsonPropertyName("warehouse_to_id")]
-        public int? WarehouseToId { get; set; }
+        [JsonPropertyName("bin_to_id")]
+        public int? BinToId { get; set; }
 
         [JsonIgnore]
         internal TransferType Type { get; set; }
 
         public bool Verify(out string failedReason)
         {
-            if (Items.Count == 0)
+            if (Components.Count == 0)
             {
-                failedReason = "Item list cannot be empty.";
+                failedReason = "Component list cannot be empty.";
                 return false;
             }
-            foreach (var item in Items)
+            foreach (var component in Components)
             {
-                if (!item.Verify(out failedReason))
+                if (!component.Verify(out failedReason))
                     return false;
             }
             switch (Type)
             {
                 case TransferType.InternalTransfer:
-                    if (WarehouseFromId == null || WarehouseToId == null)
+                    if (BinFromId is null || BinToId is null)
                     {
                         failedReason = "Missing source or destination warehouse for internal transfer.";
                         return false;
                     }
-                    if (WarehouseFromId == WarehouseToId)
+                    if (BinFromId == BinToId)
                     {
                         failedReason = "Source and destination warehouses cannot be the same.";
                         return false;
                     }
                     break;
                 case TransferType.Inbound:
-                    if (WarehouseToId == null)
+                    if (BinToId is null)
                     {
                         failedReason = "Destination warehouse must be specified.";
                         return false;
                     }
                     break;
                 case TransferType.Outbound:
-                    if (WarehouseFromId == null)
+                    if (BinFromId is null)
                     {
                         failedReason = "Source warehouse must be specified.";
                         return false;
