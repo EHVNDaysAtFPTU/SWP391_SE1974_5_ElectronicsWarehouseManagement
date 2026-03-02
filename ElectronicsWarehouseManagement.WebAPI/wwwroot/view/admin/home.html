@@ -192,9 +192,16 @@
         }
 
         async function deleteUser(id) {
-            if (!confirm("Delete?")) return;
-            const r = await api(`/admin/users/${id}/delete`, "DELETE");
-            if (r.success) loadUsers();
+            if (!confirm("Are you sure you want to delete this user?")) return;
+
+            const r = await api(`/admin/users/${id}`, "DELETE");
+
+            if (r.success) {
+                alert("User deleted successfully!");
+                loadUsers();
+            } else {
+                alert("Delete failed: " + r.message);
+            }
         }
 
         async function searchUsers() {
