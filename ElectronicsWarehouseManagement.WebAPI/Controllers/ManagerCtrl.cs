@@ -72,18 +72,27 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
         [HttpPost("transfer-requests/{transferId:int}/decisions")]
         public async Task<IActionResult> PostTransferReq([FromRoute] int transferId, [FromBody] TransferDecisionRequest request)
         {
-            int? approverId = 3;
-            if(approverId == null)
+            string? userIdString = GetCurrentUserId();
+            int? approverId = null;
+
+            if (!string.IsNullOrEmpty(userIdString) && int.TryParse(userIdString, out int parsedId))
             {
-                return BadRequest();
+                approverId = parsedId;
             }
-            var result = await _managerService.PostTransferDecisionAsync(transferId, request.Decision, approverId);
+
+            if (approverId == null)
+            {
+                return BadRequest("Invalid or missing UserId in session.");
+            }
+
+            var result = await _managerService.PostTransferDecisionAsync(transferId, request.Decision, approverId.Value);
             if (result.Success)
             {
                 return Ok(result);
             }
             return BadRequest(result);
         }
+
 
         [HttpGet("get-bin/{binId:int}")]
         public async Task<IActionResult> GetBin([FromRoute] int binId, [FromQuery] bool fullInfo)
@@ -110,6 +119,22 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
 
             return BadRequest(result);
         }
+
+
+        [HttpGet("get-warehouse/{warehouseId:int}")]
+        public async Task<IActionResult> GetWarehouseList(int warehouseId, [FromQuery] bool fullInfo)
+        {
+            var result = await _managerService.GetWareHouseAsync(warehouseId,fullInfo);
+
+            if (result.Success)
+            {
+                return Ok(result);
+            }
+
+            return BadRequest(result);
+        }
+
+
         [HttpGet("get-warehouses")]
         public async Task<IActionResult> GetWarehouseList([FromQuery] PagingRequest request)
         {
@@ -124,7 +149,16 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
         }
 
 
+        private String? GetCurrentUserId()
+        {
+            string? result = HttpContext.Session.GetString("UserId");
+            if(result == null)
+            {
+                return null;
+            }
+            return result;
 
+        }
 
         //[HttpGet("me")]
         //public IActionResult Me()
@@ -145,19 +179,6 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
 
         //    return Ok(new ApiResult<object>(userInfo));
         //}
-
-        private int? GetCurrentUserId()
-        {
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-
-            if (userIdClaim == null)
-                return null;
-
-            if (int.TryParse(userIdClaim.Value, out int userId))
-                return userId;
-
-            return null;
-        }
 
 
         private String? GetCurrentUsername()

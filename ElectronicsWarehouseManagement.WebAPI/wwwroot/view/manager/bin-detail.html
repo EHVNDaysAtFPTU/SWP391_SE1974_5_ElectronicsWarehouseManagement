@@ -1,0 +1,148 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Bin Detail</title>
+
+    <link rel="stylesheet" href="css/layout.css">
+    <link rel="stylesheet" href="css/table-style.css">
+    <link rel="stylesheet" href="css/detail-style.css">
+</head>
+
+<body>
+
+    <!-- HEADER -->
+    <div class="header">
+        <div><b>Warehouse Manager</b></div>
+        <div>Xin chào, Admin</div>
+    </div>
+
+    <div class="wrapper">
+
+        <!-- SIDEBAR -->
+        <div class="sidebar">
+            <ul>
+                <li><a href="dashboard.html">Dashboard</a></li>
+                <li><a href="component-inventory.html">Components</a></li>
+                <li><a href="warehouse.html">Warehouses</a></li>
+                <li><a href="bin.html" class="active">Bins</a></li>
+                <li><a href="transfer-list.html">Transfers</a></li>
+            </ul>
+        </div>
+
+        <!-- CONTENT -->
+        <div class="content">
+
+            <h2>Bin Detail</h2>
+
+            <button class="back-btn" onclick="goBack()">← Back to Bin List</button>
+
+            <br><br>
+
+            <!-- BIN INFO -->
+            <div id="binInfo" class="detail-box"></div>
+
+            <h3 style="margin-top:25px;">Components In This Bin</h3>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Component ID</th>
+                        <th>Quantity</th>
+                    </tr>
+                </thead>
+                <tbody id="componentTable"></tbody>
+            </table>
+
+        </div>
+    </div>
+
+    <script>
+
+let binId = null;
+
+document.addEventListener("DOMContentLoaded", function () {
+
+    const params = new URLSearchParams(window.location.search);
+    binId = params.get("binId");
+
+    if (!binId) {
+        alert("Bin ID not found");
+        return;
+    }
+
+    loadBinDetail();
+});
+
+function goBack() {
+    history.back();
+}
+
+async function loadBinDetail() {
+
+    const response = await fetch(
+        `/api/manager/get-bin/${binId}?fullInfo=true`,
+        { credentials: 'include' }
+    );
+
+    const result = await response.json();
+
+    if (!result.success) {
+        alert(result.msg || "Load bin detail failed");
+        return;
+    }
+
+    renderBinDetail(result.data);
+}
+
+function renderBinDetail(bin) {
+
+    const info = document.getElementById("binInfo");
+
+    info.innerHTML = `
+        <p><strong>ID:</strong> ${bin.id}</p>
+        <p><strong>Location:</strong> ${bin.location_in_warehouse}</p>
+        <p><strong>Status:</strong> ${getStatusBadge(bin.status)}</p>
+        <p><strong>Warehouse:</strong> ${bin.warehouse?.name || "-"}</p>
+    `;
+
+    const tbody = document.getElementById("componentTable");
+    tbody.innerHTML = "";
+
+    if (!bin.components || bin.components.length === 0) {
+        const row = tbody.insertRow();
+        const cell = row.insertCell();
+        cell.colSpan = 3;
+        cell.innerText = "No components in this bin";
+        return;
+    }
+
+    bin.components.forEach(c => {
+        const row = tbody.insertRow();
+        row.insertCell().innerText = c.id;
+        row.insertCell().innerText = c.component_id;
+        row.insertCell().innerText = c.quantity;
+    });
+}
+
+/* ===== STATUS BADGE ===== */
+
+function getStatusBadge(status) {
+
+    switch (status) {
+        case 0:
+            return `<span class="badge badge-pending">Empty</span>`;
+        case 1:
+            return `<span class="badge badge-approved">In Use</span>`;
+        case 2:
+            return `<span class="badge badge-rejected">Disabled</span>`;
+        default:
+            return status;
+    }
+}
+
+    </script>
+
+</body>
+</html>

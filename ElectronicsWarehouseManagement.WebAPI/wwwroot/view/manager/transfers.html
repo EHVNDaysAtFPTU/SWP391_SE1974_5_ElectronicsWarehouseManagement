@@ -1,0 +1,245 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Transfer List</title>
+    <link rel="stylesheet" href="css/layout.css">
+    <link rel="stylesheet" href="css/table-style.css">
+</head>
+
+<body>
+
+    <!-- ===== HEADER ===== -->
+    <div class="header">
+        <div><b>Warehouse Manager</b></div>
+        <div>Xin chào, Admin</div>
+    </div>
+
+    <div class="wrapper">
+
+        <!-- ===== SIDEBAR ===== -->
+        <div class="sidebar">
+            <ul>
+                <li><a href="dashboard.html">Dashboard</a></li>
+                <li><a href="component-inventory.html">Components</a></li>
+                <li><a href="transfers.html">Transfers</a></li>
+                <li><a href="warehouses.html">Warehouses</a></li>
+                <li><a href="bin.html">Bins</a></li>
+            </ul>
+        </div>
+
+        <!-- ===== CONTENT ===== -->
+        <div class="content">
+
+            <h2>Transfer List</h2>
+
+            <div>
+                Transfer per page:
+                <select id="pageSize">
+                    <option value="5">5</option>
+                    <option value="10" selected>10</option>
+                    <option value="20">20</option>
+                </select>
+            </div>
+
+            <br>
+
+            <div id="infoText"></div>
+            <br>
+
+            <table id="transferTable" width="100%">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Description</th>
+                        <th>Type</th>
+                        <th>Creation Date</th>
+                        <th>Execution Date</th>
+                        <th>Status</th>
+                        <th>Monitor Status</th>
+                        <th>Detail</th>
+                        <th>Decision</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+
+            <br>
+            <div id="pagination"></div>
+            <br>
+            <div id="message"></div>
+
+        </div>
+    </div>
+
+    <!-- =========================
+         GIỮ NGUYÊN SCRIPT CỦA BẠN
+    ========================= -->
+    <script>
+        let currentPage = 1;
+        let pageSize = 10;
+        let totalPages = 1;
+
+        document.addEventListener("DOMContentLoaded", function () {
+            document.getElementById("pageSize").addEventListener("change", changePageSize);
+            loadTransfers(1);
+        });
+
+        async function loadTransfers(page) {
+            currentPage = page;
+
+            const response = await fetch(
+                `/api/manager/get-transfers?pageNumber=${page}&pageSize=${pageSize}`,
+                { credentials: "include" }
+            );
+
+            const result = await response.json();
+
+            if (!result.success) {
+                showMessage(result.msg || "Load failed");
+                return;
+            }
+
+            const data = result.data;
+
+            renderInfo(data.totalCount);
+            renderTable(data.data);
+            renderPagination(data.totalPages);
+        }
+
+        function renderTable(data) {
+            const tbody = document.querySelector("#transferTable tbody");
+            tbody.innerHTML = "";
+
+            if (!data || data.length === 0) {
+                const row = document.createElement("tr");
+                const cell = document.createElement("td");
+                cell.colSpan = 9;
+                cell.innerText = "No transfers found";
+                row.appendChild(cell);
+                tbody.appendChild(row);
+                return;
+            }
+
+            data.forEach(t => {
+                const row = document.createElement("tr");
+
+                row.innerHTML = `
+                <td>${t.id ?? "-"}</td>
+                <td>${t.description ?? "-"}</td>
+                <td>${getTypeText(t.type)}</td>
+                <td>${formatDate(t.creation_date)}</td>
+                <td>${t.execution_date ? formatDate(t.execution_date) : "-"}</td>
+                <td>${getStatusText(t.status)}</td>
+                <td>${transferMonitorStatus(t)}</td>
+                <td>
+                    <button onclick="viewTransfer(${t.id})">View</button>
+                </td>
+                <td>
+                    ${renderDecisionButtons(t)}
+                </td>
+            `;
+
+                tbody.appendChild(row);
+            });
+        }
+
+        function renderPagination(pages) {
+            totalPages = pages;
+            const container = document.getElementById("pagination");
+            container.innerHTML = "";
+
+            for (let i = 1; i <= totalPages; i++) {
+                const btn = document.createElement("button");
+                btn.innerText = i;
+                btn.disabled = (i === currentPage);
+                btn.onclick = () => loadTransfers(i);
+                container.appendChild(btn);
+            }
+        }
+
+        async function updateTransferStatus(transferId, decision) {
+            const response = await fetch(
+                `/api/manager/transfer-requests/${transferId}/decisions`,
+                {
+                    method: "POST",
+                    credentials: "include",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ decision: decision })
+                }
+            );
+
+            const result = await response.json();
+
+            if (response.ok && result.success) {
+                showMessage("Updated successfully");
+                loadTransfers(currentPage);
+            } else {
+                showMessage(result.msg || "Update failed");
+            }
+        }
+
+        function renderInfo(totalCount) {
+            const infoText = document.getElementById("infoText");
+            infoText.innerText =
+                `Showing ${(currentPage - 1) * pageSize + 1}
+             to ${Math.min(currentPage * pageSize, totalCount)}
+             of ${totalCount}`;
+        }
+
+        function renderDecisionButtons(t) {
+            if (t.status !== 0) return "-";
+
+            return `
+            <button onclick="updateTransferStatus(${t.id}, 2)">Approve</button>
+            <button onclick="updateTransferStatus(${t.id}, 3)">Reject</button>
+        `;
+        }
+
+        function getStatusText(status) {
+            switch (status) {
+                case 0: return "Pending";
+                case 2: return "Approved";
+                case 3: return "Rejected";
+                default: return "Unknown";
+            }
+        }
+
+        function getTypeText(type) {
+            switch (type) {
+                case 1: return "Inbound";
+                case 2: return "Outbound";
+                case 3: return "Internal";
+                default: return "Unknown";
+            }
+        }
+
+        function transferMonitorStatus(t) {
+            if (t.status === 0) return "Not Yet";
+            if (t.status === 2 && t.execution_date) return "Done";
+            if (t.status === 2) return "Processing";
+            if (t.status === 3) return "Canceled";
+            return "Unknown";
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return "-";
+            return new Date(dateString).toLocaleDateString("en-US");
+        }
+
+        function changePageSize() {
+            pageSize = parseInt(document.getElementById("pageSize").value);
+            loadTransfers(1);
+        }
+
+        function showMessage(msg) {
+            document.getElementById("message").innerText = msg;
+        }
+
+        function viewTransfer(id) {
+            window.location.href = `transfer-detail.html?id=${id}`;
+        }
+    </script>
+
+</body>
+</html>

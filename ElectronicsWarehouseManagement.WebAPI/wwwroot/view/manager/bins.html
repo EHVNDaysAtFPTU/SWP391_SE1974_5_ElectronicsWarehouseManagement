@@ -1,0 +1,166 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Bin List</title>
+
+    <link rel="stylesheet" href="css/layout.css">
+    <link rel="stylesheet" href="css/table-style.css">
+    <link rel="stylesheet" href="css/detail-style.css">
+    <style>
+        .back-btn {
+            background: #555;
+            margin-bottom: 10px;
+        }
+
+            .back-btn:hover {
+                opacity: 0.85;
+            }
+    </style>
+</head>
+
+<body>
+
+    <!-- HEADER -->
+    <div class="header">
+        <div><b>Warehouse Manager</b></div>
+        <div>Xin chào, Admin</div>
+    </div>
+
+    <div class="wrapper">
+
+        <!-- SIDEBAR -->
+        <div class="sidebar">
+            <ul>
+                <li><a href="dashboard.html">Dashboard</a></li>
+                <li><a href="component-inventory.html">Components</a></li>
+                <li><a href="warehouse.html">Warehouses</a></li>
+                <li><a href="bin.html" class="active">Bins</a></li>
+                <li><a href="transfer-list.html">Transfers</a></li>
+            </ul>
+        </div>
+
+        <!-- CONTENT -->
+        <div class="content">
+
+            <h2>Bin List</h2>
+
+            <button class="back-btn" onclick="goBack()">← Back to Warehouses</button>
+
+            <br><br>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Location</th>
+                        <th>Status</th>
+                        <th>Components Count</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="binTable"></tbody>
+            </table>
+
+        </div>
+    </div>
+
+    <script>
+
+let warehouseId = null;
+
+document.addEventListener("DOMContentLoaded", function () {
+
+    const params = new URLSearchParams(window.location.search);
+    warehouseId = params.get("warehouseId");
+
+    if (!warehouseId) {
+        alert("Warehouse ID not found");
+        return;
+    }
+
+    loadBins();
+});
+
+function goBack() {
+    window.location.href = "warehouse.html";
+}
+
+async function loadBins() {
+
+    try {
+
+        const response = await fetch(
+            `/api/manager/get-bins/${warehouseId}?pageNumber=1&pageSize=100&fullInfo=true`,
+            { credentials: 'include' }
+        );
+
+        const result = await response.json();
+
+        if (!result.success) {
+            alert(result.msg || "Load bins failed");
+            return;
+        }
+
+        renderBins(result.data.data);
+
+    } catch (error) {
+        console.error(error);
+        alert("Error loading bins");
+    }
+}
+
+function renderBins(bins) {
+
+    const tbody = document.getElementById("binTable");
+    tbody.innerHTML = "";
+
+    if (!bins || bins.length === 0) {
+        const row = tbody.insertRow();
+        const cell = row.insertCell();
+        cell.colSpan = 5;
+        cell.innerText = "No bins found";
+        return;
+    }
+
+    bins.forEach(b => {
+
+        const row = tbody.insertRow();
+
+        row.insertCell().innerText = b.id;
+        row.insertCell().innerText = b.location_in_warehouse || "";
+        row.insertCell().innerHTML = getStatusBadge(b.status);
+        row.insertCell().innerText = b.components ? b.components.length : 0;
+
+        const actionCell = row.insertCell();
+
+        const detailBtn = document.createElement("button");
+        detailBtn.innerText = "View Detail";
+        detailBtn.onclick = function () {
+            window.location.href = `bin-detail-test.html?binId=${b.id}`;
+        };
+
+        actionCell.appendChild(detailBtn);
+    });
+}
+
+/* ===== STATUS BADGE ===== */
+
+function getStatusBadge(status) {
+
+    switch (status) {
+        case 0:
+            return `<span class="badge badge-pending">Empty</span>`;
+        case 1:
+            return `<span class="badge badge-approved">In Use</span>`;
+        case 2:
+            return `<span class="badge badge-rejected">Disabled</span>`;
+        default:
+            return status;
+    }
+}
+
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,179 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Component Inventory</title>
+</head>
+<body>
+
+    <h2>Component Inventory</h2>
+
+    <div>
+        Component per page:
+        <select id="pageSize">
+            <option value="5">5</option>
+            <option value="10" selected>10</option>
+            <option value="20">20</option>
+        </select>
+    </div>
+
+    <br>
+
+    <div id="infoText"></div>
+
+    <br>
+
+    <table border="1" cellpadding="8" cellspacing="0" width="100%">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Description</th>
+                <th>Unit</th>
+                <th>Price</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody id="itemsTable">
+            <!-- Dữ liệu sẽ được JS thêm vào đây -->
+        </tbody>
+    </table>
+
+    <br>
+
+    <div id="pagination"></div>
+
+    <br>
+
+    <h3>Item Detail</h3>
+    <div id="itemDetail"></div>
+
+    <script>
+        let currentPage = 1;
+        let pageSize = 5;
+        let totalPages = 1;
+
+        document.addEventListener("DOMContentLoaded", function () {
+            document.getElementById("pageSize").addEventListener("change", changePageSize);
+            loadItems(1);
+        });
+
+        async function loadItems(page) {
+            currentPage = page;
+
+            const response = await fetch(`/api/manager/get-components?pageNumber=${page}&pageSize=${pageSize}`, {
+                credentials: 'include'
+            });
+
+            const result = await response.json();
+
+            if (!result.success) {
+                alert(result.msg || "Load failed");
+                return;
+            }
+
+            const data = result.data;
+            renderTable(data);
+            renderPagination(data.totalPages);
+        }
+
+        function renderTable(data) {
+            const tbody = document.getElementById("itemsTable");
+            const infoText = document.getElementById("infoText");
+
+            tbody.innerHTML = "";
+
+            if (!data.data || data.data.length === 0) {
+                const row = tbody.insertRow();
+                const cell = row.insertCell();
+                cell.colSpan = 6;
+                cell.innerText = "No items found";
+                return;
+            }
+
+            infoText.innerText =
+                `Showing ${(currentPage - 1) * pageSize + 1}
+             to ${Math.min(currentPage * pageSize, data.totalCount)}
+             of ${data.totalCount}`;
+
+            data.data.forEach(component => {
+                const row = tbody.insertRow();
+
+                const idCell = row.insertCell();
+                idCell.innerText = component.id;
+
+                const nameCell = row.insertCell();
+                nameCell.innerText = component.metadata?.name || "N/A";
+
+                const descCell = row.insertCell();
+                descCell.innerText = component.metadata?.desc || "";
+
+                const unitCell = row.insertCell();
+                unitCell.innerText = component.unit || "";
+
+                const priceCell = row.insertCell();
+                priceCell.innerText = formatCurrency(component.unit_price || 0);
+
+                const actionCell = row.insertCell();
+                const btn = document.createElement("button");
+                btn.innerText = "View";
+                btn.onclick = function () {
+                    viewDetail(component.id);
+                };
+                actionCell.appendChild(btn);
+            });
+        }
+
+        function renderPagination(pages) {
+            totalPages = pages;
+            const container = document.getElementById("pagination");
+            container.innerHTML = "";
+
+            for (let i = 1; i <= totalPages; i++) {
+                const btn = document.createElement("button");
+                btn.innerText = i;
+                btn.disabled = (i === currentPage);
+                btn.onclick = function () {
+                    loadItems(i);
+                };
+                container.appendChild(btn);
+            }
+        }
+
+        async function viewDetail(id) {
+            const response = await fetch(`/api/manager/get-component/${id}?fullInfo=true`, {
+                credentials: 'include'
+            });
+
+            const result = await response.json();
+
+            if (!result.success) {
+                alert(result.msg || "Load detail failed");
+                return;
+            }
+
+            const component = result.data;
+
+            document.getElementById("itemDetail").innerHTML = `
+            <p><b>Name:</b> ${component.metadata?.name || ""}</p>
+            <p><b>Description:</b> ${component.metadata?.desc || ""}</p>
+            <p><b>Manufacturer:</b> ${component.metadata?.manufacturer || ""}</p>
+            <p><b>Manufacturing Date:</b> ${component.metadata?.manufacturing_date || ""}</p>
+            <p><b>Unit:</b> ${component.unit || ""}</p>
+            <p><b>Price:</b> ${formatCurrency(component.unit_price || 0)}</p>
+            <hr>
+        `;
+        }
+
+        function formatCurrency(amount) {
+            return amount.toLocaleString("vi-VN") + " đ";
+        }
+
+        function changePageSize() {
+            pageSize = parseInt(document.getElementById("pageSize").value);
+            loadItems(1);
+        }
+    </script>
+
+</body>
+</html>

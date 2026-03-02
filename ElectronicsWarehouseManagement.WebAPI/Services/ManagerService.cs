@@ -18,6 +18,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
         ////Task<ApiResult<PagedResult<ItemDefResp>>> GetFilteredItemListAsync(PagingRequest request, FilteredCodeReq fReq);
         Task<ApiResult<BinResp>> GetBin(int binId, bool fullInfo);
         Task<ApiResult<PagedResult<BinResp>>> GetBinList(PagingRequest request, int warehouseId, bool fullInfo);
+        Task<ApiResult<WarehouseResp>> GetWareHouseAsync(int warehouseId, bool fullInfo);
         Task<ApiResult<PagedResult<WarehouseResp>>> GetWareHouseListAsync(PagingRequest request);
     }
 
@@ -98,7 +99,12 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
 
         public async Task<ApiResult<PagedResult<TransferRequestResp>>> GetTransferReqListAsync(PagingRequest request)
         {
-            var query = _dbCtx.TransferRequests.AsNoTracking();
+            var query = _dbCtx.TransferRequests.AsNoTracking()
+                .Include(i => i.Approver)
+                .Include(i => i.Creator)
+                .Include(i => i.BinFrom)
+                .Include(i => i.BinTo);
+                
             int totalCount = await query.CountAsync();
             var data = await query
                 .Skip((request.PageNumber - 1) * request.PageSize)
@@ -219,6 +225,19 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             };
             return new ApiResult<PagedResult<WarehouseResp>>(pagedResult);
 
+        }
+
+        public async Task<ApiResult<WarehouseResp>> GetWareHouseAsync(int warehouseId,bool fullInfo)
+        {
+            var warehouse = await _dbCtx.Warehouses.AsNoTracking()
+                .Where(i => i.WarehouseId == warehouseId)
+                .Select(i => new WarehouseResp(i, fullInfo))
+                .FirstOrDefaultAsync();
+            if(warehouse == null)
+            {
+                return new ApiResult<WarehouseResp>(ApiResultCode.NotFound);
+            }
+            return new ApiResult<WarehouseResp>(warehouse);
         }
 
         //    public async Task<ApiResult<PagedResult<ItemResp>>> GetFilteredItemListAsync(PagingRequest request, FilteredCodeReq fReq)

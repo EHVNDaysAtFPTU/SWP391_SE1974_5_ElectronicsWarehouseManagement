@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Component Inventory</title>
+
+    <link rel="stylesheet" href="css/layout.css">
+    <link rel="stylesheet" href="css/table-style.css">
+    <link rel="stylesheet" href="css/detail-style.css">
+
+    <style>
+        .thumbnail {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 6px;
+            border: 1px solid #ddd;
+        }
+
+        .detail-image {
+            width: 120px;
+            height: 120px;
+            object-fit: cover;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+
+<body>
+
+<!-- HEADER -->
+<div class="header">
+    <div><b>Warehouse Manager</b></div>
+    <div>Xin chào, Admin</div>
+</div>
+
+<div class="wrapper">
+
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+        <ul>
+            <li><a href="dashboard.html">Dashboard</a></li>
+                <li><a href="component-inventory.html">Components</a></li>
+                <li><a href="transfers.html">Transfers</a></li>
+                <li><a href="warehouses.html">Warehouses</a></li>
+                <li><a href="bin.html">Bins</a></li>
+        </ul>
+    </div>
+
+    <!-- CONTENT -->
+    <div class="content">
+
+        <h2>Component Inventory</h2>
+
+        <div>
+            Component per page:
+            <select id="pageSize">
+                <option value="5">5</option>
+                <option value="10" selected>10</option>
+                <option value="20">20</option>
+            </select>
+        </div>
+
+        <br>
+
+        <div id="infoText"></div>
+
+        <br>
+
+        <table>
+            <thead>
+            <tr>
+                <th>ID</th>
+                <th>Image</th>
+                <th>Name</th>
+                <th>Description</th>
+                <th>Unit</th>
+                <th>Price</th>
+                <th>Action</th>
+            </tr>
+            </thead>
+            <tbody id="itemsTable"></tbody>
+        </table>
+
+        <br>
+
+        <div id="pagination"></div>
+
+    </div>
+</div>
+
+<script>
+
+let currentPage = 1;
+let pageSize = 10;
+let totalPages = 1;
+
+document.addEventListener("DOMContentLoaded", function () {
+    document.getElementById("pageSize").addEventListener("change", changePageSize);
+    loadItems(1);
+});
+
+async function loadItems(page) {
+    currentPage = page;
+
+    const response = await fetch(
+        `/api/manager/get-components?pageNumber=${page}&pageSize=${pageSize}`,
+        { credentials: 'include' }
+    );
+
+    const result = await response.json();
+
+    if (!result.success) {
+        alert(result.msg || "Load failed");
+        return;
+    }
+
+    renderTable(result.data);
+    renderPagination(result.data.totalPages);
+}
+
+function renderTable(data) {
+
+    const tbody = document.getElementById("itemsTable");
+    const infoText = document.getElementById("infoText");
+
+    tbody.innerHTML = "";
+
+    if (!data.data || data.data.length === 0) {
+        const row = tbody.insertRow();
+        const cell = row.insertCell();
+        cell.colSpan = 7;
+        cell.innerText = "No items found";
+        return;
+    }
+
+    infoText.innerText =
+        `Showing ${(currentPage - 1) * pageSize + 1}
+         to ${Math.min(currentPage * pageSize, data.totalCount)}
+         of ${data.totalCount}`;
+
+    data.data.forEach(component => {
+
+        const row = tbody.insertRow();
+        row.setAttribute("data-id", component.id);
+
+        // ID
+        row.insertCell().innerText = component.id;
+
+        // IMAGE (chỉ hiển thị nếu có URL)
+        const imgCell = row.insertCell();
+        if (component.metadata?.image_url) {
+            const img = document.createElement("img");
+            img.src = component.metadata.image_url;
+            img.alt = "component image";
+            img.className = "thumbnail";
+            imgCell.appendChild(img);
+        }
+
+        // NAME
+        row.insertCell().innerText = component.metadata?.name || "N/A";
+
+        // DESCRIPTION
+        row.insertCell().innerText = component.metadata?.desc || "";
+
+        // UNIT
+        row.insertCell().innerText = component.unit || "";
+
+        // PRICE
+        row.insertCell().innerText = formatCurrency(component.unit_price || 0);
+
+        // ACTION
+        const actionCell = row.insertCell();
+        const btn = document.createElement("button");
+        btn.innerText = "View";
+        btn.onclick = function () {
+            toggleDetail(component.id, row);
+        };
+        actionCell.appendChild(btn);
+    });
+}
+
+function renderPagination(pages) {
+
+    totalPages = pages;
+    const container = document.getElementById("pagination");
+    container.innerHTML = "";
+
+    for (let i = 1; i <= totalPages; i++) {
+
+        const btn = document.createElement("button");
+        btn.innerText = i;
+        btn.disabled = (i === currentPage);
+
+        btn.onclick = function () {
+            loadItems(i);
+        };
+
+        container.appendChild(btn);
+    }
+}
+
+async function toggleDetail(id, mainRow) {
+
+    const nextRow = mainRow.nextElementSibling;
+
+    if (nextRow && nextRow.classList.contains("detail-row")) {
+        nextRow.remove();
+        return;
+    }
+
+    document.querySelectorAll(".detail-row").forEach(r => r.remove());
+
+    const detailRow = document.createElement("tr");
+    detailRow.classList.add("detail-row");
+
+    const detailCell = document.createElement("td");
+    detailCell.colSpan = 7;
+    detailCell.innerHTML = "Loading...";
+
+    detailRow.appendChild(detailCell);
+    mainRow.parentNode.insertBefore(detailRow, mainRow.nextSibling);
+
+    const response = await fetch(
+        `/api/manager/get-component/${id}?fullInfo=true`,
+        { credentials: 'include' }
+    );
+
+    const result = await response.json();
+
+    if (!result.success) {
+        detailCell.innerHTML = "Load detail failed";
+        return;
+    }
+
+    const component = result.data;
+
+    detailCell.innerHTML = `
+        <div class="detail-box">
+
+            ${component.metadata?.image_url ? `
+                <img src="${component.metadata.image_url}" 
+                     class="detail-image">
+            ` : ""}
+
+            <p><b>Name:</b> ${component.metadata?.name || ""}</p>
+            <p><b>Description:</b> ${component.metadata?.desc || ""}</p>
+            <p><b>Manufacturer:</b> ${component.metadata?.manufacturer || ""}</p>
+            <p><b>Manufacturing Date:</b> ${component.metadata?.manufacturing_date || ""}</p>
+            <p><b>Unit:</b> ${component.unit || ""}</p>
+            <p><b>Price:</b> ${formatCurrency(component.unit_price || 0)}</p>
+        </div>
+    `;
+}
+
+function formatCurrency(amount) {
+    return amount.toLocaleString("vi-VN") + " đ";
+}
+
+function changePageSize() {
+    pageSize = parseInt(document.getElementById("pageSize").value);
+    loadItems(1);
+}
+
+</script>
+
+</body>
+</html>
