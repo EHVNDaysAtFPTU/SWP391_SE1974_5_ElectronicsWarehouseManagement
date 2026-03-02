@@ -193,7 +193,7 @@
 
         async function deleteUser(id) {
             if (!confirm("Delete?")) return;
-            const r = await api(`/admin/delete-account/${id}`, "DELETE");
+            const r = await api(`/admin/users/${id}/delete`, "DELETE");
             if (r.success) loadUsers();
         }
 
