@@ -72,10 +72,13 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
             BinToId = request.BinToId;
             if (fullInfo)
             {
-                Approver = new UserResp(request.Approver, false);
                 Creator = new UserResp(request.Creator, false);
-                BinFrom = new BinResp(request.BinFrom, false);
-                BinTo = new BinResp(request.BinTo, false);
+                if (request.ApproverId is not null)
+                    Approver = new UserResp(request.Approver, false);
+                if (request.BinFromId is not null)
+                    BinFrom = new BinResp(request.BinFrom, false);
+                if (request.BinToId is not null)
+                    BinTo = new BinResp(request.BinTo, false);
                 Components = request.TransferRequestComponents.Select(i => new TransferRequestComponentResp(i, true)).ToList();
             }
         }

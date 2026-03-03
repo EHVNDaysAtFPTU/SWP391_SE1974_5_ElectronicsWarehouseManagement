@@ -28,7 +28,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
 
         Task<ApiResult<BinResp>> UpdateBinStatusAsync(int binId, BinStatus status);
 
-        Task<ApiResult<List<TransferRequestResp>>> GetTransferRequestListAsync();
+        Task<ApiResult<List<TransferRequestResp>>> GetTransferRequestsAsync();
         Task<ApiResult<TransferRequestResp>> GetTransferRequestAsync(int requestId);
         Task<ApiResult<TransferRequestResp>> CreateTransferRequestAsync(CreateTransferRequestReq request, TransferType type, int creatorId);
         Task<ApiResult<TransferRequestResp>> ConfirmTransferRequestAsync(ConfirmTransferRequestReq request, int approverId);
@@ -231,9 +231,9 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
         }
 
 
-        public async Task<ApiResult<List<TransferRequestResp>>> GetTransferRequestListAsync()
+        public async Task<ApiResult<List<TransferRequestResp>>> GetTransferRequestsAsync()
         {
-            var transferReqs = _dbCtx.TransferRequests.AsNoTracking().Select(tr => new TransferRequestResp(tr, false)).ToList();
+            var transferReqs = await _dbCtx.TransferRequests.AsNoTracking().Select(tr => new TransferRequestResp(tr, false)).ToListAsync();
             return new ApiResult<List<TransferRequestResp>>(transferReqs);
         }
 

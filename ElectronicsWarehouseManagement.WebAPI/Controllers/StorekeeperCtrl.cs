@@ -178,7 +178,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
         [HttpGet("transfers")]
         public async Task<IActionResult> GetTransferRequests()
         {
-            var result = await _storekeeperService.GetTransferRequestListAsync();
+            var result = await _storekeeperService.GetTransferRequestsAsync();
             if (result.Success)
                 return Ok(result);
             return BadRequest(result);
