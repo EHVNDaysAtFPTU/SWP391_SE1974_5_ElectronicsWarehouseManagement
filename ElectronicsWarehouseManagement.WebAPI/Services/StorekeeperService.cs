@@ -104,6 +104,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             };
             _dbCtx.Components.Add(component);
             await _dbCtx.SaveChangesAsync();
+            //await _dbCtx.Entry(component).Collection(c => c.Categories).LoadAsync();
             return new ApiResult<ComponentResp>(new ComponentResp(component, true));
         }
 
@@ -174,6 +175,10 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             };
             _dbCtx.Bins.Add(bin);
             await _dbCtx.SaveChangesAsync();
+
+            await _dbCtx.Entry(bin).Reference(b => b.Warehouse).LoadAsync();
+            await _dbCtx.Entry(bin).Collection(b => b.ComponentBins).LoadAsync();
+
             return new ApiResult<BinResp>(new BinResp(bin, true));
         }
 
@@ -210,6 +215,9 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             });
             _dbCtx.Warehouses.Add(warehouse);
             await _dbCtx.SaveChangesAsync();
+
+            await _dbCtx.Entry(warehouse).Collection(w => w.Bins).LoadAsync();
+
             return new ApiResult<WarehouseResp>(new WarehouseResp(warehouse, true));
         }
 
@@ -227,6 +235,8 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
                 return new ApiResult<BinResp>(ApiResultCode.InvalidRequest, $"Bin with ID '{binId}' cannot be set to empty because it contains components.");
             bin.Status = status;
             await _dbCtx.SaveChangesAsync();
+            //await _dbCtx.Entry(bin).Reference(b => b.Warehouse).LoadAsync();
+            //await _dbCtx.Entry(bin).Collection(b => b.ComponentBins).LoadAsync();
             return new ApiResult<BinResp>(new BinResp(bin, true));
         }
 
@@ -308,6 +318,12 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             };
             _dbCtx.TransferRequests.Add(transferRequest);
             await _dbCtx.SaveChangesAsync();
+
+            await _dbCtx.Entry(transferRequest).Reference(tr => tr.Creator).LoadAsync();
+            await _dbCtx.Entry(transferRequest).Reference(tr => tr.BinFrom).LoadAsync();
+            await _dbCtx.Entry(transferRequest).Reference(tr => tr.BinTo).LoadAsync();
+            await _dbCtx.Entry(transferRequest).Collection(tr => tr.TransferRequestComponents).LoadAsync();
+
             return new ApiResult<TransferRequestResp>(new TransferRequestResp(transferRequest, true));
         }
 
@@ -315,13 +331,13 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
         {
             if (!request.Verify(out string failedReason))
                 return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, failedReason);
-            TransferRequest? transferReq = await _dbCtx.TransferRequests.Include(tr => tr.TransferRequestComponents).FirstOrDefaultAsync(tr => tr.RequestId == request.RequestId);
-            if (transferReq is null)
+            TransferRequest? transferRequest = await _dbCtx.TransferRequests.Include(tr => tr.TransferRequestComponents).FirstOrDefaultAsync(tr => tr.RequestId == request.RequestId);
+            if (transferRequest is null)
                 return new ApiResult<TransferRequestResp>(ApiResultCode.NotFound, $"Transfer request with ID '{request.RequestId}' does not exist.");
-            if (transferReq.Status != TransferStatus.ApprovedAndWaitForConfirm)
+            if (transferRequest.Status != TransferStatus.ApprovedAndWaitForConfirm)
                 return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Transfer request with ID '{request.RequestId}' cannot be confirmed.");
             // verify components in confirmation request to match those in original transfer request
-            List<TransferRequestComponent> originalComponentsInTransferRequest = transferReq.TransferRequestComponents.OrderBy(c => c.ComponentId).ToList();
+            List<TransferRequestComponent> originalComponentsInTransferRequest = transferRequest.TransferRequestComponents.OrderBy(c => c.ComponentId).ToList();
             List<ConfirmTransferRequestComponentReq> confirmComponents = [];
             foreach (ConfirmTransferBinReq ctBinReq in request.Bins)
             {
@@ -354,8 +370,8 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
                     return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Confirmed quantity for component with ID '{confirmComponent.ComponentId}' does not match the original transfer request.");
             }
 
-            transferReq.Status = TransferStatus.Confirmed;
-            transferReq.ExecutionTime = DateTime.UtcNow;
+            transferRequest.Status = TransferStatus.Confirmed;
+            transferRequest.ExecutionTime = DateTime.UtcNow;
 
             // add components to bins
             foreach (ConfirmTransferBinReq binReq in request.Bins)
@@ -390,7 +406,14 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             }
 
             await _dbCtx.SaveChangesAsync();
-            return new ApiResult<TransferRequestResp>(new TransferRequestResp(transferReq, true));
+
+            await _dbCtx.Entry(transferRequest).Reference(tr => tr.Creator).LoadAsync();
+            await _dbCtx.Entry(transferRequest).Reference(tr => tr.Approver).LoadAsync();
+            await _dbCtx.Entry(transferRequest).Reference(tr => tr.BinFrom).LoadAsync();
+            await _dbCtx.Entry(transferRequest).Reference(tr => tr.BinTo).LoadAsync();
+            await _dbCtx.Entry(transferRequest).Collection(tr => tr.TransferRequestComponents).LoadAsync();
+
+            return new ApiResult<TransferRequestResp>(new TransferRequestResp(transferRequest, true));
         }
     }
 }
