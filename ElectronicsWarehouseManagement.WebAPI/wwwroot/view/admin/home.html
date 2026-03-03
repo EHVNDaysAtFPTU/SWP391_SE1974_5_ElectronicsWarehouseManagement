@@ -219,7 +219,7 @@
             modal.classList.add("hidden");
         }
         async function viewUser(id) {
-            const r = await api(`/admin/user/${id}`);
+            const r = await api(`/admin/users/${id}`);
             if (!r.success) return;
 
             const u = r.data;
@@ -248,7 +248,7 @@
             viewModal.classList.add("hidden");
         }
         async function editUser(id) {
-            const r = await api(`/admin/user/${id}`);
+            const r = await api(`/admin/users/${id}`);
             if (!r.success) return;
 
             const u = r.data;
