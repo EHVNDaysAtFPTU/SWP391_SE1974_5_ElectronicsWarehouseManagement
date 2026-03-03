@@ -1,7 +1,6 @@
 ﻿using ElectronicsWarehouseManagement.Repositories.Entities;
 using ElectronicsWarehouseManagement.WebAPI.DTO;
 using Microsoft.EntityFrameworkCore;
-using System.Net.NetworkInformation;
 
 namespace ElectronicsWarehouseManagement.WebAPI.Services
 {
