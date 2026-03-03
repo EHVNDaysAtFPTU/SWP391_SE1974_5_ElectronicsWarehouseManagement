@@ -48,6 +48,22 @@ public sealed class ViewCtrl : ControllerBase
                 contentType = "application/octet-stream";
             return PhysicalFile(filePath, contentType);
         }
+        else if (path.StartsWith("me/", StringComparison.InvariantCultureIgnoreCase))
+        {
+            if (User?.Identity?.IsAuthenticated == false)
+            {
+                if (path.EndsWith("/") || path.EndsWith("\\") || path.EndsWith(".html", StringComparison.OrdinalIgnoreCase))
+                    return Redirect("/login");
+                return NotFound();
+            }
+            string filePath = Path.Combine(env.WebRootPath, "view", "me", path.Substring(3));
+            if (!System.IO.File.Exists(filePath))
+                return NotFound();
+            var provider = new FileExtensionContentTypeProvider();
+            if (!provider.TryGetContentType(filePath, out var contentType))
+                contentType = "application/octet-stream";
+            return PhysicalFile(filePath, contentType);
+        }
         else
         {
             if (User?.Identity?.IsAuthenticated == false)
@@ -57,17 +73,18 @@ public sealed class ViewCtrl : ControllerBase
                 return NotFound();
             }
             DisableClientCache();
+            //TODO: selectable current role
             var highestRoleName = HttpContext.User.Claims
                 .Where(c => c.Type == ClaimTypes.NameIdentifier)
                 .Select(c => c.Value)
                 .FirstOrDefault() ?? "";
-            var physicalPath = Path.Combine(env.WebRootPath, "view", highestRoleName, path);
-            if (!System.IO.File.Exists(physicalPath))
+            string filePath = Path.Combine(env.WebRootPath, "view", highestRoleName, path);
+            if (!System.IO.File.Exists(filePath))
                 return NotFound();
             var provider = new FileExtensionContentTypeProvider();
-            if (!provider.TryGetContentType(physicalPath, out var contentType))
+            if (!provider.TryGetContentType(filePath, out var contentType))
                 contentType = "application/octet-stream";
-            return PhysicalFile(physicalPath, contentType);
+            return PhysicalFile(filePath, contentType);
         }
     }
 

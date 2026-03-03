@@ -33,7 +33,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
             WarehouseId = bin.WarehouseId;
             if (fullInfo)
             {
-                Warehouse = new WarehouseResp(bin.Warehouse, true);
+                Warehouse = new WarehouseResp(bin.Warehouse, false);
                 Components = bin.ComponentBins.Select(i => new ComponentBinResp(i, false)).ToList();
             }
         }

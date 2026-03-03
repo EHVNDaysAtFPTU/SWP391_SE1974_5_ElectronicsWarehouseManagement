@@ -56,42 +56,5 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
             await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
             return Ok(new ApiResult());
         }
-
-        [Authorize]
-        [HttpPost("change-password")]
-        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordReq request)
-        {
-            string username = HttpContext.Session.GetString("User") ?? "";
-            ApiResult result = await _authService.ChangePasswordAsync(username, request);
-            if (result.Success)
-            {
-                HttpContext.Session.Remove("User");
-                HttpContext.Session.Remove("UserId");
-                return Ok(result);
-            }
-            return BadRequest(result);
-        }
-
-        [Authorize]
-        [HttpPost("change-login")]
-        public async Task<IActionResult> ChangeLogin([FromBody] ChangeLoginReq request)
-        {
-            string username = HttpContext.Session.GetString("User") ?? "";
-            ApiResult result = await _authService.ChangeLoginAsync(username, request);
-            if (result.Success)
-            {
-                HttpContext.Session.Remove("User");
-                return Ok(result);
-            }
-            return BadRequest(result);
-        }
-
-        //[Authorize]
-        //[HttpGet("me")]
-        //public IActionResult Me()
-        //{
-        //    //TODO: return user info
-        //    return Ok(new ApiResult<object>());
-        //}
     }
 }

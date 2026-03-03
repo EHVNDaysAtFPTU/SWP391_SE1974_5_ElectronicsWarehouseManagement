@@ -10,6 +10,9 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
 
         [JsonPropertyName("username")]
         public string Username { get; set; } = "";
+        
+        [JsonPropertyName("display_name")]
+        public string DisplayName { get; set; } = "";
 
         [JsonPropertyName("email")]
         public string Email { get; set; } = "";
@@ -25,6 +28,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
         {
             UserId = user.UserId;
             Username = user.Username;
+            DisplayName = user.DisplayName;
             Email = user.Email;
             Status = user.Status;
             if (fullInfo)
