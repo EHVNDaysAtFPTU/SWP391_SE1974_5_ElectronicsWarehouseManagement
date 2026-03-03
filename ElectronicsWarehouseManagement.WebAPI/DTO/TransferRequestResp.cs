@@ -79,7 +79,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
                     BinFrom = new BinResp(request.BinFrom, false);
                 if (request.BinToId is not null)
                     BinTo = new BinResp(request.BinTo, false);
-                Components = request.TransferRequestComponents.Select(i => new TransferRequestComponentResp(i, true)).ToList();
+                Components = request.TransferRequestComponents.Select(i => new TransferRequestComponentResp(i, false)).ToList();
             }
         }
     }
