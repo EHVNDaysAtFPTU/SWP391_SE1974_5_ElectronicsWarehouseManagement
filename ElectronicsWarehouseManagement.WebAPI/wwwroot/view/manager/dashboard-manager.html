@@ -1,0 +1,132 @@
+﻿<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Layout</title>
+    <link rel="stylesheet" href="css/layout.css">
+    <style>
+        /* Header */
+/*        .header {
+            height: 60px;
+            background: #1f2937;
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+        }*/
+
+        /* Profile */
+        .profile-container {
+            position: relative;
+        }
+
+        .profile {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            gap: 8px;
+        }
+
+            .profile img {
+                width: 35px;
+                height: 35px;
+                border-radius: 50%;
+            }
+
+            .profile:hover {
+                opacity: 0.8;
+            }
+
+        /* Dropdown */
+        .profile-dropdown {
+            position: absolute;
+            top: 55px;
+            right: 0;
+            width: 200px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+            .profile-dropdown a {
+                padding: 12px 15px;
+                text-decoration: none;
+                color: #333;
+                display: block;
+                transition: background 0.2s;
+            }
+
+                .profile-dropdown a:hover {
+                    background: #f3f4f6;
+                }
+
+            .profile-dropdown .logout {
+                color: red;
+            }
+
+            /* Active */
+            .profile-dropdown.show {
+                display: flex;
+            }
+    </style>
+</head>
+<body>
+
+    <!-- HEADER -->
+    <header class="header">
+        <div class="logo">My Manager</div>
+
+        <div class="profile-container">
+            <div class="profile" onclick="toggleProfileMenu()">
+                <img src="https://i.pravatar.cc/40" alt="Profile">
+                <span class="username">Admin</span>
+            </div>
+
+            <div class="profile-dropdown" id="profileDropdown">
+                <a href="profile.html">Thông tin cá nhân</a>
+                <a href="account.html">Quản lí tài khoản</a>
+                <a href="logout.html" class="logout">Logout</a>
+            </div>
+        </div>
+    </header>
+
+    <!-- WRAPPER -->
+    <div class="wrapper">
+
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+            <ul>
+                <li><a href="dashboard-manager.html">Dashboard</a></li>
+                <li><a href="component-inventory.html">Components</a></li>
+                <li><a href="transfers.html">Transfers</a></li>
+                <li><a href="warehouses.html">Warehouses</a></li>
+                <li><a href="bin.html">Bins</a></li>
+            </ul>
+        </aside>
+
+        <!-- CONTENT -->
+        <main class="content">
+            <h1>Trang chính</h1>
+            <p>Nội dung sẽ hiển thị ở đây...</p>
+        </main>
+
+    </div>
+    <script>
+        function toggleProfileMenu() {
+            document.getElementById("profileDropdown").classList.toggle("show");
+        }
+
+        // Đóng dropdown khi click ra ngoài
+        window.onclick = function (event) {
+            if (!event.target.closest('.profile-container')) {
+                document.getElementById("profileDropdown").classList.remove("show");
+            }
+        }
+    </script>
+
+</body>
+</html>

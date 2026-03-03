@@ -46,6 +46,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             return new ApiResult<ComponentResp>(component);
         }
 
+
         public async Task<ApiResult<PagedResult<ComponentResp>>> GetComponentListAsync(PagingRequest request)
         {
             var query = _dbCtx.Components

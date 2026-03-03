@@ -25,246 +25,286 @@
             border: 1px solid #ddd;
             margin-bottom: 15px;
         }
+
+        .detail-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .close-btn {
+            background-color: #e74c3c;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+            .close-btn:hover {
+                background-color: #c0392b;
+            }
     </style>
 </head>
 
 <body>
 
-<!-- HEADER -->
-<div class="header">
-    <div><b>Warehouse Manager</b></div>
-    <div>Xin chào, Admin</div>
-</div>
+    <!-- HEADER -->
+    <header class="header">
+        <div class="logo">My Manager</div>
 
-<div class="wrapper">
+        <div class="profile-container">
+            <div class="profile" onclick="toggleProfileMenu()">
+                <img src="https://i.pravatar.cc/40" alt="Profile">
+                <span class="username">Admin</span>
+            </div>
 
-    <!-- SIDEBAR -->
-    <div class="sidebar">
-        <ul>
-            <li><a href="dashboard.html">Dashboard</a></li>
+            <div class="profile-dropdown" id="profileDropdown">
+                <a href="profile.html">Thông tin cá nhân</a>
+                <a href="account.html">Quản lí tài khoản</a>
+                <a href="logout.html" class="logout">Logout</a>
+            </div>
+        </div>
+    </header>
+
+    <div class="wrapper">
+
+        <div class="sidebar">
+            <ul>
+                <li><a href="dashboard-manager.html">Dashboard</a></li>
                 <li><a href="component-inventory.html">Components</a></li>
                 <li><a href="transfers.html">Transfers</a></li>
                 <li><a href="warehouses.html">Warehouses</a></li>
                 <li><a href="bin.html">Bins</a></li>
-        </ul>
-    </div>
-
-    <!-- CONTENT -->
-    <div class="content">
-
-        <h2>Component Inventory</h2>
-
-        <div>
-            Component per page:
-            <select id="pageSize">
-                <option value="5">5</option>
-                <option value="10" selected>10</option>
-                <option value="20">20</option>
-            </select>
+            </ul>
         </div>
 
-        <br>
+        <div class="content">
 
-        <div id="infoText"></div>
+            <h2>Component Inventory</h2>
 
-        <br>
+            <div>
+                Component per page:
+                <select id="pageSize">
+                    <option value="5">5</option>
+                    <option value="10" selected>10</option>
+                    <option value="20">20</option>
+                </select>
+            </div>
 
-        <table>
-            <thead>
-            <tr>
-                <th>ID</th>
-                <th>Image</th>
-                <th>Name</th>
-                <th>Description</th>
-                <th>Unit</th>
-                <th>Price</th>
-                <th>Action</th>
-            </tr>
-            </thead>
-            <tbody id="itemsTable"></tbody>
-        </table>
+            <br>
 
-        <br>
+            <div id="infoText"></div>
 
-        <div id="pagination"></div>
+            <br>
 
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Image</th>
+                        <th>Name</th>
+                        <th>Description</th>
+                        <th>Unit</th>
+                        <th>Price</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="itemsTable"></tbody>
+            </table>
+
+            <br>
+
+            <div id="pagination"></div>
+
+        </div>
     </div>
-</div>
 
-<script>
+    <script>
 
-let currentPage = 1;
-let pageSize = 10;
-let totalPages = 1;
+        let currentPage = 1;
+        let pageSize = 10;
+        let totalPages = 1;
 
-document.addEventListener("DOMContentLoaded", function () {
-    document.getElementById("pageSize").addEventListener("change", changePageSize);
-    loadItems(1);
-});
+        document.addEventListener("DOMContentLoaded", function () {
+            document.getElementById("pageSize").addEventListener("change", changePageSize);
+            loadItems(1);
+        });
 
-async function loadItems(page) {
-    currentPage = page;
+        async function loadItems(page) {
+            currentPage = page;
 
-    const response = await fetch(
-        `/api/manager/get-components?pageNumber=${page}&pageSize=${pageSize}`,
-        { credentials: 'include' }
-    );
+            const response = await fetch(
+                `/api/manager/get-components?pageNumber=${page}&pageSize=${pageSize}`,
+                { credentials: 'include' }
+            );
 
-    const result = await response.json();
+            if (!response.ok) {
+                alert("Load failed");
+                return;
+            }
 
-    if (!result.success) {
-        alert(result.msg || "Load failed");
-        return;
-    }
+            const result = await response.json();
 
-    renderTable(result.data);
-    renderPagination(result.data.totalPages);
-}
+            if (!result.success) {
+                alert(result.msg || "Load failed");
+                return;
+            }
 
-function renderTable(data) {
-
-    const tbody = document.getElementById("itemsTable");
-    const infoText = document.getElementById("infoText");
-
-    tbody.innerHTML = "";
-
-    if (!data.data || data.data.length === 0) {
-        const row = tbody.insertRow();
-        const cell = row.insertCell();
-        cell.colSpan = 7;
-        cell.innerText = "No items found";
-        return;
-    }
-
-    infoText.innerText =
-        `Showing ${(currentPage - 1) * pageSize + 1}
-         to ${Math.min(currentPage * pageSize, data.totalCount)}
-         of ${data.totalCount}`;
-
-    data.data.forEach(component => {
-
-        const row = tbody.insertRow();
-        row.setAttribute("data-id", component.id);
-
-        // ID
-        row.insertCell().innerText = component.id;
-
-        // IMAGE (chỉ hiển thị nếu có URL)
-        const imgCell = row.insertCell();
-        if (component.metadata?.image_url) {
-            const img = document.createElement("img");
-            img.src = component.metadata.image_url;
-            img.alt = "component image";
-            img.className = "thumbnail";
-            imgCell.appendChild(img);
+            renderTable(result.data);
+            renderPagination(result.data.totalPages);
         }
 
-        // NAME
-        row.insertCell().innerText = component.metadata?.name || "N/A";
+        function renderTable(data) {
 
-        // DESCRIPTION
-        row.insertCell().innerText = component.metadata?.desc || "";
+            const tbody = document.getElementById("itemsTable");
+            const infoText = document.getElementById("infoText");
 
-        // UNIT
-        row.insertCell().innerText = component.unit || "";
+            tbody.innerHTML = "";
 
-        // PRICE
-        row.insertCell().innerText = formatCurrency(component.unit_price || 0);
+            if (!data.data || data.data.length === 0) {
+                const row = tbody.insertRow();
+                const cell = row.insertCell();
+                cell.colSpan = 7;
+                cell.innerText = "No items found";
+                return;
+            }
 
-        // ACTION
-        const actionCell = row.insertCell();
-        const btn = document.createElement("button");
-        btn.innerText = "View";
-        btn.onclick = function () {
-            toggleDetail(component.id, row);
-        };
-        actionCell.appendChild(btn);
-    });
-}
+            infoText.innerText =
+                `Showing ${(currentPage - 1) * pageSize + 1}
+                 to ${Math.min(currentPage * pageSize, data.totalCount)}
+                 of ${data.totalCount}`;
 
-function renderPagination(pages) {
+            data.data.forEach(component => {
 
-    totalPages = pages;
-    const container = document.getElementById("pagination");
-    container.innerHTML = "";
+                const row = tbody.insertRow();
+                row.setAttribute("data-id", component.id);
 
-    for (let i = 1; i <= totalPages; i++) {
+                row.insertCell().innerText = component.id;
 
-        const btn = document.createElement("button");
-        btn.innerText = i;
-        btn.disabled = (i === currentPage);
+                const imgCell = row.insertCell();
+                if (component.metadata?.image_url) {
+                    const img = document.createElement("img");
+                    img.src = component.metadata.image_url;
+                    img.className = "thumbnail";
+                    imgCell.appendChild(img);
+                }
 
-        btn.onclick = function () {
-            loadItems(i);
-        };
+                row.insertCell().innerText = component.metadata?.name || "N/A";
+                row.insertCell().innerText = component.metadata?.desc || "";
+                row.insertCell().innerText = component.unit || "";
+                row.insertCell().innerText = formatCurrency(component.unit_price || 0);
 
-        container.appendChild(btn);
-    }
-}
+                const actionCell = row.insertCell();
+                const btn = document.createElement("button");
+                btn.innerText = "View";
+                btn.onclick = function () {
+                    toggleDetail(component.id, row);
+                };
+                actionCell.appendChild(btn);
+            });
+        }
 
-async function toggleDetail(id, mainRow) {
+        function renderPagination(pages) {
 
-    const nextRow = mainRow.nextElementSibling;
+            totalPages = pages;
+            const container = document.getElementById("pagination");
+            container.innerHTML = "";
 
-    if (nextRow && nextRow.classList.contains("detail-row")) {
-        nextRow.remove();
-        return;
-    }
+            for (let i = 1; i <= totalPages; i++) {
+                const btn = document.createElement("button");
+                btn.innerText = i;
+                btn.disabled = (i === currentPage);
+                btn.onclick = function () {
+                    loadItems(i);
+                };
+                container.appendChild(btn);
+            }
+        }
 
-    document.querySelectorAll(".detail-row").forEach(r => r.remove());
+        async function toggleDetail(id, mainRow) {
 
-    const detailRow = document.createElement("tr");
-    detailRow.classList.add("detail-row");
+            const nextRow = mainRow.nextElementSibling;
 
-    const detailCell = document.createElement("td");
-    detailCell.colSpan = 7;
-    detailCell.innerHTML = "Loading...";
+            if (nextRow && nextRow.classList.contains("detail-row")) {
+                nextRow.remove();
+                return;
+            }
 
-    detailRow.appendChild(detailCell);
-    mainRow.parentNode.insertBefore(detailRow, mainRow.nextSibling);
+            document.querySelectorAll(".detail-row").forEach(r => r.remove());
 
-    const response = await fetch(
-        `/api/manager/get-component/${id}?fullInfo=true`,
-        { credentials: 'include' }
-    );
+            const detailRow = document.createElement("tr");
+            detailRow.classList.add("detail-row");
 
-    const result = await response.json();
+            const detailCell = document.createElement("td");
+            detailCell.colSpan = 7;
+            detailCell.innerHTML = "Loading...";
 
-    if (!result.success) {
-        detailCell.innerHTML = "Load detail failed";
-        return;
-    }
+            detailRow.appendChild(detailCell);
+            mainRow.parentNode.insertBefore(detailRow, mainRow.nextSibling);
 
-    const component = result.data;
+            const response = await fetch(
+                `/api/manager/get-component/${id}?fullInfo=true`,
+                { credentials: 'include' }
+            );
 
-    detailCell.innerHTML = `
-        <div class="detail-box">
+            if (!response.ok) {
+                detailCell.innerHTML = "Load detail failed";
+                return;
+            }
 
-            ${component.metadata?.image_url ? `
-                <img src="${component.metadata.image_url}" 
-                     class="detail-image">
-            ` : ""}
+            const result = await response.json();
 
-            <p><b>Name:</b> ${component.metadata?.name || ""}</p>
-            <p><b>Description:</b> ${component.metadata?.desc || ""}</p>
-            <p><b>Manufacturer:</b> ${component.metadata?.manufacturer || ""}</p>
-            <p><b>Manufacturing Date:</b> ${component.metadata?.manufacturing_date || ""}</p>
-            <p><b>Unit:</b> ${component.unit || ""}</p>
-            <p><b>Price:</b> ${formatCurrency(component.unit_price || 0)}</p>
-        </div>
-    `;
-}
+            if (!result.success) {
+                detailCell.innerHTML = "Load detail failed";
+                return;
+            }
 
-function formatCurrency(amount) {
-    return amount.toLocaleString("vi-VN") + " đ";
-}
+            const component = result.data;
 
-function changePageSize() {
-    pageSize = parseInt(document.getElementById("pageSize").value);
-    loadItems(1);
-}
+            detailCell.innerHTML = `
+                <div class="detail-box">
 
-</script>
+                    <div class="detail-header">
+                        <h3>Component Detail</h3>
+                        <button class="close-btn" onclick="closeDetail(this)">Close</button>
+                    </div>
+
+                    <hr>
+
+                    ${component.metadata?.image_url ? `
+                        <img src="${component.metadata.image_url}"
+                             class="detail-image">
+                    ` : ""}
+
+                    <p><b>Name:</b> ${component.metadata?.name || ""}</p>
+                    <p><b>Description:</b> ${component.metadata?.desc || ""}</p>
+                    <p><b>Manufacturer:</b> ${component.metadata?.manufacturer || ""}</p>
+                    <p><b>Manufacturing Date:</b> ${component.metadata?.manufacturing_date || ""}</p>
+                    <p><b>Unit:</b> ${component.unit || ""}</p>
+                    <p><b>Price:</b> ${formatCurrency(component.unit_price || 0)}</p>
+
+                </div>
+            `;
+        }
+
+        function closeDetail(button) {
+            const detailRow = button.closest("tr");
+            if (detailRow) {
+                detailRow.remove();
+            }
+        }
+
+        function formatCurrency(amount) {
+            return amount.toLocaleString("vi-VN") + " đ";
+        }
+
+        function changePageSize() {
+            pageSize = parseInt(document.getElementById("pageSize").value);
+            loadItems(1);
+        }
+
+    </script>
 
 </body>
 </html>

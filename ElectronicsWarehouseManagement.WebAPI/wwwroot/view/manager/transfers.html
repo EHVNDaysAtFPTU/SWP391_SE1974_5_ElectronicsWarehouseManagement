@@ -9,18 +9,30 @@
 
 <body>
 
-    <!-- ===== HEADER ===== -->
-    <div class="header">
-        <div><b>Warehouse Manager</b></div>
-        <div>Xin chào, Admin</div>
-    </div>
+    <!-- HEADER -->
+    <header class="header">
+        <div class="logo">My Manager</div>
+
+        <div class="profile-container">
+            <div class="profile" onclick="toggleProfileMenu()">
+                <img src="https://i.pravatar.cc/40" alt="Profile">
+                <span class="username">Admin</span>
+            </div>
+
+            <div class="profile-dropdown" id="profileDropdown">
+                <a href="profile.html">Thông tin cá nhân</a>
+                <a href="account.html">Quản lí tài khoản</a>
+                <a href="logout.html" class="logout">Logout</a>
+            </div>
+        </div>
+    </header>
 
     <div class="wrapper">
 
         <!-- ===== SIDEBAR ===== -->
         <div class="sidebar">
             <ul>
-                <li><a href="dashboard.html">Dashboard</a></li>
+                <li><a href="dashboard-manager.html">Dashboard</a></li>
                 <li><a href="component-inventory.html">Components</a></li>
                 <li><a href="transfers.html">Transfers</a></li>
                 <li><a href="warehouses.html">Warehouses</a></li>
@@ -72,9 +84,7 @@
         </div>
     </div>
 
-    <!-- =========================
-         GIỮ NGUYÊN SCRIPT CỦA BẠN
-    ========================= -->
+
     <script>
         let currentPage = 1;
         let pageSize = 10;
@@ -125,20 +135,20 @@
                 const row = document.createElement("tr");
 
                 row.innerHTML = `
-                <td>${t.id ?? "-"}</td>
-                <td>${t.description ?? "-"}</td>
-                <td>${getTypeText(t.type)}</td>
-                <td>${formatDate(t.creation_date)}</td>
-                <td>${t.execution_date ? formatDate(t.execution_date) : "-"}</td>
-                <td>${getStatusText(t.status)}</td>
-                <td>${transferMonitorStatus(t)}</td>
-                <td>
-                    <button onclick="viewTransfer(${t.id})">View</button>
-                </td>
-                <td>
-                    ${renderDecisionButtons(t)}
-                </td>
-            `;
+                    <td>${t.id ?? "-"}</td>
+                    <td>${t.description ?? "-"}</td>
+                    <td>${getTypeText(t.type)}</td>
+                    <td>${formatDate(t.creation_date)}</td>
+                    <td>${t.execution_date ? formatDate(t.execution_date) : "-"}</td>
+                    <td>${getStatusText(t.status)}</td>
+                    <td>${transferMonitorStatus(t)}</td>
+                    <td>
+                        <button onclick="viewTransfer(${t.id})">View</button>
+                    </td>
+                    <td>
+                        ${renderDecisionButtons(t)}
+                    </td>
+                `;
 
                 tbody.appendChild(row);
             });
@@ -183,17 +193,17 @@
             const infoText = document.getElementById("infoText");
             infoText.innerText =
                 `Showing ${(currentPage - 1) * pageSize + 1}
-             to ${Math.min(currentPage * pageSize, totalCount)}
-             of ${totalCount}`;
+                 to ${Math.min(currentPage * pageSize, totalCount)}
+                 of ${totalCount}`;
         }
 
         function renderDecisionButtons(t) {
             if (t.status !== 0) return "-";
 
             return `
-            <button onclick="updateTransferStatus(${t.id}, 2)">Approve</button>
-            <button onclick="updateTransferStatus(${t.id}, 3)">Reject</button>
-        `;
+                <button onclick="updateTransferStatus(${t.id}, 2)">Approve</button>
+                <button onclick="updateTransferStatus(${t.id}, 3)">Reject</button>
+            `;
         }
 
         function getStatusText(status) {

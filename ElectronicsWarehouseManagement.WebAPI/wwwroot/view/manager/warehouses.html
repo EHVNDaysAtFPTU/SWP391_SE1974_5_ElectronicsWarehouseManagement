@@ -26,17 +26,29 @@
 <body>
 
     <!-- HEADER -->
-    <div class="header">
-        <div><b>Warehouse Manager</b></div>
-        <div>Xin chào, Admin</div>
-    </div>
+    <header class="header">
+        <div class="logo">My Manager</div>
+
+        <div class="profile-container">
+            <div class="profile" onclick="toggleProfileMenu()">
+                <img src="https://i.pravatar.cc/40" alt="Profile">
+                <span class="username">Admin</span>
+            </div>
+
+            <div class="profile-dropdown" id="profileDropdown">
+                <a href="profile.html">Thông tin cá nhân</a>
+                <a href="account.html">Quản lí tài khoản</a>
+                <a href="logout.html" class="logout">Logout</a>
+            </div>
+        </div>
+    </header>
 
     <div class="wrapper">
 
         <!-- SIDEBAR -->
         <div class="sidebar">
             <ul>
-                <li><a href="dashboard.html">Dashboard</a></li>
+                <li><a href="dashboard-manager.html">Dashboard</a></li>
                 <li><a href="component-inventory.html">Components</a></li>
                 <li><a href="transfers.html">Transfers</a></li>
                 <li><a href="warehouses.html">Warehouses</a></li>
@@ -66,102 +78,102 @@
     </div>
 
     <script>
-document.addEventListener("DOMContentLoaded", function () {
-    loadWarehouses();
-});
+        document.addEventListener("DOMContentLoaded", function () {
+            loadWarehouses();
+        });
 
-async function loadWarehouses() {
+        async function loadWarehouses() {
 
-    const response = await fetch(
-        `/api/manager/get-warehouses?pageNumber=1&pageSize=100`,
-        { credentials: 'include' }
-    );
+            const response = await fetch(
+                `/api/manager/get-warehouses?pageNumber=1&pageSize=100`,
+                { credentials: 'include' }
+            );
 
-    const result = await response.json();
+            const result = await response.json();
 
-    if (!result.success) {
-        alert(result.msg || "Load warehouse failed");
-        return;
-    }
+            if (!result.success) {
+                alert(result.msg || "Load warehouse failed");
+                return;
+            }
 
-    renderWarehouseTable(result.data.data);
-}
+            renderWarehouseTable(result.data.data);
+        }
 
-function renderWarehouseTable(warehouses) {
+        function renderWarehouseTable(warehouses) {
 
-    const tbody = document.getElementById("warehouseTable");
-    tbody.innerHTML = "";
+            const tbody = document.getElementById("warehouseTable");
+            tbody.innerHTML = "";
 
-    warehouses.forEach(w => {
+            warehouses.forEach(w => {
 
-        const row = tbody.insertRow();
-        row.setAttribute("data-id", w.id);
+                const row = tbody.insertRow();
+                row.setAttribute("data-id", w.id);
 
-        row.insertCell().innerText = w.id;
-        row.insertCell().innerText = w.name;
-        row.insertCell().innerText = w.desc || "";
-        row.insertCell().innerText = w.physical_location || "";
+                row.insertCell().innerText = w.id;
+                row.insertCell().innerText = w.name;
+                row.insertCell().innerText = w.desc || "";
+                row.insertCell().innerText = w.physical_location || "";
 
-        const actionCell = row.insertCell();
+                const actionCell = row.insertCell();
 
-        const detailBtn = document.createElement("button");
-        detailBtn.innerText = "View Detail";
-        detailBtn.onclick = function () {
-            toggleWarehouseDetail(w, row);
-        };
-        actionCell.appendChild(detailBtn);
+                const detailBtn = document.createElement("button");
+                detailBtn.innerText = "View Detail";
+                detailBtn.onclick = function () {
+                    toggleWarehouseDetail(w, row);
+                };
+                actionCell.appendChild(detailBtn);
 
-        actionCell.appendChild(document.createTextNode(" "));
+                actionCell.appendChild(document.createTextNode(" "));
 
-        const binBtn = document.createElement("button");
-        binBtn.innerText = "View Bins";
-        binBtn.onclick = function () {
-            window.location.href = `bins.html?warehouseId=${w.id}`;
-        };
-        actionCell.appendChild(binBtn);
-    });
-}
+                const binBtn = document.createElement("button");
+                binBtn.innerText = "View Bins";
+                binBtn.onclick = function () {
+                    window.location.href = `bins.html?warehouseId=${w.id}`;
+                };
+                actionCell.appendChild(binBtn);
+            });
+        }
 
-function toggleWarehouseDetail(w, mainRow) {
+        function toggleWarehouseDetail(w, mainRow) {
 
-    const nextRow = mainRow.nextElementSibling;
+            const nextRow = mainRow.nextElementSibling;
 
-    if (nextRow && nextRow.classList.contains("detail-row")) {
-        nextRow.remove();
-        return;
-    }
+            if (nextRow && nextRow.classList.contains("detail-row")) {
+                nextRow.remove();
+                return;
+            }
 
-    document.querySelectorAll(".detail-row").forEach(r => r.remove());
+            document.querySelectorAll(".detail-row").forEach(r => r.remove());
 
-    const detailRow = document.createElement("tr");
-    detailRow.classList.add("detail-row");
+            const detailRow = document.createElement("tr");
+            detailRow.classList.add("detail-row");
 
-    const detailCell = document.createElement("td");
-    detailCell.colSpan = 5;
+            const detailCell = document.createElement("td");
+            detailCell.colSpan = 5;
 
-    let imageHtml = "No image";
+            let imageHtml = "No image";
 
-    if (w.image_url && w.image_url.trim() !== "") {
-        imageHtml = `
-            <img src="${w.image_url}"
-                 alt="Warehouse Image"
-                 width="200">
+            if (w.image_url && w.image_url.trim() !== "") {
+                imageHtml = `
+                <img src="${w.image_url}"
+                     alt="Warehouse Image"
+                     width="200">
+            `;
+            }
+
+            detailCell.innerHTML = `
+            <div class="detail-box">
+                <p><strong>ID:</strong> ${w.id}</p>
+                <p><strong>Name:</strong> ${w.name}</p>
+                <p><strong>Description:</strong> ${w.desc || ""}</p>
+                <p><strong>Location:</strong> ${w.physical_location || ""}</p>
+                <p><strong>Image:</strong><br>${imageHtml}</p>
+            </div>
         `;
-    }
 
-    detailCell.innerHTML = `
-        <div class="detail-box">
-            <p><strong>ID:</strong> ${w.id}</p>
-            <p><strong>Name:</strong> ${w.name}</p>
-            <p><strong>Description:</strong> ${w.desc || ""}</p>
-            <p><strong>Location:</strong> ${w.physical_location || ""}</p>
-            <p><strong>Image:</strong><br>${imageHtml}</p>
-        </div>
-    `;
-
-    detailRow.appendChild(detailCell);
-    mainRow.parentNode.insertBefore(detailRow, mainRow.nextSibling);
-}
+            detailRow.appendChild(detailCell);
+            mainRow.parentNode.insertBefore(detailRow, mainRow.nextSibling);
+        }
     </script>
 
 </body>
