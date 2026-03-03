@@ -74,7 +74,8 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
 
         public async Task<ApiResult<List<ComponentResp>>> GetComponentsAsync()
         {
-            var components = await _dbCtx.Components.AsNoTracking().Select(c => new ComponentResp(c, false)).ToListAsync();
+
+            var components = await _dbCtx.Components.Include(c => c.ComponentBins).AsNoTracking().Select(c => new ComponentResp(c, false)).ToListAsync();
             return new ApiResult<List<ComponentResp>>(components);
         }
 
@@ -410,7 +411,6 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
                     }
                 }
             }
-
             await _dbCtx.SaveChangesAsync();
 
             return new ApiResult<TransferRequestResp>(

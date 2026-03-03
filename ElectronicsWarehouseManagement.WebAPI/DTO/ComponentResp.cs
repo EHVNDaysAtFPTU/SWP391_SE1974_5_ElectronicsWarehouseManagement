@@ -17,6 +17,12 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
         [JsonPropertyName("unit_price")]
         public double UnitPrice { get; set; }
 
+        [JsonPropertyName("stock_quantity")]
+        public double StockQuantity { get; set; }
+
+        [JsonPropertyName("stock")]
+        public double Stock { get; set; }
+
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         [JsonPropertyName("categories")]
         public List<ComponentCategoryResp>? Categories { get; set; }
@@ -27,6 +33,9 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
             Metadata = component.Metadata;
             Unit = component.Unit;
             UnitPrice = component.UnitPrice;
+            var total = component.ComponentBins?.Sum(cb => cb.Quantity) ?? 0;
+            StockQuantity = total;
+            Stock = total;
             if (fullInfo)
             {
                 Categories = component.Categories.Select(cc => new ComponentCategoryResp(cc)).ToList();
