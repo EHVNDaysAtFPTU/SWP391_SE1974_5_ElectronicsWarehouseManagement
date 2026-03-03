@@ -34,7 +34,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
             if (fullInfo)
             {
                 Warehouse = new WarehouseResp(bin.Warehouse, true);
-                Components = bin.ComponentBins.Select(i => new ComponentBinResp(i, true)).ToList();
+                Components = bin.ComponentBins.Select(i => new ComponentBinResp(i, false)).ToList();
             }
         }
     }

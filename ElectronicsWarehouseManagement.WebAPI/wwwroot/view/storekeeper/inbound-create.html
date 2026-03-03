@@ -232,7 +232,7 @@
             if (!warehouseId) return;
 
             const res = await fetch(
-                BASE + "/bins/by-warehouse/" + warehouseId,
+                BASE + "/warehouses/" + warehouseId,
                 { credentials: "include" }
             );
 
@@ -247,7 +247,7 @@
             const binSelect = document.getElementById("binTo");
             binSelect.innerHTML = "";
 
-            json.data.forEach(b => {
+            json.data.bin.forEach(b => {
 
                 const id = b.binId ?? b.id;
 

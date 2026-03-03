@@ -24,11 +24,11 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
 
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         [JsonPropertyName("component")]
-        public Component? Component { get; set; }
+        public ComponentResp? Component { get; set; }
 
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         [JsonPropertyName("request")]
-        public TransferRequest? Request { get; set; }
+        public TransferRequestResp? Request { get; set; }
 
         public TransferRequestComponentResp(TransferRequestComponent trc, bool fullInfo)
         {
@@ -37,14 +37,10 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
             ComponentId = trc.ComponentId;
             Quantity = trc.Quantity;
             UnitPrice = trc.UnitPrice;
-
-            // 🔥 thêm dòng này
-            Name = trc.Component?.Metadata?.Name;
-
             if (fullInfo)
             {
-                Component = null;   // 🚫 không trả nguyên entity nữa
-                Request = null;
+                Component = new ComponentResp(trc.Component, false);
+                Request = new TransferRequestResp(trc.Request, false);
             }
         }
     }

@@ -40,19 +40,19 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
 
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         [JsonPropertyName("approver")]
-        public User? Approver { get; set; }
+        public UserResp? Approver { get; set; }
 
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         [JsonPropertyName("creator")]
-        public User? Creator { get; set; }
+        public UserResp? Creator { get; set; }
 
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         [JsonPropertyName("bin_from")]
-        public Bin? BinFrom { get; set; }
+        public BinResp? BinFrom { get; set; }
 
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         [JsonPropertyName("bin_to")]
-        public Bin? BinTo { get; set; }
+        public BinResp? BinTo { get; set; }
 
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         [JsonPropertyName("components")]
@@ -72,10 +72,10 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
             BinToId = request.BinToId;
             if (fullInfo)
             {
-                Approver = request.Approver;
-                Creator = request.Creator;
-                BinFrom = request.BinFrom;
-                BinTo = request.BinTo;
+                Approver = new UserResp(request.Approver, false);
+                Creator = new UserResp(request.Creator, false);
+                BinFrom = new BinResp(request.BinFrom, false);
+                BinTo = new BinResp(request.BinTo, false);
                 Components = request.TransferRequestComponents.Select(i => new TransferRequestComponentResp(i, true)).ToList();
             }
         }

@@ -19,7 +19,6 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
         [JsonPropertyName("role_id")]
         public int RoleId { get; set; }
 
-        //TODO: validate email format, password more robustly
         public bool Verify(out string failedReason)
         {
             if (RoleId < 1)
@@ -48,6 +47,21 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
                 return false;
             }
             if (!Email.Contains("@"))
+            {
+                failedReason = "Email is invalid.";
+                return false;
+            }
+            try
+            {
+                var addr = new System.Net.Mail.MailAddress(Email);
+                if (addr.Address != Email)
+                {
+                    failedReason = "Email is invalid.";
+                    return false;
+                }
+
+            }
+            catch
             {
                 failedReason = "Email is invalid.";
                 return false;

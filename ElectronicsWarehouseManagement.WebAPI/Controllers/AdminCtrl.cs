@@ -47,6 +47,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
             return BadRequest(result);
         }
 
+        //TODO: Patch method for add/remove role instead of set role
         [HttpPost("set-role")]
         public async Task<IActionResult> SetRole([FromBody] SetRoleReq setRoleReq)
         {
@@ -56,16 +57,16 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
             return BadRequest(result);
         }
 
-        [HttpDelete("delete-account/{userId:int}")]
-        public async Task<IActionResult> DeleteAccount([FromRoute] int userId)
+        [HttpDelete("users/{userId:int}/delete")]
+        public async Task<IActionResult> DeleteUser([FromRoute] int userId)
         {
-            var result = await _adminService.DeleteAccountAsync(userId, int.Parse(HttpContext.Session.GetString("UserId")!));
+            var result = await _adminService.DeleteUserAsync(userId, int.Parse(HttpContext.Session.GetString("UserId")!));
             if (result.Success)
                 return Ok(result);
             return BadRequest(result);
         }
 
-        [HttpGet("user/{userId:int}")]
+        [HttpGet("users/{userId:int}")]
         public async Task<IActionResult> GetUser([FromRoute] int userId)
         {
             var result = await _adminService.GetUserAsync(userId);

@@ -214,20 +214,26 @@
         async function loadBinsByWarehouse() {
 
             const warehouseId = document.getElementById("warehouse").value;
+
             if (!warehouseId) return;
 
-            const res = await fetch(BASE + "/bins/by-warehouse/" + warehouseId,
-                { credentials: "include" });
+            const res = await fetch(
+                BASE + "/warehouses/" + warehouseId,
+                { credentials: "include" }
+            );
 
-            if (!res.ok) { console.log(await res.text()); return alert("API bins lỗi"); }
+            if (!res.ok) {
+                console.log(await res.text());
+                return alert("API bins lỗi");
+            }
 
             const json = await res.json();
             if (!json.success) return alert("Không load được bin");
 
-            const binSelect = document.getElementById("binFrom");
+            const binSelect = document.getElementById("binTo");
             binSelect.innerHTML = "";
 
-            json.data.forEach(b => {
+            json.data.bin.forEach(b => {
 
                 const id = b.binId ?? b.id;
 
