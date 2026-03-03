@@ -76,6 +76,7 @@
         <div class="modal-box">
             <h3>User Information</h3>
             <p><b>Username:</b> <span id="viewUsername"></span></p>
+            <p><b>Display Name:</b> <span id="viewDisplayName"></span></p>
             <p><b>Email:</b> <span id="viewEmail"></span></p>
             <p><b>Role:</b> <span id="viewRole"></span></p>
             <p><b>Status:</b> <span id="viewStatus"></span></p>
@@ -236,8 +237,10 @@
                 ? u.role.map(r => r.role_name).join(", ")
                 : "No Role";
 
-            viewUsername.innerText = u.username;
-            viewEmail.innerText = u.email;
+            // Populate view fields. Be tolerant of different JSON naming.
+            viewUsername.innerText = u.username || "-";
+            viewDisplayName.innerText = u.displayName ?? u.display_name ?? u.displayname ?? "-";
+            viewEmail.innerText = u.email || "-";
             viewRole.innerText = roleName;
             viewStatus.innerText = statusText;
 
