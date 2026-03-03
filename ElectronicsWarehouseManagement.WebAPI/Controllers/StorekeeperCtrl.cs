@@ -14,7 +14,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
         readonly IStorekeeperService _storekeeperService;
 
         private readonly ILogger<StorekeeperCtrl> _logger;
-        
+
         public StorekeeperCtrl(IStorekeeperService storekeeperService, ILogger<StorekeeperCtrl> logger)
         {
             _storekeeperService = storekeeperService;
