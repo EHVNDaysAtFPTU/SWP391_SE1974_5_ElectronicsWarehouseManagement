@@ -11,6 +11,8 @@
             padding: 40px;
         }
 
+        /* helper functions moved to script */
+
         .top-bar {
             display: flex;
             justify-content: space-between;
@@ -120,6 +122,14 @@
 
         const BASE = "https://localhost:7297/api";
 
+        function getField(obj, ...names) {
+            if (!obj) return "-";
+            for (const n of names) {
+                if (obj[n] !== undefined && obj[n] !== null) return obj[n];
+            }
+            return "-";
+        }
+
         function goHome() {
             window.location = "home.html";
         }
@@ -140,7 +150,44 @@
             let result = await res.json();
 
             // 🔥 Outbound = type === 2
-            let outboundList = result.data.filter(x => x.type === 2);
+            const outboundListSummary = (result.data || []).filter(x => x.type === 2);
+            const warehouseCache = {};
+
+            const outboundList = await Promise.all(outboundListSummary.map(async t0 => {
+                try {
+                    // always try to fetch full transfer detail first (contains components and bin info)
+                    const dres = await fetch(BASE + "/storekeeper/transfers/" + (t0.id ?? t0.ID ?? t0.request_id), { credentials: 'include' });
+                    if (dres.ok) {
+                        const djson = await dres.json();
+                        if (djson?.success && djson.data) {
+                            t0 = djson.data;
+                        }
+                    }
+
+                    // ensure bin_from object available; if still missing try bins endpoint
+                    if (t0.bin_from && (t0.bin_from.location_in_warehouse || t0.bin_from.locationInWarehouse || t0.bin_from.binCode))
+                        return t0;
+
+                    const binId = t0.bin_from_id ?? t0.binFromId ?? t0.bin_from?.id ?? t0.bin_from?.ID;
+                    if (!binId) return t0;
+
+                    const bres = await fetch(BASE + "/storekeeper/bins/" + binId, { credentials: 'include' });
+                    if (!bres.ok) return t0;
+                    const bjson = await bres.json();
+                    if (bjson?.success && bjson.data) {
+                        t0.bin_from = bjson.data;
+                        // set helper from warehouse name
+                        try {
+                            const fromName = t0.bin_from?.warehouse?.name ?? t0.bin_from?.warehouse?.warehouseName ?? t0.bin_from?.warehouse ?? null;
+                            t0._fromWarehouseName = fromName ?? null;
+                        } catch (e) { /* ignore */ }
+                    }
+                    return t0;
+                } catch (e) {
+                    console.error('detail/bin fetch failed', e);
+                    return t0;
+                }
+            }));
 
             let html = "";
 
@@ -149,20 +196,17 @@
                 let statusText = getStatusText(o.status);
                 let statusClass = o.status === 3 ? "status-complete" : "status-pending";
 
-                let warehouse = o.bin_from?.warehouse?.warehouseName ?? "-";
-                let bin = o.bin_from?.locationInWarehouse ?? "-";
+                const binFrom = o['bin_from'] ?? o.bin_from ?? null;
+                let warehouse = '-';
+                if (o._fromWarehouseName) warehouse = o._fromWarehouseName;
+                else if (binFrom?.warehouse) warehouse = binFrom.warehouse.name ?? binFrom.warehouse.warehouseName ?? binFrom.warehouse;
+                else if (o.warehouse) warehouse = o.warehouse.name ?? o.warehouse.warehouseName ?? o.warehouse;
+                const bin = binFrom?.location_in_warehouse ?? binFrom?.locationInWarehouse ?? binFrom?.binCode ?? o.location_in_warehouse ?? o.locationInWarehouse ?? '-';
 
-                let totalItems = 0;
-                if (o.components)
-                    totalItems = o.components.reduce((s, c) => s + c.quantity, 0);
+                const comps = o.components ?? o.Components ?? [];
+                const totalItems = comps.reduce((s, c) => s + (c.quantity ?? c.Quantity ?? c.qty ?? 0), 0);
 
-                let action = `
-<button class="detail-btn" onclick="viewDetail(${o.id})">Detail</button>
-`;
-
-                if (o.status === 2) {
-                    action += `<button class="confirm-btn" onclick="confirmOrder(${o.id})">Confirm</button>`;
-                }
+                let action = `<button class="detail-btn" onclick="goDetail(${o.id})">Detail</button>`;
 
                 html += `
 <tr>
@@ -179,82 +223,8 @@
             document.getElementById("orderTable").innerHTML = html;
         }
 
-        async function viewDetail(id) {
-
-            let res = await fetch(BASE + "/storekeeper/transfers/" + id, { credentials: "include" });
-            let result = await res.json();
-            let o = result.data;
-
-            let html = `
-<p><b>Order Code:</b> ${o.description}</p>
-<p><b>Creator:</b> ${o.creator?.fullName ?? o.creator?.username ?? "-"}</p>
-<p><b>Warehouse:</b> ${o.bin_from?.warehouse?.warehouseName ?? "-"}</p>
-<p><b>Bin:</b> ${o.bin_from?.locationInWarehouse ?? "-"}</p>
-<p><b>Creation Date:</b> ${formatDate(o.creation_date)}</p>
-<hr>
-<h4>Products:</h4>
-<table>
-<tr>
-<th>Name</th>
-<th>Quantity</th>
-<th>Unit Price</th>
-<th>Total</th>
-</tr>
-`;
-
-            o.components.forEach(c => {
-                let total = c.quantity * c.unit_price;
-                html += `
-<tr>
-<td>${c.name ?? "Component #" + c.component_id}</td>
-<td>${c.quantity}</td>
-<td>${c.unit_price}</td>
-<td>${total.toFixed(2)}</td>
-</tr>`;
-            });
-
-            html += "</table>";
-
-            document.getElementById("detailContent").innerHTML = html;
-            document.getElementById("detailModal").style.display = "flex";
-        }
-
-        function closeModal() {
-            document.getElementById("detailModal").style.display = "none";
-        }
-
-        async function confirmOrder(id) {
-
-            let detailRes = await fetch(BASE + "/storekeeper/transfers/" + id, { credentials: "include" });
-            let detail = await detailRes.json();
-            let transfer = detail.data;
-
-            let confirmPayload = {
-                request_id: transfer.id,
-                bins: [{
-                    bin_id: transfer.bin_from_id,
-                    components: transfer.components.map(c => ({
-                        component_id: c.component_id,
-                        quantity: c.quantity
-                    }))
-                }]
-            };
-
-            let res = await fetch(BASE + "/storekeeper/confirm-transfer", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                credentials: "include",
-                body: JSON.stringify(confirmPayload)
-            });
-
-            let data = await res.json();
-
-            if (data.success) {
-                alert("Confirmed successfully!");
-                load();
-            } else {
-                alert(data.message);
-            }
+        function goDetail(id) {
+            window.location.href = `outbound-detail.html?id=${id}`;
         }
 
         function formatDate(dateStr) {

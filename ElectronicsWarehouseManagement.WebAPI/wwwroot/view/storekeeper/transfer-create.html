@@ -204,75 +204,72 @@
 
         /* LOAD WAREHOUSE */
         async function loadWarehouses() {
-            const res = await fetch(BASE + "/warehouses", { credentials: "include" });
-            const json = await res.json();
-            if (!json.success) return alert("Không load được warehouse");
+            try {
+                const res = await fetch(BASE + "/warehouses", { credentials: "include" });
+                if (!res.ok) { console.error(await res.text()); return alert('API warehouse lỗi'); }
+                const json = await res.json();
+                if (!json.success || !json.data) return alert('Không load được warehouse');
 
-            const from = document.getElementById("warehouseFrom");
-            const to = document.getElementById("warehouseTo");
+                const from = document.getElementById('warehouseFrom');
+                const to = document.getElementById('warehouseTo');
+                from.innerHTML = '';
+                to.innerHTML = '';
 
-            from.innerHTML = "";
-            to.innerHTML = "";
+                json.data.forEach(w => {
+                    const id = w.warehouseId ?? w.id;
+                    const name = w.warehouseName ?? w.name ?? id;
+                    from.innerHTML += `<option value="${id}">${name}</option>`;
+                    to.innerHTML += `<option value="${id}">${name}</option>`;
+                });
 
-            json.data.forEach(w => {
-                const id = w.warehouseId ?? w.id;
-                const name = w.warehouseName ?? w.name ?? id;
-                from.innerHTML += `<option value="${id}">${name}</option>`;
-                to.innerHTML += `<option value="${id}">${name}</option>`;
-            });
-
-            loadBinsFrom();
-            loadBinsTo();
+                loadBinsFrom();
+                loadBinsTo();
+            }
+            catch (err) { console.error('loadWarehouses error', err); alert('Lỗi khi load warehouse'); }
         }
 
         /* LOAD BIN FROM */
         async function loadBinsFrom() {
-            const wid = document.getElementById("warehouseFrom").value;
-            if (!wid) return;
+            try {
+                const wid = document.getElementById('warehouseFrom').value;
+                const select = document.getElementById('binFrom');
+                select.innerHTML = '';
+                if (!wid) return;
+                const res = await fetch(BASE.replace('/storekeeper','') + '/storekeeper/warehouses/' + wid, { credentials: 'include' });
+                if (!res.ok) { console.error(await res.text()); return alert('API bins lỗi'); }
+                const json = await res.json();
+                if (!json.success || !json.data) return alert('Không load được bin');
 
-            const res = await fetch(BASE + "/bins/by-warehouse/" + wid, { credentials: "include" });
-            const json = await res.json();
-            if (!json.success) return alert("Không load được bin");
-
-            const select = document.getElementById("binFrom");
-            select.innerHTML = "";
-
-            json.data.forEach(b => {
-                const id = b.binId ?? b.id;
-
-                const code =
-                    b.location_in_warehouse ??
-                    b.locationInWarehouse ??
-                    b.binCode ??
-                    "Bin #" + id;
-
-                select.innerHTML += `<option value="${id}">${code}</option>`;
-            });
+                const bins = json.data.bins ?? json.data;
+                bins.forEach(b => {
+                    const id = b.id ?? b.ID ?? b.binId;
+                    const code = b.location_in_warehouse ?? b.locationInWarehouse ?? b.binCode ?? 'Bin #' + id;
+                    select.innerHTML += `<option value="${id}">${code}</option>`;
+                });
+            }
+            catch (err) { console.error('loadBinsFrom error', err); alert('Lỗi khi load bin'); }
         }
 
         /* LOAD BIN TO */
         async function loadBinsTo() {
-            const wid = document.getElementById("warehouseTo").value;
-            if (!wid) return;
+            try {
+                const wid = document.getElementById('warehouseTo').value;
+                const select = document.getElementById('binTo');
+                select.innerHTML = '';
+                if (!wid) return;
+                const res = await fetch(BASE.replace('/storekeeper','') + '/storekeeper/warehouses/' + wid, { credentials: 'include' });
+                if (!res.ok) { console.error(await res.text()); return alert('API bins lỗi'); }
+                const json = await res.json();
+                if (!json.success || !json.data) return alert('Không load được bin');
 
-            const res = await fetch(BASE + "/bins/by-warehouse/" + wid, { credentials: "include" });
-            const json = await res.json();
-            if (!json.success) return alert("Không load được bin");
-
-            const select = document.getElementById("binTo");
-            select.innerHTML = "";
-
-            json.data.forEach(b => {
-                const id = b.binId ?? b.id;
-
-                const code =
-                    b.location_in_warehouse ??
-                    b.locationInWarehouse ??
-                    b.binCode ??
-                    "Bin #" + id;
-
-                select.innerHTML += `<option value="${id}">${code}</option>`;
-            });
+                const bins = json.data.bins ?? json.data;
+                bins.forEach(b => {
+                    const id = b.id ?? b.ID ?? b.binId;
+                    const code = b.location_in_warehouse ?? b.locationInWarehouse ?? b.binCode ?? 'Bin #' + id;
+                    select.innerHTML += `<option value="${id}">${code}</option>`;
+                });
+            }
+            catch (err) { console.error('loadBinsTo error', err); alert('Lỗi khi load bin'); }
         }
 
         /* LOAD COMPONENT */

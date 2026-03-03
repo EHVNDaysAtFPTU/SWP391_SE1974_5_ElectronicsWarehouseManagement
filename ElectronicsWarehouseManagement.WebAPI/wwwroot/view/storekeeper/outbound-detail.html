@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Outbound Detail</title>
+    <style>
+        body{font-family:Arial;padding:30px;background:#fdf2f2}
+        .card{background:white;padding:20px;border-radius:8px}
+        button{padding:8px 12px;border:none;border-radius:6px;cursor:pointer}
+        .confirm{background:#ef4444;color:white}
+        .back{background:#64748b;color:white}
+    </style>
+</head>
+<body>
+    <div class="card">
+        <button class="back" onclick="location.href='outbound-list.html'">⬅ Back</button>
+        <h2>Outbound Detail</h2>
+        <div id="detail"></div>
+        <div style="margin-top:20px">
+            <button id="confirmBtn" class="confirm" onclick="confirmOrder()" style="display:none">Confirm</button>
+        </div>
+    </div>
+
+    <script>
+        const BASE = "https://localhost:7297/api";
+        const params = new URLSearchParams(window.location.search);
+        const id = params.get('id');
+        let transfer = null;
+
+        async function load() {
+            const res = await fetch(BASE + '/storekeeper/transfers/' + id, {credentials:'include'});
+            const json = await res.json();
+            transfer = json.data;
+
+            render();
+        }
+
+        function render() {
+            if (!transfer) return;
+            let html = `
+<p><b>Description:</b> ${transfer.description}</p>
+<p><b>Warehouse:</b> ${transfer.bin_from?.warehouse?.warehouseName ?? transfer.bin_to?.warehouse?.warehouseName ?? '-'}</p>
+<p><b>Bin:</b> ${transfer.bin_from?.locationInWarehouse ?? transfer.bin_to?.locationInWarehouse ?? '-'}</p>
+<p><b>Status:</b> ${transfer.status}</p>
+<hr>
+<h4>Products</h4>
+<table border="1" style="width:100%;border-collapse:collapse">
+<tr><th>Name</th><th>Quantity</th><th>Unit Price</th></tr>
+`;
+            transfer.components.forEach(c => {
+                html += `<tr><td>${c.name ?? 'Component #' + c.component_id}</td><td>${c.quantity}</td><td>${c.unit_price}</td></tr>`;
+            });
+            html += `</table>`;
+
+            document.getElementById('detail').innerHTML = html;
+
+            if (transfer.status === 2) {
+                document.getElementById('confirmBtn').style.display = 'inline-block';
+            }
+        }
+
+        async function confirmOrder() {
+            if (!confirm('Xác nhận đơn?')) return;
+
+            const payload = {
+                request_id: transfer.id,
+                bins: [{
+                    bin_id: transfer.bin_from_id ?? transfer.bin_to_id,
+                    components: transfer.components.map(c => ({ component_id: c.component_id, quantity: c.quantity }))
+                }]
+            };
+
+            const res = await fetch(BASE + '/storekeeper/confirm-transfer', {
+                method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify(payload)
+            });
+            const json = await res.json();
+            if (json.success) { alert('Confirmed'); location.href='outbound-list.html'; }
+            else alert(json.message || 'Error');
+        }
+
+        load();
+    </script>
+</body>
+</html>
