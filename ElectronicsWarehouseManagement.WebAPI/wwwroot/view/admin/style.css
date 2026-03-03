@@ -396,3 +396,59 @@ td button {
         transform: translateY(-2px);
         box-shadow: 0 4px 10px rgba(220,38,38,0.3);
     }
+
+.top-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.avatar-wrapper {
+    position: relative;
+    cursor: pointer;
+}
+
+.avatar-large {
+    width: 40px; /* chỉnh kích thước bạn muốn */
+    height: 40px;
+    border-radius: 50%; /* QUAN TRỌNG */
+    object-fit: cover; /* không méo ảnh */
+    display: block;
+}
+
+.avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+.user-menu {
+    position: absolute;
+    left: 0; /* canh theo avatar */
+    top: 70px; /* ngay dưới avatar */
+    background: #1e2a3a;
+    border-radius: 10px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+    overflow: hidden;
+    width: 150px;
+}
+
+    .user-menu div {
+        padding: 10px;
+        cursor: pointer;
+    }
+
+        .user-menu div:hover {
+            background: rgba(255,255,255,0.1);
+        }
+.menu {
+    margin-top: 40px;
+}
+
+.menu-item {
+    padding: 10px 0;
+    cursor: pointer;
+}
+.hidden {
+    display: none;
+}
