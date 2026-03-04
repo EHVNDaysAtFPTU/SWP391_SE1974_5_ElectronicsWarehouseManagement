@@ -63,6 +63,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
         public async Task<ApiResult<List<ComponentResp>>> GetComponentsAsync()
         {
 
+            // Return full info so client can get total quantity/stock information (ComponentResp.Quantity)
             var components = await _dbCtx.Components.Include(c => c.ComponentBins).AsNoTracking().Select(c => new ComponentResp(c, false)).ToListAsync();
             return new ApiResult<List<ComponentResp>>(components);
         }

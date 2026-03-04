@@ -195,18 +195,27 @@
 
             <div class="cards">
                 <div class="card">
-                    <h3>Total Inbound</h3>
+                    <h3>Inbound Orders</h3>
                     <p id="inboundCount">0</p>
+                    <small>Number of inbound requests</small>
                 </div>
 
                 <div class="card">
-                    <h3>Total Outbound</h3>
+                    <h3>Outbound Orders</h3>
                     <p id="outboundCount">0</p>
+                    <small>Number of outbound requests</small>
                 </div>
 
                 <div class="card">
-                    <h3>Total Inventory</h3>
+                    <h3>Internal Transfers</h3>
+                    <p id="transferCount">0</p>
+                    <small>Number of internal transfer requests</small>
+                </div>
+
+                <div class="card">
+                    <h3>Inventory Items</h3>
                     <p id="inventoryCount">0</p>
+                    <small>Number of distinct components</small>
                 </div>
             </div>
 
@@ -243,8 +252,9 @@
                     { credentials: "include" }
                 );
 
+                // fetch components and transfers
                 let itemRes = await fetch(
-                    BASE + "/storekeeper/component",
+                    BASE + "/storekeeper/components",
                     { credentials: "include" }
                 );
 
@@ -252,16 +262,14 @@
                 let itemData = await itemRes.json();
 
                 if (transferData.success) {
-                    document.getElementById("inboundCount").innerText =
-                        transferData.data.filter(x => x.typeInt === 1).length;
-
-                    document.getElementById("outboundCount").innerText =
-                        transferData.data.filter(x => x.typeInt === 2).length;
+                    const list = transferData.data || [];
+                    document.getElementById("inboundCount").innerText = list.filter(x => (x.type ?? x.typeInt ?? x.Type) === 1).length;
+                    document.getElementById("outboundCount").innerText = list.filter(x => (x.type ?? x.typeInt ?? x.Type) === 2).length;
+                    document.getElementById("transferCount").innerText = list.filter(x => (x.type ?? x.typeInt ?? x.Type) === 3).length;
                 }
 
                 if (itemData.success) {
-                    document.getElementById("inventoryCount").innerText =
-                        itemData.data.length;
+                    document.getElementById("inventoryCount").innerText = (itemData.data || []).length;
                 }
             }
             catch (err) {

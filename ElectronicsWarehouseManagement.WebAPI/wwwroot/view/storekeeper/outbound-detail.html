@@ -26,13 +26,80 @@
         const params = new URLSearchParams(window.location.search);
         const id = params.get('id');
         let transfer = null;
+        const componentCache = {};
+        const warehouseCache = {};
 
         async function load() {
             const res = await fetch(BASE + '/storekeeper/transfers/' + id, {credentials:'include'});
             const json = await res.json();
             transfer = json.data;
 
+            const comps = getComponents(transfer);
+            await resolveComponentNames(comps);
+            await resolveWarehouses(transfer);
             render();
+        }
+
+        async function resolveWarehouses(t) {
+            if (!t) return;
+            try {
+                const binFrom = t.bin_from ?? t.binFrom ?? null;
+                if (binFrom) {
+                    const w = binFrom.warehouse ?? binFrom.Warehouse ?? null;
+                    const wid = (typeof binFrom.warehouse === 'object') ? (binFrom.warehouse?.id) : (binFrom.warehouse ?? binFrom.warehouse_id ?? binFrom.warehouseId ?? binFrom.WarehouseId);
+                    const needFetch = !w || (typeof w !== 'object');
+                    if (needFetch && wid && !warehouseCache[wid]) {
+                        try {
+                            const wres = await fetch(BASE + '/storekeeper/warehouses/' + wid, { credentials: 'include' });
+                            if (wres.ok) {
+                                const wjson = await wres.json();
+                                if (wjson?.success && wjson.data) warehouseCache[wid] = wjson.data;
+                            }
+                        } catch (e) { console.error('warehouse fetch failed', e); }
+                    }
+                    if (warehouseCache[wid]) binFrom.warehouse = warehouseCache[wid];
+                }
+            } catch (e) { console.error('resolveWarehouses failed', e); }
+        }
+
+        async function resolveComponentNames(comps) {
+            if (!Array.isArray(comps)) return;
+            await Promise.all(comps.map(async c => {
+                const currentName = getComponentName(c);
+                if (currentName && !currentName.startsWith('Component #')) return;
+                const id = c.component_id ?? c.componentId ?? c.component?.id;
+                if (!id) return;
+                if (componentCache[id]) {
+                    c.component = c.component ?? {};
+                    c.component.metadata = componentCache[id].metadata ?? componentCache[id].Metadata ?? componentCache[id];
+                    return;
+                }
+                try {
+                    const cres = await fetch(BASE + '/storekeeper/components/' + id, { credentials: 'include' });
+                    if (!cres.ok) return;
+                    const cjson = await cres.json();
+                    if (cjson?.success && cjson.data) {
+                        componentCache[id] = cjson.data;
+                        c.component = c.component ?? {};
+                        c.component.metadata = cjson.data.metadata ?? cjson.data.Metadata ?? cjson.data;
+                    }
+                } catch (e) { console.error('component fetch failed', e); }
+            }));
+        }
+
+        function getComponents(obj) {
+            if (!obj) return [];
+            const keys = ['components','Components','transfer_request_components','transferRequestComponents','TransferRequestComponents','data'];
+            for (const k of keys) if (Array.isArray(obj[k])) return obj[k];
+            for (const k of Object.keys(obj)) {
+                if (Array.isArray(obj[k]) && obj[k].length>0 && (obj[k][0].quantity !== undefined || obj[k][0].component_id !== undefined))
+                    return obj[k];
+            }
+            return [];
+        }
+
+        function getComponentName(c) {
+            return c?.name ?? c?.Name ?? c?.metadata?.name ?? c?.Metadata?.name ?? c?.component?.metadata?.name ?? c?.component?.metadata?.Name ?? ('Component #' + (c.component_id ?? c.componentId ?? c.component?.id ?? '?'));
         }
 
         function render() {
@@ -47,8 +114,12 @@
 <table border="1" style="width:100%;border-collapse:collapse">
 <tr><th>Name</th><th>Quantity</th><th>Unit Price</th></tr>
 `;
-            transfer.components.forEach(c => {
-                html += `<tr><td>${c.name ?? 'Component #' + c.component_id}</td><td>${c.quantity}</td><td>${c.unit_price}</td></tr>`;
+            const comps = getComponents(transfer);
+            comps.forEach(c => {
+                const name = getComponentName(c);
+                const qty = c.quantity ?? c.Quantity ?? c.qty ?? 0;
+                const price = c.unit_price ?? c.unitPrice ?? c.UnitPrice ?? '';
+                html += `<tr><td>${name}</td><td>${qty}</td><td>${price}</td></tr>`;
             });
             html += `</table>`;
 
@@ -62,11 +133,12 @@
         async function confirmOrder() {
             if (!confirm('Xác nhận đơn?')) return;
 
+            const comps = getComponents(transfer);
             const payload = {
                 request_id: transfer.id,
                 bins: [{
                     bin_id: transfer.bin_from_id ?? transfer.bin_to_id,
-                    components: transfer.components.map(c => ({ component_id: c.component_id, quantity: c.quantity }))
+                    components: comps.map(c => ({ component_id: c.component_id ?? c.componentId ?? c.component?.id, quantity: c.quantity ?? c.qty ?? c.Quantity }))
                 }]
             };
 
