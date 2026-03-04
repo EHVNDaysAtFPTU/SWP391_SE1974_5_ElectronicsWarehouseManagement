@@ -132,7 +132,7 @@
         <div class="profile-container">
             <div class="profile">
                 <img src="https://i.pravatar.cc/40" alt="Profile">
-                <span class="username">Admin</span>
+                <span class="username">Manager</span>
             </div>
         </div>
     </header>
@@ -195,10 +195,10 @@
 
             const info = document.getElementById("binInfo");
             info.innerHTML = `
-            <div class="skeleton" style="width:40%"></div><br>
-            <div class="skeleton" style="width:60%"></div><br>
-            <div class="skeleton" style="width:30%"></div>
-        `;
+                <div class="skeleton" style="width:40%"></div><br>
+                <div class="skeleton" style="width:60%"></div><br>
+                <div class="skeleton" style="width:30%"></div>
+            `;
 
             const container = document.getElementById("componentList");
             container.innerHTML = "";
@@ -206,10 +206,10 @@
             for (let i = 0; i < 5; i++) {
                 const row = document.createElement("tr");
                 row.innerHTML = `
-                <td><div class="skeleton"></div></td>
-                <td><div class="skeleton"></div></td>
-                <td><div class="skeleton"></div></td>
-            `;
+                    <td><div class="skeleton"></div></td>
+                    <td><div class="skeleton"></div></td>
+                    <td><div class="skeleton"></div></td>
+                `;
                 container.appendChild(row);
             }
         }
@@ -247,23 +247,23 @@
             const info = document.getElementById("binInfo");
 
             info.innerHTML = `
-            <p><strong>ID:</strong> ${bin.id}</p>
-            <p><strong>Location:</strong> ${bin.location_in_warehouse}</p>
-            <p><strong>Status:</strong> ${getStatusBadge(bin.status)}</p>
-            <p><strong>Warehouse:</strong> ${bin.warehouse?.name || "-"}</p>
-        `;
+                <p><strong>ID:</strong> ${bin.id}</p>
+                <p><strong>Location:</strong> ${bin.location_in_warehouse}</p>
+                <p><strong>Status:</strong> ${getStatusBadge(bin.status)}</p>
+                <p><strong>Warehouse:</strong> ${bin.warehouse?.name || "-"}</p>
+            `;
 
             const container = document.getElementById("componentList");
             container.innerHTML = "";
 
             if (!bin.components || bin.components.length === 0) {
                 container.innerHTML = `
-                <tr>
-                    <td colspan="3" style="padding:15px;text-align:center">
-                        No components in this bin
-                    </td>
-                </tr>
-            `;
+                    <tr>
+                        <td colspan="3" style="padding:15px;text-align:center">
+                            No components in this bin
+                        </td>
+                    </tr>
+                `;
                 return;
             }
 
@@ -282,10 +282,10 @@
 
                 if (!result.success) {
                     row.innerHTML = `
-                    <td>${binComp.id}</td>
-                    <td>Load failed</td>
-                    <td>${binComp.quantity}</td>
-                `;
+                        <td>${binComp.id}</td>
+                        <td>Load failed</td>
+                        <td>${binComp.quantity}</td>
+                    `;
                     container.appendChild(row);
                     return;
                 }
@@ -302,24 +302,24 @@
                     : "-";
 
                 row.innerHTML = `
-                <td>${binComp.id}</td>
-                <td>
-                    <b>${metadata.name || "Unnamed"}</b><br>
-                    <small>${metadata.desc || ""}</small><br>
-                    <small><b>Manufacturer:</b> ${metadata.manufacturer || "-"}</small><br>
-                    <small><b>Manufacturing Date:</b> ${manufactureDate}</small><br>
-                    <small><b>Unit:</b> ${component.unit || "-"}</small><br>
-                    <small><b>Unit Price:</b> ${component.unit_price?.toLocaleString() || 0} VND</small><br>
-                    <small><b>Categories:</b> ${categories}</small><br>
-                    ${metadata.datasheet_url ?
+                    <td>${binComp.id}</td>
+                    <td>
+                        <b>${metadata.name || "Unnamed"}</b><br>
+                        <small>${metadata.desc || ""}</small><br>
+                        <small><b>Manufacturer:</b> ${metadata.manufacturer || "-"}</small><br>
+                        <small><b>Manufacturing Date:</b> ${manufactureDate}</small><br>
+                        <small><b>Unit:</b> ${component.unit || "-"}</small><br>
+                        <small><b>Unit Price:</b> ${component.unit_price?.toLocaleString() || 0} VND</small><br>
+                        <small><b>Categories:</b> ${categories}</small><br>
+                        ${metadata.datasheet_url ?
                         `<small><a href="${metadata.datasheet_url}" target="_blank">Datasheet</a></small><br>`
                         : ""}
-                    ${metadata.image_url ?
+                        ${metadata.image_url ?
                         `<br><img src="${metadata.image_url}" width="60" style="margin-top:5px;border-radius:4px;">`
                         : ""}
-                </td>
-                <td>${binComp.quantity}</td>
-            `;
+                    </td>
+                    <td>${binComp.quantity}</td>
+                `;
 
                 container.appendChild(row);
             });
@@ -333,6 +333,18 @@
                 default: return status;
             }
         }
+        //Profile
+        function toggleProfileMenu() {
+            document.getElementById("profileDropdown").classList.toggle("show");
+        }
+
+        // Đóng dropdown khi click ra ngoài
+        window.onclick = function (event) {
+            if (!event.target.closest('.profile-container')) {
+                document.getElementById("profileDropdown").classList.remove("show");
+            }
+        }
+
 
     </script>
 

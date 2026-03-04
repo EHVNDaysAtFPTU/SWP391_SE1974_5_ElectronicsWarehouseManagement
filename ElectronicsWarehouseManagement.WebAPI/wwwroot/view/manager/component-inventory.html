@@ -56,7 +56,7 @@
         <div class="profile-container">
             <div class="profile" onclick="toggleProfileMenu()">
                 <img src="https://i.pravatar.cc/40" alt="Profile">
-                <span class="username">Admin</span>
+                <span class="username">Manager</span>
             </div>
 
             <div class="profile-dropdown" id="profileDropdown">
@@ -302,6 +302,17 @@
         function changePageSize() {
             pageSize = parseInt(document.getElementById("pageSize").value);
             loadItems(1);
+        }
+        //Profile
+        function toggleProfileMenu() {
+            document.getElementById("profileDropdown").classList.toggle("show");
+        }
+
+        // Đóng dropdown khi click ra ngoài
+        window.onclick = function (event) {
+            if (!event.target.closest('.profile-container')) {
+                document.getElementById("profileDropdown").classList.remove("show");
+            }
         }
 
     </script>

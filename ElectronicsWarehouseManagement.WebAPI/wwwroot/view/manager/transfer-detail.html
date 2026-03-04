@@ -9,14 +9,13 @@
 
 <body>
 
-    <!-- HEADER -->
     <header class="header">
         <div class="logo">My Manager</div>
 
         <div class="profile-container">
             <div class="profile" onclick="toggleProfileMenu()">
                 <img src="https://i.pravatar.cc/40" alt="Profile">
-                <span class="username">Admin</span>
+                <span class="username">Manager</span>
             </div>
 
             <div class="profile-dropdown" id="profileDropdown">
@@ -29,7 +28,6 @@
 
     <div class="wrapper">
 
-        <!-- ===== SIDEBAR ===== -->
         <div class="sidebar">
             <ul>
                 <li><a href="dashboard-manager.html">Dashboard</a></li>
@@ -37,19 +35,15 @@
                 <li><a href="transfers.html">Transfers</a></li>
                 <li><a href="warehouses.html">Warehouses</a></li>
                 <li><a href="bin.html">Bins</a></li>
-
             </ul>
         </div>
 
-        <!-- ===== CONTENT ===== -->
         <div class="content">
 
             <h2>Transfer Detail</h2>
 
             <div id="infoSection"></div>
-
             <hr>
-
             <div id="componentSection"></div>
 
             <br>
@@ -58,13 +52,14 @@
         </div>
     </div>
 
-    <!-- =========================
-         GIỮ NGUYÊN SCRIPT CỦA BẠN
-    ========================= -->
     <script>
 
         document.addEventListener("DOMContentLoaded", function () {
             const id = getTransferIdFromUrl();
+            if (!id) {
+                document.getElementById("infoSection").innerText = "Missing transfer ID";
+                return;
+            }
             loadTransferDetail(id);
         });
 
@@ -80,6 +75,12 @@
                 { credentials: "include" }
             );
 
+            if (!response.ok) {
+                document.getElementById("infoSection").innerText =
+                    "API Error: " + response.status;
+                return;
+            }
+
             const result = await response.json();
 
             if (!result.success) {
@@ -87,7 +88,7 @@
                 return;
             }
 
-            await renderInfo(result.data);
+            renderInfo(result.data);
             renderComponents(result.data);
         }
 
@@ -114,14 +115,13 @@
             <p><strong>Creator:</strong> ${t.creator?.username || "-"}</p>
             <p><strong>Approver:</strong> ${t.approver?.username || "-"}</p>
             <p><strong>From:</strong> ${t.bin_from
-                    ? `${t.bin_from.location_in_warehouse} - Warehouse: ${fromWarehouseName}`
+                    ? `${t.bin_from.location_in_warehouse} - ${fromWarehouseName}`
                     : "-"
                 }</p>
             <p><strong>To:</strong> ${t.bin_to
-                    ? `${t.bin_to.location_in_warehouse} - Warehouse: ${toWarehouseName}`
+                    ? `${t.bin_to.location_in_warehouse} - ${toWarehouseName}`
                     : "-"
                 }</p>
-            <p><strong>Monitor Status:</strong> ${transferMonitorStatus(t)}</p>
         `;
         }
 
@@ -134,13 +134,14 @@
                 return;
             }
 
+            let grandTotal = 0;
+
             let html = `
             <h3>Component List</h3>
-            <table width="100%">
+            <table width="100%" border="1" cellpadding="8">
                 <tr>
-                    <th>Name</th>
+                    <th>Component ID</th>
                     <th>Quantity</th>
-                    <th>Unit</th>
                     <th>Unit Price</th>
                     <th>Total</th>
                     <th>Action</th>
@@ -149,78 +150,48 @@
 
             t.components.forEach((c, index) => {
 
-                const name = c.component?.metadata?.name ?? "-";
+                const componentId = c.component_id;
                 const quantity = c.quantity ?? 0;
-                const unit = c.component?.unit ?? "-";
                 const price = c.unit_price ?? 0;
                 const total = quantity * price;
 
+                grandTotal += total;
+
                 html += `
                 <tr>
-                    <td>${name}</td>
+                    <td>${componentId}</td>
                     <td>${quantity}</td>
-                    <td>${unit}</td>
-                    <td>${price}</td>
-                    <td>${total}</td>
+                    <td>${formatMoney(price)}</td>
+                    <td>${formatMoney(total)}</td>
                     <td>
-                        <button onclick="toggleDetail(${index}, ${c.component?.id})">
+                        <button onclick="toggleDetail(${index}, ${componentId})">
                             View
                         </button>
                     </td>
                 </tr>
 
                 <tr id="detail-row-${index}" style="display:none;">
-                    <td colspan="6" id="detail-content-${index}">
+                    <td colspan="5" id="detail-content-${index}">
                         Loading...
                     </td>
                 </tr>
             `;
             });
 
+            html += `
+            <tr>
+                <td colspan="3"><strong>Total Transfer Value</strong></td>
+                <td colspan="2"><strong>${formatMoney(grandTotal)}</strong></td>
+            </tr>
+        `;
+
             html += `</table>`;
             container.innerHTML = html;
         }
 
-        function goBack() {
-            window.history.back();
-        }
-
-        /* ===== UTIL FUNCTIONS ===== */
-
-        function renderComponentDetail(component) {
-
-            const metadata = component.metadata ?? {};
-
-            const categoriesText = component.categories && component.categories.length > 0
-                ? component.categories.map(c => c.name).join(", ")
-                : "-";
-
-            const manufacturingDate =
-                metadata.manufacturing_date &&
-                    metadata.manufacturing_date !== "0001-01-01T00:00:00"
-                    ? new Date(metadata.manufacturing_date).toLocaleDateString("en-US")
-                    : "-";
-
-            return `
-            <div>
-                <strong>Component Detail</strong><br><br>
-                <b>ID:</b> ${component.id ?? "-"} <br>
-                <b>Name:</b> ${metadata.name ?? "-"} <br>
-                <b>Description:</b> ${metadata.desc || "-"} <br>
-                <b>Manufacturer:</b> ${metadata.manufacturer || "-"} <br>
-                <b>Manufacturing Date:</b> ${manufacturingDate} <br>
-                <b>Unit:</b> ${component.unit ?? "-"} <br>
-                <b>Unit Price:</b> ${component.unit_price ?? 0} <br>
-                <b>Categories:</b> ${categoriesText} <br>
-                <b>Datasheet:</b> ${metadata.datasheet_url
-                    ? `<a href="${metadata.datasheet_url}" target="_blank">View</a>`
-                    : "-"
-                }
-            </div>
-        `;
-        }
-
         async function toggleDetail(index, componentId) {
+
+            if (!componentId) return;
 
             const row = document.getElementById(`detail-row-${index}`);
             const content = document.getElementById(`detail-content-${index}`);
@@ -231,25 +202,24 @@
 
                 if (content.dataset.loaded !== "true") {
 
-                    try {
-                        const resp = await fetch(
-                            `/api/manager/get-component/${componentId}?fullInfo=true`,
-                            { credentials: "include" }
-                        );
+                    const resp = await fetch(
+                        `/api/manager/get-component/${componentId}?fullInfo=true`,
+                        { credentials: "include" }
+                    );
 
-                        const result = await resp.json();
-
-                        if (!result.success) {
-                            content.innerHTML = "Failed to load detail";
-                            return;
-                        }
-
-                        content.innerHTML = renderComponentDetail(result.data);
-                        content.dataset.loaded = "true";
-
-                    } catch {
-                        content.innerHTML = "Error loading detail";
+                    if (!resp.ok) {
+                        content.innerHTML = "Failed to load detail";
+                        return;
                     }
+
+                    const result = await resp.json();
+                    if (!result.success) {
+                        content.innerHTML = "Failed to load detail";
+                        return;
+                    }
+
+                    content.innerHTML = renderComponentDetail(result.data);
+                    content.dataset.loaded = "true";
                 }
 
             } else {
@@ -257,35 +227,68 @@
             }
         }
 
-        function getStatusText(status) {
-            switch (status) {
-                case 0: return "Pending";
-                case 2: return "Approved";
-                case 3: return "Rejected";
-                default: return "Unknown";
-            }
+        function renderComponentDetail(component) {
+
+            const metadata = component.metadata ?? {};
+
+            const categoriesText =
+                component.categories && component.categories.length > 0
+                    ? component.categories.map(c => c.name).join(", ")
+                    : "-";
+
+            const imageUrl = metadata.image_url
+                ? `/${metadata.image_url}`
+                : null;
+
+            return `
+            <div style="display:flex; gap:20px; padding:10px;">
+                <div>
+                    ${imageUrl
+                    ? `<img src="${imageUrl}" style="width:150px;">`
+                    : `<div style="width:150px;height:150px;background:#eee;display:flex;align-items:center;justify-content:center;">
+                                    No Image
+                               </div>`
+                }
+                </div>
+                <div>
+                    <b>ID:</b> ${component.id} <br>
+                    <b>Name:</b> ${metadata.name ?? "-"} <br>
+                    <b>Description:</b> ${metadata.desc ?? "-"} <br>
+                    <b>Manufacturer:</b> ${metadata.manufacturer ?? "-"} <br>
+                    <b>Manufacturing Date:</b> ${formatDate(metadata.manufacturing_date)} <br>
+                    <b>Unit:</b> ${component.unit ?? "-"} <br>
+                    <b>Unit Price:</b> ${formatMoney(component.unit_price ?? 0)} <br>
+                    <b>Categories:</b> ${categoriesText} <br>
+                    <b>Datasheet:</b> ${metadata.datasheet_url
+                    ? `<a href="${metadata.datasheet_url}" target="_blank">View</a>`
+                    : "-"
+                }
+                </div>
+            </div>
+        `;
         }
 
-        function getTypeText(type) {
-            switch (type) {
-                case 1: return "Inbound";
-                case 2: return "Outbound";
-                case 3: return "Internal";
-                default: return "Unknown";
-            }
-        }
-
-        function transferMonitorStatus(t) {
-            if (t.status === 0) return "Not Yet";
-            if (t.status === 2 && t.execution_date) return "Done";
-            if (t.status === 2) return "Processing";
-            if (t.status === 3) return "Canceled";
-            return "Unknown";
+        function formatMoney(value) {
+            return value.toLocaleString("vi-VN") + " VND";
         }
 
         function formatDate(dateString) {
             if (!dateString) return "-";
-            return new Date(dateString).toLocaleDateString("en-US");
+            return new Date(dateString).toLocaleDateString("vi-VN");
+        }
+
+        function getStatusText(status) {
+            if (status === 0) return "Pending";
+            if (status === 2) return "Approved";
+            if (status === 3) return "Rejected";
+            return "Unknown";
+        }
+
+        function getTypeText(type) {
+            if (type === 1) return "Inbound";
+            if (type === 2) return "Outbound";
+            if (type === 3) return "Internal";
+            return "Unknown";
         }
 
         async function getWarehouseName(id) {
@@ -294,11 +297,24 @@
                     `/api/manager/get-warehouse/${id}?fullInfo=false`,
                     { credentials: "include" }
                 );
-
                 const { success, data } = await resp.json();
                 return success ? data?.name ?? "-" : "-";
             } catch {
                 return "-";
+            }
+        }
+
+        function goBack() {
+            window.history.back();
+        }
+
+        function toggleProfileMenu() {
+            document.getElementById("profileDropdown").classList.toggle("show");
+        }
+
+        window.onclick = function (event) {
+            if (!event.target.closest('.profile-container')) {
+                document.getElementById("profileDropdown").classList.remove("show");
             }
         }
 

@@ -16,7 +16,7 @@
         <div class="profile-container">
             <div class="profile" onclick="toggleProfileMenu()">
                 <img src="https://i.pravatar.cc/40" alt="Profile">
-                <span class="username">Admin</span>
+                <span class="username">Manager</span>
             </div>
 
             <div class="profile-dropdown" id="profileDropdown">
@@ -248,6 +248,17 @@
 
         function viewTransfer(id) {
             window.location.href = `transfer-detail.html?id=${id}`;
+        }
+        //Profile
+        function toggleProfileMenu() {
+            document.getElementById("profileDropdown").classList.toggle("show");
+        }
+
+        // Đóng dropdown khi click ra ngoài
+        window.onclick = function (event) {
+            if (!event.target.closest('.profile-container')) {
+                document.getElementById("profileDropdown").classList.remove("show");
+            }
         }
     </script>
 
