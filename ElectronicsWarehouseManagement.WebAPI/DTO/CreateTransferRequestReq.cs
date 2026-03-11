@@ -29,10 +29,28 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
                 failedReason = "Component list cannot be empty.";
                 return false;
             }
+            // Validate components. For outbound requests unit price is not required,
+            // so skip unit price validation when this request's Type is Outbound.
             foreach (var component in Components)
             {
-                if (!component.Verify(out failedReason))
-                    return false;
+                if (Type == TransferType.Outbound)
+                {
+                    if (component.Quantity <= 0)
+                    {
+                        failedReason = "Quantity must be greater than zero.";
+                        return false;
+                    }
+                    if (component.ComponentId <= 0)
+                    {
+                        failedReason = "Invalid item definition ID.";
+                        return false;
+                    }
+                }
+                else
+                {
+                    if (!component.Verify(out failedReason))
+                        return false;
+                }
             }
             switch (Type)
             {

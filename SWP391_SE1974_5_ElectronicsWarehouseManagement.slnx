@@ -3,4 +3,5 @@
   <Project Path="ElectronicsWarehouseManagement.Repositories\ElectronicsWarehouseManagement.Repositories.csproj" />
   <Project Path="ElectronicsWarehouseManagement.Services\ElectronicsWarehouseManagement.Services.csproj" />
   <Project Path="ElectronicsWarehouseManagement.WebAPI/ElectronicsWarehouseManagement.WebAPI.csproj" Id="4aee8d3b-3054-4e2f-afa8-bc0df5435f1b" />
+  <Project Path="Storekeepertest/Storekeepertest.csproj" Id="e20f524b-c838-49fe-91f2-8a6f4b425515" />
 </Solution>

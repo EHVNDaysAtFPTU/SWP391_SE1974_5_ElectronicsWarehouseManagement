@@ -157,8 +157,6 @@
                     <th>Tên hàng</th>
                     <th>Đơn vị</th>
                     <th>Số lượng</th>
-                    <th>Đơn giá</th>
-                    <th>Thành tiền</th>
                     <th>X</th>
                 </tr>
             </thead>
@@ -256,14 +254,12 @@
                 const id = c.componentId ?? c.id;
                 const name = c.name ?? c.metadata?.name ?? "No name";
                 const unit = c.unit ?? "N/A";
-                const price = c.unitPrice ?? 0;
 
                 list.innerHTML += `
 <div class="modal-item"
-onclick="addItem(${id},'${name}',${price},'${unit}')">
+onclick="addItem(${id},'${name}','${unit}')">
 <b>${name}</b><br>
-Đơn vị: ${unit}<br>
-Giá: ${price}
+Đơn vị: ${unit}
 </div>`;
             });
         }
@@ -302,11 +298,7 @@ Giá: ${price}
             document.querySelectorAll("#tableBody tr").forEach(r => {
 
                 const qty = parseFloat(r.cells[3].querySelector("input").value) || 0;
-                const price = parseFloat(r.cells[4].querySelector("input").value) || 0;
-
-                const money = qty * price;
-                r.querySelector(".money").innerText = money;
-                total += money;
+                total += qty;
             });
 
             document.getElementById("totalMoney").innerText = total;
@@ -328,8 +320,7 @@ Giá: ${price}
             rows.forEach(r => {
                 payload.components.push({
                     component_id: parseInt(r.cells[1].dataset.id),
-                    quantity: parseInt(r.cells[3].querySelector("input").value),
-                    unit_price: parseFloat(r.cells[4].querySelector("input").value)
+                    quantity: parseInt(r.cells[3].querySelector("input").value)
                 });
             });
 

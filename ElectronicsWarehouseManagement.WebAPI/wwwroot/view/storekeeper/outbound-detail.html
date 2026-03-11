@@ -4,11 +4,34 @@
     <meta charset="UTF-8">
     <title>Outbound Detail</title>
     <style>
-        body{font-family:Arial;padding:30px;background:#fdf2f2}
-        .card{background:white;padding:20px;border-radius:8px}
-        button{padding:8px 12px;border:none;border-radius:6px;cursor:pointer}
-        .confirm{background:#ef4444;color:white}
-        .back{background:#64748b;color:white}
+        body {
+            font-family: Arial;
+            padding: 30px;
+            background: #fdf2f2
+        }
+
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px
+        }
+
+        button {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer
+        }
+
+        .confirm {
+            background: #ef4444;
+            color: white
+        }
+
+        .back {
+            background: #64748b;
+            color: white
+        }
     </style>
 </head>
 <body>
@@ -30,7 +53,7 @@
         const warehouseCache = {};
 
         async function load() {
-            const res = await fetch(BASE + '/storekeeper/transfers/' + id, {credentials:'include'});
+            const res = await fetch(BASE + '/storekeeper/transfers/' + id, { credentials: 'include' });
             const json = await res.json();
             transfer = json.data;
 
@@ -89,10 +112,10 @@
 
         function getComponents(obj) {
             if (!obj) return [];
-            const keys = ['components','Components','transfer_request_components','transferRequestComponents','TransferRequestComponents','data'];
+            const keys = ['components', 'Components', 'transfer_request_components', 'transferRequestComponents', 'TransferRequestComponents', 'data'];
             for (const k of keys) if (Array.isArray(obj[k])) return obj[k];
             for (const k of Object.keys(obj)) {
-                if (Array.isArray(obj[k]) && obj[k].length>0 && (obj[k][0].quantity !== undefined || obj[k][0].component_id !== undefined))
+                if (Array.isArray(obj[k]) && obj[k].length > 0 && (obj[k][0].quantity !== undefined || obj[k][0].component_id !== undefined))
                     return obj[k];
             }
             return [];
@@ -137,17 +160,21 @@
             const payload = {
                 request_id: transfer.id,
                 bins: [{
-                    bin_id: transfer.bin_from_id ?? transfer.bin_to_id,
+                    bin_id: transfer.bin_from_id ?? transfer.binFromId ?? transfer.bin_from?.id ?? transfer.bin_from?.ID ?? null,
                     components: comps.map(c => ({ component_id: c.component_id ?? c.componentId ?? c.component?.id, quantity: c.quantity ?? c.qty ?? c.Quantity }))
                 }]
             };
 
             const res = await fetch(BASE + '/storekeeper/confirm-transfer', {
-                method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify(payload)
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(payload)
             });
             const json = await res.json();
-            if (json.success) { alert('Confirmed'); location.href='outbound-list.html'; }
-            else alert(json.message || 'Error');
+            if (json?.success) {
+                alert('Confirmed');
+                location.href = 'outbound-list.html';
+            } else {
+                alert(json?.msg ?? json?.message ?? 'Error');
+            }
         }
 
         load();

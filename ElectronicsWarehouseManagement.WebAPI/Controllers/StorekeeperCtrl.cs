@@ -2,6 +2,7 @@
 using ElectronicsWarehouseManagement.WebAPI.DTO;
 using ElectronicsWarehouseManagement.WebAPI.Services;
 using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ElectronicsWarehouseManagement.WebAPI.Controllers
@@ -169,7 +170,10 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
         [HttpPost("confirm-transfer")]
         public async Task<IActionResult> ConfirmTransferRequest([FromBody] ConfirmTransferRequestReq request)
         {
-            var result = await _storekeeperService.ConfirmTransferRequestAsync(request, int.Parse(HttpContext.Session.GetString("UserId")!));
+            var uid = GetUserId();
+            if (!uid.HasValue)
+                return BadRequest(new { code = 0, msg = "User not authenticated or session expired.", success = false });
+            var result = await _storekeeperService.ConfirmTransferRequestAsync(request, uid.Value);
             if (result.Success)
                 return Ok(result);
             return BadRequest(result);
@@ -204,10 +208,34 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
 
         async Task<IActionResult> CreateTransferRequest(CreateTransferRequestReq request, TransferType type)
         {
-            var result = await _storekeeperService.CreateTransferRequestAsync(request, type, int.Parse(HttpContext.Session.GetString("UserId")!));
+            var uid = GetUserId();
+            if (!uid.HasValue)
+                return BadRequest(new { code = 0, msg = "User not authenticated or session expired.", success = false });
+            var result = await _storekeeperService.CreateTransferRequestAsync(request, type, uid.Value);
             if (result.Success)
                 return Ok(result);
             return BadRequest(result);
+        }
+
+        int? GetUserId()
+        {
+            // Try session first
+            try
+            {
+                var s = HttpContext.Session.GetString("UserId");
+                if (!string.IsNullOrEmpty(s) && int.TryParse(s, out var id)) return id;
+            }
+            catch { }
+
+            // Fallback to claims
+            try
+            {
+                var claim = HttpContext.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? HttpContext.User?.FindFirst("sub")?.Value;
+                if (!string.IsNullOrEmpty(claim) && int.TryParse(claim, out var cid)) return cid;
+            }
+            catch { }
+
+            return null;
         }
     }
 }

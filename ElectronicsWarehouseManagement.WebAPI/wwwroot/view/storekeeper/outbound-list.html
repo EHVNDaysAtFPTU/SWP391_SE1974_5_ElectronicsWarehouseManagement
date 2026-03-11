@@ -153,11 +153,11 @@
 
         function getStatusText(status) {
             switch (status) {
-                case 0: return "Pending";
-                case 1: return "Approved";
+                case 0: return "Unknown";
+                case 1: return "Pending";
                 case 2: return "Approved - Waiting Confirm";
-                case 3: return "Completed";
-                default: return "Unknown";
+                case 3: return "Rejected";
+                default: return "Completed";
             }
         }
 
