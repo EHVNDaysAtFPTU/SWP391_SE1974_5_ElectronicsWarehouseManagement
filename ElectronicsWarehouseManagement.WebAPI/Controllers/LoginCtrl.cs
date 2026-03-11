@@ -45,7 +45,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
                 HttpContext.Session.SetString("UserId", result.user.UserId.ToString());
                 return Ok(result.resp);
             }
-            if (result.user is null)
+            if (result.user is null && result.resp.ResultCode == ApiResultCode.NotFound)
                 return NotFound(result.resp);
             return BadRequest(result.resp);
         }
