@@ -10,7 +10,7 @@ public interface IAuthService
     //TODO: reset password
 }
 
-class AuthService : IAuthService
+internal class AuthService : IAuthService
 {
     readonly EWMDbCtx _dbCtx;
 
