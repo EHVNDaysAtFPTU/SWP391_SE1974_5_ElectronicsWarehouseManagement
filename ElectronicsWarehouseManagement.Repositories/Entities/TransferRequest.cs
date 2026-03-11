@@ -29,6 +29,9 @@ public partial class TransferRequest
 
     public int? BinToId { get; set; }
 
+    [Obsolete("Use CustomerInfo instead.")]
+    public string CustomerInfoJson { get; set; }
+
     public virtual User Approver { get; set; }
 
     public virtual Bin BinFrom { get; set; }

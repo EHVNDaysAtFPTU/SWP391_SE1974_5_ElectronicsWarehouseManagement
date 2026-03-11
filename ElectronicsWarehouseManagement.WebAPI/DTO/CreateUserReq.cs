@@ -2,7 +2,7 @@
 
 namespace ElectronicsWarehouseManagement.WebAPI.DTO
 {
-    public class CreateAccReq : IVerifiableRequest
+    public class CreateUserReq : IVerifiableRequest
     {
         [JsonPropertyName("username")]
         public string Username { get; set; } = string.Empty;

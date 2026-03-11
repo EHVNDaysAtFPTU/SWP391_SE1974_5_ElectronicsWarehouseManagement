@@ -6,12 +6,15 @@ using Microsoft.EntityFrameworkCore;
 public interface IAuthService
 {
     Task<(ApiResult resp, User? user)> LoginAsync(LoginReq request);
+    Task<ApiResult> LogoutAsync(int userId);
     //TODO: reset password
 }
 
 class AuthService : IAuthService
 {
     readonly EWMDbCtx _dbCtx;
+
+    List<int> loggedInUsers = [];
 
     public AuthService(EWMDbCtx dbCtx)
     {
@@ -48,6 +51,17 @@ class AuthService : IAuthService
             case UserStatus.Uninitialized:
                 return (new ApiResult(ApiResultCode.InvalidRequest, "Account not initialized."), null);
         }
+        if (loggedInUsers.Contains(user.UserId))
+            return (new ApiResult(ApiResultCode.MultipleSessions), null);
+        loggedInUsers.Add(user.UserId);
         return (new ApiResult(), user);
+    }
+
+    public async Task<ApiResult> LogoutAsync(int userId)
+    {
+        if (!loggedInUsers.Contains(userId))
+            return new ApiResult(ApiResultCode.InvalidRequest, "User is not logged in.");
+        loggedInUsers.Remove(userId);
+        return new ApiResult();
     }
 }

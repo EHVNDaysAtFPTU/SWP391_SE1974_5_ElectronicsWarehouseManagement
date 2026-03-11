@@ -10,8 +10,9 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
         [JsonPropertyName("component_id")]
         public int ComponentId { get; set; }
 
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         [JsonPropertyName("unit_price")]
-        public double UnitPrice { get; set; }
+        public double? UnitPrice { get; set; }
 
         public bool Verify(out string failedReason)
         {
@@ -25,7 +26,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
                 failedReason = "Invalid item definition ID.";
                 return false;
             }
-            if (UnitPrice <= 0)
+            if (UnitPrice is not null && UnitPrice <= 0)
             {
                 failedReason = "Unit price must be greater than zero.";
                 return false;

@@ -102,7 +102,7 @@ namespace ElectronicsWarehouseManagement.WebAPI
                         partitionKey: key,
                         factory: _ => new FixedWindowRateLimiterOptions
                         {
-                            PermitLimit = 60,
+                            PermitLimit = 120,
                             Window = TimeSpan.FromMinutes(1),
                             QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
                             QueueLimit = 0
