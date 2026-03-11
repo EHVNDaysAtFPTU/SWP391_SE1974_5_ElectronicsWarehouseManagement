@@ -54,19 +54,21 @@
 
     <script>
 
+        const STATUS = {
+            PENDING: 1,
+            APPROVED: 2,
+            REJECTED: 3,
+            CONFIRMED:4
+        };
+
         document.addEventListener("DOMContentLoaded", function () {
-            const id = getTransferIdFromUrl();
+            const id = new URLSearchParams(window.location.search).get("id");
             if (!id) {
                 document.getElementById("infoSection").innerText = "Missing transfer ID";
                 return;
             }
             loadTransferDetail(id);
         });
-
-        function getTransferIdFromUrl() {
-            const params = new URLSearchParams(window.location.search);
-            return params.get("id");
-        }
 
         async function loadTransferDetail(id) {
 
@@ -114,174 +116,52 @@
             <p><strong>Execution Date:</strong> ${t.execution_date ? formatDate(t.execution_date) : "-"}</p>
             <p><strong>Creator:</strong> ${t.creator?.username || "-"}</p>
             <p><strong>Approver:</strong> ${t.approver?.username || "-"}</p>
-            <p><strong>From:</strong> ${t.bin_from
-                    ? `${t.bin_from.location_in_warehouse} - ${fromWarehouseName}`
-                    : "-"
-                }</p>
-            <p><strong>To:</strong> ${t.bin_to
-                    ? `${t.bin_to.location_in_warehouse} - ${toWarehouseName}`
-                    : "-"
-                }</p>
+            <p><strong>From:</strong> ${t.bin_from ?
+                    `${t.bin_from.location_in_warehouse} - ${fromWarehouseName}` : "-"}</p>
+            <p><strong>To:</strong> ${t.bin_to ?
+                    `${t.bin_to.location_in_warehouse} - ${toWarehouseName}` : "-"}</p>
+
+            ${t.status === STATUS.PENDING ? `
+                <br>
+                <button onclick="updateTransferStatus(${t.id}, ${STATUS.APPROVED})">
+                    Approve
+                </button>
+                <button onclick="updateTransferStatus(${t.id}, ${STATUS.REJECTED})">
+                    Reject
+                </button>
+            ` : ""}
         `;
         }
 
-        function renderComponents(t) {
-
-            const container = document.getElementById("componentSection");
-
-            if (!t.components || t.components.length === 0) {
-                container.innerHTML = "<h3>Component List</h3><p>No components found</p>";
-                return;
-            }
-
-            let grandTotal = 0;
-
-            let html = `
-            <h3>Component List</h3>
-            <table width="100%" border="1" cellpadding="8">
-                <tr>
-                    <th>Component ID</th>
-                    <th>Quantity</th>
-                    <th>Unit Price</th>
-                    <th>Total</th>
-                    <th>Action</th>
-                </tr>
-        `;
-
-            t.components.forEach((c, index) => {
-
-                const componentId = c.component_id;
-                const quantity = c.quantity ?? 0;
-                const price = c.unit_price ?? 0;
-                const total = quantity * price;
-
-                grandTotal += total;
-
-                html += `
-                <tr>
-                    <td>${componentId}</td>
-                    <td>${quantity}</td>
-                    <td>${formatMoney(price)}</td>
-                    <td>${formatMoney(total)}</td>
-                    <td>
-                        <button onclick="toggleDetail(${index}, ${componentId})">
-                            View
-                        </button>
-                    </td>
-                </tr>
-
-                <tr id="detail-row-${index}" style="display:none;">
-                    <td colspan="5" id="detail-content-${index}">
-                        Loading...
-                    </td>
-                </tr>
-            `;
-            });
-
-            html += `
-            <tr>
-                <td colspan="3"><strong>Total Transfer Value</strong></td>
-                <td colspan="2"><strong>${formatMoney(grandTotal)}</strong></td>
-            </tr>
-        `;
-
-            html += `</table>`;
-            container.innerHTML = html;
-        }
-
-        async function toggleDetail(index, componentId) {
-
-            if (!componentId) return;
-
-            const row = document.getElementById(`detail-row-${index}`);
-            const content = document.getElementById(`detail-content-${index}`);
-
-            if (row.style.display === "none") {
-
-                row.style.display = "table-row";
-
-                if (content.dataset.loaded !== "true") {
-
-                    const resp = await fetch(
-                        `/api/manager/get-component/${componentId}?fullInfo=true`,
-                        { credentials: "include" }
-                    );
-
-                    if (!resp.ok) {
-                        content.innerHTML = "Failed to load detail";
-                        return;
-                    }
-
-                    const result = await resp.json();
-                    if (!result.success) {
-                        content.innerHTML = "Failed to load detail";
-                        return;
-                    }
-
-                    content.innerHTML = renderComponentDetail(result.data);
-                    content.dataset.loaded = "true";
+        async function updateTransferStatus(transferId, decision) {
+            const response = await fetch(
+                `/api/manager/transfer-requests/${transferId}/decisions`,
+                {
+                    method: "POST",
+                    credentials: "include",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ decision: decision })
                 }
+            );
 
+            const result = await response.json();
+
+            if (response.ok && result.success) {
+                alert("Updated successfully");
+                location.reload();
             } else {
-                row.style.display = "none";
+                alert(result.msg || "Update failed");
             }
-        }
-
-        function renderComponentDetail(component) {
-
-            const metadata = component.metadata ?? {};
-
-            const categoriesText =
-                component.categories && component.categories.length > 0
-                    ? component.categories.map(c => c.name).join(", ")
-                    : "-";
-
-            const imageUrl = metadata.image_url
-                ? `/${metadata.image_url}`
-                : null;
-
-            return `
-            <div style="display:flex; gap:20px; padding:10px;">
-                <div>
-                    ${imageUrl
-                    ? `<img src="${imageUrl}" style="width:150px;">`
-                    : `<div style="width:150px;height:150px;background:#eee;display:flex;align-items:center;justify-content:center;">
-                                    No Image
-                               </div>`
-                }
-                </div>
-                <div>
-                    <b>ID:</b> ${component.id} <br>
-                    <b>Name:</b> ${metadata.name ?? "-"} <br>
-                    <b>Description:</b> ${metadata.desc ?? "-"} <br>
-                    <b>Manufacturer:</b> ${metadata.manufacturer ?? "-"} <br>
-                    <b>Manufacturing Date:</b> ${formatDate(metadata.manufacturing_date)} <br>
-                    <b>Unit:</b> ${component.unit ?? "-"} <br>
-                    <b>Unit Price:</b> ${formatMoney(component.unit_price ?? 0)} <br>
-                    <b>Categories:</b> ${categoriesText} <br>
-                    <b>Datasheet:</b> ${metadata.datasheet_url
-                    ? `<a href="${metadata.datasheet_url}" target="_blank">View</a>`
-                    : "-"
-                }
-                </div>
-            </div>
-        `;
-        }
-
-        function formatMoney(value) {
-            return value.toLocaleString("vi-VN") + " VND";
-        }
-
-        function formatDate(dateString) {
-            if (!dateString) return "-";
-            return new Date(dateString).toLocaleDateString("vi-VN");
         }
 
         function getStatusText(status) {
-            if (status === 0) return "Pending";
-            if (status === 2) return "Approved";
-            if (status === 3) return "Rejected";
-            return "Unknown";
+            switch (status) {
+                case STATUS.PENDING: return "Pending";
+                case STATUS.APPROVED: return "Approved";
+                case STATUS.REJECTED: return "Rejected";
+                case STATUS.CONFIRMED: return "Confirmed";
+                default: return "Unknown";
+            }
         }
 
         function getTypeText(type) {
@@ -289,6 +169,11 @@
             if (type === 2) return "Outbound";
             if (type === 3) return "Internal";
             return "Unknown";
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return "-";
+            return new Date(dateString).toLocaleDateString("vi-VN");
         }
 
         async function getWarehouseName(id) {
@@ -302,6 +187,11 @@
             } catch {
                 return "-";
             }
+        }
+
+        function renderComponents(t) {
+            const container = document.getElementById("componentSection");
+            container.innerHTML = "<h3>Component List</h3>";
         }
 
         function goBack() {

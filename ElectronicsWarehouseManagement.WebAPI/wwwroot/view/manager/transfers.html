@@ -9,7 +9,6 @@
 
 <body>
 
-    <!-- HEADER -->
     <header class="header">
         <div class="logo">My Manager</div>
 
@@ -29,7 +28,6 @@
 
     <div class="wrapper">
 
-        <!-- ===== SIDEBAR ===== -->
         <div class="sidebar">
             <ul>
                 <li><a href="home.html">Dashboard</a></li>
@@ -40,21 +38,18 @@
             </ul>
         </div>
 
-        <!-- ===== CONTENT ===== -->
         <div class="content">
 
             <h2>Transfer List</h2>
 
-            <div>
-                Transfer per page:
-                <select id="pageSize">
-                    <option value="5">5</option>
-                    <option value="10" selected>10</option>
-                    <option value="20">20</option>
-                </select>
-            </div>
+            Transfer per page:
+            <select id="pageSize">
+                <option value="5">5</option>
+                <option value="10" selected>10</option>
+                <option value="20">20</option>
+            </select>
 
-            <br>
+            <br><br>
 
             <div id="infoText"></div>
             <br>
@@ -84,8 +79,15 @@
         </div>
     </div>
 
-
     <script>
+
+        const STATUS = {
+            PENDING: 1,
+            APPROVED: 2,
+            REJECTED: 3,
+            CONFIRMED:4
+        };
+
         let currentPage = 1;
         let pageSize = 10;
         let totalPages = 1;
@@ -111,7 +113,6 @@
             }
 
             const data = result.data;
-
             renderInfo(data.totalCount);
             renderTable(data.data);
             renderPagination(data.totalPages);
@@ -122,12 +123,7 @@
             tbody.innerHTML = "";
 
             if (!data || data.length === 0) {
-                const row = document.createElement("tr");
-                const cell = document.createElement("td");
-                cell.colSpan = 9;
-                cell.innerText = "No transfers found";
-                row.appendChild(cell);
-                tbody.appendChild(row);
+                tbody.innerHTML = `<tr><td colspan="9">No transfers found</td></tr>`;
                 return;
             }
 
@@ -135,37 +131,32 @@
                 const row = document.createElement("tr");
 
                 row.innerHTML = `
-                    <td>${t.id ?? "-"}</td>
-                    <td>${t.description ?? "-"}</td>
-                    <td>${getTypeText(t.type)}</td>
-                    <td>${formatDate(t.creation_date)}</td>
-                    <td>${t.execution_date ? formatDate(t.execution_date) : "-"}</td>
-                    <td>${getStatusText(t.status)}</td>
-                    <td>${transferMonitorStatus(t)}</td>
-                    <td>
-                        <button onclick="viewTransfer(${t.id})">View</button>
-                    </td>
-                    <td>
-                        ${renderDecisionButtons(t)}
-                    </td>
-                `;
+                <td>${t.id ?? "-"}</td>
+                <td>${t.description ?? "-"}</td>
+                <td>${getTypeText(t.type)}</td>
+                <td>${formatDate(t.creation_date)}</td>
+                <td>${t.execution_date ? formatDate(t.execution_date) : "-"}</td>
+                <td>${getStatusText(t.status)}</td>
+                <td>${transferMonitorStatus(t)}</td>
+                <td>
+                    <button onclick="viewTransfer(${t.id})">View</button>
+                </td>
+                <td>
+                    ${renderDecisionButtons(t)}
+                </td>
+            `;
 
                 tbody.appendChild(row);
             });
         }
 
-        function renderPagination(pages) {
-            totalPages = pages;
-            const container = document.getElementById("pagination");
-            container.innerHTML = "";
+        function renderDecisionButtons(t) {
+            if (t.status !== STATUS.PENDING) return "-";
 
-            for (let i = 1; i <= totalPages; i++) {
-                const btn = document.createElement("button");
-                btn.innerText = i;
-                btn.disabled = (i === currentPage);
-                btn.onclick = () => loadTransfers(i);
-                container.appendChild(btn);
-            }
+            return `
+            <button onclick="updateTransferStatus(${t.id}, ${STATUS.APPROVED})">Approve</button>
+            <button onclick="updateTransferStatus(${t.id}, ${STATUS.REJECTED})">Reject</button>
+        `;
         }
 
         async function updateTransferStatus(transferId, decision) {
@@ -189,30 +180,22 @@
             }
         }
 
-        function renderInfo(totalCount) {
-            const infoText = document.getElementById("infoText");
-            infoText.innerText =
-                `Showing ${(currentPage - 1) * pageSize + 1}
-                 to ${Math.min(currentPage * pageSize, totalCount)}
-                 of ${totalCount}`;
-        }
-
-        function renderDecisionButtons(t) {
-            if (t.status !== 0) return "-";
-
-            return `
-                <button onclick="updateTransferStatus(${t.id}, 2)">Approve</button>
-                <button onclick="updateTransferStatus(${t.id}, 3)">Reject</button>
-            `;
-        }
-
         function getStatusText(status) {
             switch (status) {
-                case 0: return "Pending";
-                case 2: return "Approved";
-                case 3: return "Rejected";
+                case STATUS.PENDING: return "Pending";
+                case STATUS.APPROVED: return "Approved";
+                case STATUS.REJECTED: return "Rejected";
+                case STATUS.CONFIRMED: return "Confirmed";
                 default: return "Unknown";
             }
+        }
+
+        function transferMonitorStatus(t) {
+            if (t.status === STATUS.PENDING) return "Not Yet";
+            if (t.status === STATUS.CONFIRMED && t.execution_date) return "Done";
+            if (t.status === STATUS.APPROVED) return "Processing";
+            if (t.status === STATUS.REJECTED) return "Canceled";
+            return "Unknown";
         }
 
         function getTypeText(type) {
@@ -224,17 +207,30 @@
             }
         }
 
-        function transferMonitorStatus(t) {
-            if (t.status === 0) return "Not Yet";
-            if (t.status === 2 && t.execution_date) return "Done";
-            if (t.status === 2) return "Processing";
-            if (t.status === 3) return "Canceled";
-            return "Unknown";
-        }
-
         function formatDate(dateString) {
             if (!dateString) return "-";
             return new Date(dateString).toLocaleDateString("en-US");
+        }
+
+        function renderInfo(totalCount) {
+            document.getElementById("infoText").innerText =
+                `Showing ${(currentPage - 1) * pageSize + 1}
+             to ${Math.min(currentPage * pageSize, totalCount)}
+             of ${totalCount}`;
+        }
+
+        function renderPagination(pages) {
+            totalPages = pages;
+            const container = document.getElementById("pagination");
+            container.innerHTML = "";
+
+            for (let i = 1; i <= totalPages; i++) {
+                const btn = document.createElement("button");
+                btn.innerText = i;
+                btn.disabled = (i === currentPage);
+                btn.onclick = () => loadTransfers(i);
+                container.appendChild(btn);
+            }
         }
 
         function changePageSize() {
@@ -249,17 +245,17 @@
         function viewTransfer(id) {
             window.location.href = `transfer-detail.html?id=${id}`;
         }
-        //Profile
+
         function toggleProfileMenu() {
             document.getElementById("profileDropdown").classList.toggle("show");
         }
 
-        // Đóng dropdown khi click ra ngoài
         window.onclick = function (event) {
             if (!event.target.closest('.profile-container')) {
                 document.getElementById("profileDropdown").classList.remove("show");
             }
         }
+
     </script>
 
 </body>
