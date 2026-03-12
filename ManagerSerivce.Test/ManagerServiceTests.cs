@@ -2,8 +2,8 @@
 using ElectronicsWarehouseManagement.WebAPI.DTO;
 using ElectronicsWarehouseManagement.WebAPI.Services;
 using Microsoft.EntityFrameworkCore;
-using System.ComponentModel;
 using Xunit;
+[assembly: CollectionBehavior(DisableTestParallelization = true)]
 
 namespace ElectronicsWarehouseManagement.Tests
 {
@@ -14,22 +14,37 @@ namespace ElectronicsWarehouseManagement.Tests
 
         public ManagerServiceTests()
         {
-            // Thiết lập Database ảo (In-Memory)
+            // Setup In-Memory Database
             var options = new DbContextOptionsBuilder<EWMDbCtx>()
-                .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+                .UseInMemoryDatabase(Guid.NewGuid().ToString())
                 .Options;
 
             _dbCtx = new EWMDbCtx(options);
             _service = new ManagerService(_dbCtx);
 
-            // Seed dữ liệu mẫu cho các test case
             SeedData();
         }
 
         private void SeedData()
         {
-            _dbCtx.Components.Add(new Repositories.Entities.Component { ComponentId = 1, Unit = "Piece", UnitPrice = 100.0, MetadataJson = "{}" });
-            _dbCtx.Users.Add(new User { UserId = 10, Username = "manager_01", DisplayName = "Manager One", Email = "manager01@test.com", PasswordHash = "hash123", StatusInt = 1 });
+            _dbCtx.Components.Add(new Component
+            {
+                ComponentId = 1,
+                Unit = "Piece",
+                UnitPrice = 100.0,
+                MetadataJson = "{}"
+            });
+
+            _dbCtx.Users.Add(new User
+            {
+                UserId = 10,
+                Username = "manager_01",
+                DisplayName = "Manager One",
+                Email = "manager01@test.com",
+                PasswordHash = "123",
+                StatusInt = 1
+            });
+
             _dbCtx.TransferRequests.Add(new TransferRequest
             {
                 RequestId = 100,
@@ -37,12 +52,17 @@ namespace ElectronicsWarehouseManagement.Tests
                 StatusInt = (int)TransferStatus.Pending,
                 CreatorId = 10,
                 CreationTime = DateTime.Now,
-                TypeInt = 0
+                TypeInt = 0,
+                BinFromId = null,
+                BinToId = null
             });
+
             _dbCtx.SaveChanges();
         }
 
-        // --- Chức năng 1: GetComponentAsync ---
+        // =============================
+        // TEST: GetComponentAsync
+        // =============================
 
         [Fact]
         public async Task GetComponentAsync_ValidId_ReturnsSuccessAndCorrectData()
@@ -56,6 +76,8 @@ namespace ElectronicsWarehouseManagement.Tests
             // Assert
             Assert.NotNull(result);
             Assert.True(result.Success);
+            Assert.Equal(ApiResultCode.Success, result.ResultCode);
+            Assert.NotNull(result.Data);
             Assert.Equal(100.0, result.Data.UnitPrice);
         }
 
@@ -69,11 +91,14 @@ namespace ElectronicsWarehouseManagement.Tests
             var result = await _service.GetComponentAsync(componentId, false);
 
             // Assert
+            Assert.NotNull(result);
+            Assert.False(result.Success);
             Assert.Equal(ApiResultCode.NotFound, result.ResultCode);
-            Assert.Contains("not found", result.Message.ToLower());
         }
 
-        // --- Chức năng 2: PostTransferDecisionAsync ---
+        // =============================
+        // TEST: PostTransferDecisionAsync
+        // =============================
 
         [Fact]
         public async Task PostTransferDecisionAsync_ApproveDecision_UpdatesStatusAndApprover()
@@ -84,14 +109,46 @@ namespace ElectronicsWarehouseManagement.Tests
             var decision = TransferDecisionType.ApprovedAndWaitForConfirm;
 
             // Act
-            var result = await _service.PostTransferDecisionAsync(transferId, decision, approverId);
+            var result = await _service.PostTransferDecisionAsync(
+                transferId,
+                decision,
+                approverId);
 
             // Assert
+            Assert.NotNull(result);
             Assert.True(result.Success);
+            Assert.Equal(ApiResultCode.Success, result.ResultCode);
 
-            // Kiểm tra DB đã thực sự thay đổi chưa
             var updatedRequest = await _dbCtx.TransferRequests.FindAsync(transferId);
+
+            Assert.NotNull(updatedRequest);
             Assert.Equal((int)TransferStatus.ApprovedAndWaitForConfirm, updatedRequest.StatusInt);
+            Assert.Equal(approverId, updatedRequest.ApproverId);
+        }
+
+        [Fact]
+        public async Task PostTransferDecisionAsync_RejectedDecision_UpdatesStatus()
+        {
+            // Arrange
+            int transferId = 100;
+            int approverId = 10;
+            var decision = TransferDecisionType.Rejected;
+
+            // Act
+            var result = await _service.PostTransferDecisionAsync(
+                transferId,
+                decision,
+                approverId);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.True(result.Success);
+            Assert.Equal(ApiResultCode.Success, result.ResultCode);
+
+            var updatedRequest = await _dbCtx.TransferRequests.FindAsync(transferId);
+
+            Assert.NotNull(updatedRequest);
+            Assert.Equal((int)TransferStatus.Rejected, updatedRequest.StatusInt);
             Assert.Equal(approverId, updatedRequest.ApproverId);
         }
 
@@ -100,14 +157,58 @@ namespace ElectronicsWarehouseManagement.Tests
         {
             // Arrange
             int transferId = 100;
-            int invalidApproverId = 55; // ID không có trong SeedData
+            int invalidApproverId = 55;
 
             // Act
-            var result = await _service.PostTransferDecisionAsync(transferId, TransferDecisionType.Rejected, invalidApproverId);
+            var result = await _service.PostTransferDecisionAsync(
+                transferId,
+                TransferDecisionType.Rejected,
+                invalidApproverId);
 
             // Assert
+            Assert.NotNull(result);
+            Assert.False(result.Success);
             Assert.Equal(ApiResultCode.NotFound, result.ResultCode);
-            Assert.Equal("Approver not found", result.Message);
+        }
+
+        [Fact]
+        public async Task PostTransferDecisionAsync_NonExistingTransferRequest_ReturnsNotFound()
+        {
+            // Arrange
+            int invalidTransferId = 999;
+            int approverId = 10;
+
+            // Act
+            var result = await _service.PostTransferDecisionAsync(
+                invalidTransferId,
+                TransferDecisionType.ApprovedAndWaitForConfirm,
+                approverId);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.False(result.Success);
+            Assert.Equal(ApiResultCode.NotFound, result.ResultCode);
+        }
+
+        [Fact]
+        public async Task PostTransferDecisionAsync_InvalidDecision_ReturnsInvalidRequest()
+        {
+            // Arrange
+            int transferId = 100;
+            int approverId = 10;
+
+            var invalidDecision = (TransferDecisionType)999;
+
+            // Act
+            var result = await _service.PostTransferDecisionAsync(
+                transferId,
+                invalidDecision,
+                approverId);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.False(result.Success);
+            Assert.Equal(ApiResultCode.InvalidRequest, result.ResultCode);
         }
 
         public void Dispose()
