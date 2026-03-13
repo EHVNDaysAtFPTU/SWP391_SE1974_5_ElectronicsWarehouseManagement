@@ -87,6 +87,8 @@ public enum ApiResultCode
     Unauthorized,
     [Description("Already logged in")]
     AlreadyLoggedIn,
+    [Description("Multiple logged in sessions")]
+    MultipleSessions,
     [Description("Invalid request")]
     InvalidRequest,
     [Description("Incorrect credentials")]

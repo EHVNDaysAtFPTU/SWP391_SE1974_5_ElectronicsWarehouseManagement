@@ -5,21 +5,20 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
 {
     public class SetRoleReq : IVerifiableRequest
     {
-        [JsonPropertyName("user_id")]
-        public int UserId { get; set; }
-
-        [JsonPropertyName("role_id")]
-        public int RoleId { get; set; }
+        [JsonPropertyName("role_ids")]
+        public int[] RoleIds { get; set; } = [];
 
         public bool Verify(out string message) 
         {
-            if (UserId < 1) 
+            if (RoleIds is null || RoleIds.Length == 0)
             {
-                message = "UserId is required.";
+                message = "At least one RoleId is required.";
                 return false;
             }
-            if (RoleId < 1) 
+            foreach (var roleId in RoleIds)
             {
+                if (roleId >= 1)
+                    continue;
                 message = "RoleId is required.";
                 return false;
             }

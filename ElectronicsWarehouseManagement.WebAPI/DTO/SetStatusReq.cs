@@ -5,19 +5,11 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
 {
     public class SetStatusReq : IVerifiableRequest
     {
-        [JsonPropertyName("user_id")]
-        public int UserId { get; set; }
-
         [JsonPropertyName("status")]
         public int Status { get; set; }
 
         public bool Verify(out string failedReason)
         {
-            if (UserId <= 0)
-            {
-                failedReason = "Invalid user ID.";
-                return false;
-            }
             if (!Enum.IsDefined(typeof(UserStatus), Status))
             {
                 failedReason = "Invalid status value.";
