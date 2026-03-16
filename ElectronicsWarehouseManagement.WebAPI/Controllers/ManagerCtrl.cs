@@ -5,6 +5,7 @@ using ElectronicsWarehouseManagement.WebAPI.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using static iText.StyledXmlParser.Jsoup.Select.Evaluator;
 
 
 namespace ElectronicsWarehouseManagement.WebAPI.Controllers
@@ -107,10 +108,22 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
             return BadRequest(result);
         }
 
-        [HttpGet("get-bins/{warehouseId:int}")]
-        public async Task<IActionResult> GetBinList([FromRoute] int warehouseId, [FromQuery] PagingRequest request, [FromQuery]bool fullInfo)
+        [HttpGet("get-warehouse-bins/{warehouseId:int}")]
+        public async Task<IActionResult> GetBinListByWareHouseId([FromRoute] int warehouseId, [FromQuery] PagingRequest request, [FromQuery]bool fullInfo)
         {
-            var result = await _managerService.GetBinList(request,warehouseId, fullInfo);
+            var result = await _managerService.GetBinListByWareHouseId(request,warehouseId, fullInfo);
+
+            if (result.Success)
+            {
+                return Ok(result);
+            }
+
+            return BadRequest(result);
+        }
+        [HttpGet("get-bins")]
+        public async Task<IActionResult> GetBinList([FromQuery]PagingRequest request)
+        {
+            var result = await _managerService.GetBinList(request);
 
             if (result.Success)
             {
@@ -147,6 +160,40 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
 
             return BadRequest(result);
         }
+        [HttpGet("get-statistics/summary")]
+        public async Task<IActionResult> GetStatisticsSummary()
+        {
+            var result = await _managerService.GetSummaryAsync();
+
+            if (result.Success)
+            {
+                return Ok(result);
+            }
+
+            return BadRequest(result);
+        }
+        [HttpGet("get-statistics/charts")]
+        public async Task<IActionResult> GetStatisticsChart()
+        {
+            var result = await _managerService.GetChartDataAsync(7);
+            if (result.Success)
+            {
+                return Ok(result);
+            }
+            return BadRequest(result);
+
+        }
+        [HttpGet("export/transfer{transferId:int}")]
+        public async Task<IActionResult> ExportTransferReq([FromRoute] int transferId)
+        {
+            var file = await _managerService.ExportTransferPdfAsync(transferId);
+
+            return File(
+                file,
+                "application/pdf",
+                $"transfer_{transferId}.pdf"
+            );
+        }
 
 
         private String? GetCurrentUserId()
@@ -160,26 +207,6 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
 
         }
 
-        //[HttpGet("me")]
-        //public IActionResult Me()
-        //{
-        //    string? username = HttpContext.Session.GetString("User");
-        //    string? userId = HttpContext.Session.GetString("UserId");
-
-        //    if (string.IsNullOrEmpty(username))
-        //    {
-        //        return Unauthorized(new ApiResult(ApiResultCode.Unauthorized));
-        //    }
-
-        //    var userInfo = new
-        //    {
-        //        Username = username,
-        //        UserId = userId
-        //    };
-
-        //    return Ok(new ApiResult<object>(userInfo));
-        //}
-
 
         private String? GetCurrentUsername()
         {
@@ -188,11 +215,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
 
        
 
-        //[HttpPost("{id:int}/approve")]
-        //public async Task<IActionResult> PostTransferApprove(int id)
-        //{
-
-        //}
+        
 
     }
 }
