@@ -1,4 +1,4 @@
-﻿using Azure.Core;
+using Azure.Core;
 using ElectronicsWarehouseManagement.Repositories.Entities;
 using ElectronicsWarehouseManagement.WebAPI.DTO;
 using ElectronicsWarehouseManagement.WebAPI.Services;
@@ -183,7 +183,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
             return BadRequest(result);
 
         }
-        [HttpGet("export/transfer{transferId:int}")]
+        [HttpGet("export/transfer/{transferId:int}")]
         public async Task<IActionResult> ExportTransferReq([FromRoute] int transferId)
         {
             var file = await _managerService.ExportTransferPdfAsync(transferId);
@@ -194,6 +194,30 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
                 $"transfer_{transferId}.pdf"
             );
         }
+
+        //[HttpPost("export/inventory")]
+        //public async Task<IActionResult> ExportInventoryPdf([FromBody] InventoryExportReq request)
+        //{
+        //    var file = await _managerService.ExportInventoryPdfAsync(request);
+
+        //    return File(
+        //        file,
+        //        "application/pdf",
+        //        "inventory_report.pdf"
+        //    );
+        //}
+
+        //[HttpGet("export/statistics")]
+        //public async Task<IActionResult> ExportStatisticsPdf([FromQuery] int days = 7)
+        //{
+        //    var file = await _managerService.ExportStatisticsPdfAsync(days);
+
+        //    return File(
+        //        file,
+        //        "application/pdf",
+        //        "statistics_report.pdf"
+        //    );
+        //}
 
 
         private String? GetCurrentUserId()

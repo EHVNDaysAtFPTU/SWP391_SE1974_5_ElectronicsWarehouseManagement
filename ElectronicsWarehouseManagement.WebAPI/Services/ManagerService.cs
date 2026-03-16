@@ -36,6 +36,8 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
         Task<ApiResult<DashboardSummaryResp>> GetSummaryAsync();
         Task<ApiResult<DashboardChartResp>> GetChartDataAsync(int days);
         Task<byte[]> ExportTransferPdfAsync(int transferId);
+        Task<byte[]> ExportInventoryPdfAsync();
+        Task<byte[]> ExportStatisticsPdfAsync(int days);
 
     }
 
@@ -71,10 +73,9 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
                 .AsNoTracking()
                 .AsQueryable();
 
-            // search method
             if (!string.IsNullOrEmpty(request.Search))
             {
-                query = query.Where(c => c.MetadataJson.Contains($"\"name\":\"{request.Search}"));
+                query = query.Where(c => c.MetadataJson.Contains(request.Search));
             }
             if (request.SortBy != null && request.SortDirection != null)
             {
@@ -143,11 +144,10 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
                 .Include(i => i.Creator)
                 .Include(i => i.BinFrom)
                 .Include(i => i.BinTo);
-
-            // search method
+    
             if (!string.IsNullOrEmpty(request.Search))
             {
-                query = query.ApplySearchByName(request.Search, t => t.Description.Contains(request.Search));
+                query = query.Where(t => t.Description.Contains(request.Search));
             }
             if (request.SortBy != null && request.SortDirection != null)
             {
@@ -166,10 +166,8 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
                         query = query.ApplySort(request.SortDirection, c => c.RequestId);
                         break;
                 }
-            }
-
             int totalCount = await query.CountAsync();
-            if(totalCount == 0)
+            if (totalCount == 0)
             {
                 return new ApiResult<PagedResult<TransferRequestResp>>(ApiResultCode.NotFound);
             }
@@ -269,7 +267,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
                 }
             }
             int totalCount = await query.CountAsync();
-            if(totalCount == 0)
+            if (totalCount == 0)
             {
                 return new ApiResult<PagedResult<BinResp>>(ApiResultCode.NotFound);
             }
@@ -311,11 +309,11 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             }
 
             var totalCount = await query.CountAsync();
-
-            if(totalCount == 0)
+            if (totalCount == 0)
             {
-                return new ApiResult<PagedResult<WarehouseResp>>(ApiResultCode.NotFound);         
+                return new ApiResult<PagedResult<WarehouseResp>>(ApiResultCode.NotFound);
             }
+
             var data = await query
                 .Skip((request.PageNumber - 1) * request.PageSize)
                 .Take(request.PageSize).ToListAsync();
@@ -464,6 +462,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
 
         private byte[] GeneratePdf(Action<Document> buildContent)
         {
+            if (buildContent == null) throw new ArgumentNullException(nameof(buildContent));
             using var stream = new MemoryStream();
 
             var writer = new PdfWriter(stream);
@@ -518,7 +517,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             doc.Add(new Paragraph($"Request ID: {transfer.RequestId}"));
             doc.Add(new Paragraph($"Date: {transfer.CreationTime:dd/MM/yyyy}"));
 
-            doc.Add(new Paragraph($"Supplier: {transfer.CustomerInfoJson}"));
+            doc.Add(new Paragraph($"Supplier: {transfer.CustomerInfoJson ?? ""}"));
             doc.Add(new Paragraph($"Address: ..."));
 
             doc.Add(new Paragraph("\n"));
@@ -528,7 +527,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             table.AddCell("Supplier");
             table.AddCell("Receiver");
 
-            table.AddCell(transfer.CustomerInfoJson);
+            table.AddCell(transfer.CustomerInfoJson ?? "");
             table.AddCell(transfer.Creator?.DisplayName ?? "");
 
             doc.Add(table);
@@ -545,7 +544,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             doc.Add(new Paragraph($"Request ID: {transfer.RequestId}"));
             doc.Add(new Paragraph($"Date: {transfer.CreationTime:dd/MM/yyyy}"));
 
-            doc.Add(new Paragraph($"Customer: {transfer.CustomerInfoJson}"));
+            doc.Add(new Paragraph($"Customer: {transfer.CustomerInfoJson ?? ""}"));
 
             doc.Add(new Paragraph("\n"));
 
@@ -554,7 +553,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             table.AddCell("Customer");
             table.AddCell("Invoice Writer");
 
-            table.AddCell(transfer.CustomerInfoJson);
+            table.AddCell(transfer.CustomerInfoJson ?? "");
             table.AddCell(transfer.Creator?.DisplayName ?? "");
 
             doc.Add(table);
@@ -598,34 +597,132 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
 
             doc.Add(table);
         }
-        //public async Task<byte[]> ExportInventoryPdfAsync()
-        //{
-        //    var inventory = await _dbCtx.ComponentBins
-        //        .Include(x => x.Component)
-        //        .Include(x => x.Bin)
-        //        .ToListAsync();
+        private void BuildSummarySection(Document doc, DashboardSummaryResp summary)
+        {
+            doc.Add(new Paragraph("Inventory Summary")
+                .SetBold()
+                .SetFontSize(14));
 
-        //    return GeneratePdf(doc =>
-        //    {
-        //        doc.Add(new Paragraph("INVENTORY REPORT")
-        //            .SetBold()
-        //            .SetFontSize(18));
+            var table = new Table(2).UseAllAvailableWidth();
 
-        //        var table = new Table(3);
+            table.AddCell("Total Components");
+            table.AddCell(summary.TotalComponents.ToString());
 
-        //        table.AddHeaderCell("Component");
-        //        table.AddHeaderCell("Bin");
-        //        table.AddHeaderCell("Quantity");
+            table.AddCell("Total Warehouses");
+            table.AddCell(summary.TotalWarehouses.ToString());
 
-        //        foreach (var item in inventory)
-        //        {
-        //            table.AddCell(item.Component.Name);
-        //            table.AddCell(item.Bin.Code);
-        //            table.AddCell(item.Quantity.ToString());
-        //        }
+            table.AddCell("Current Total Stock");
+            table.AddCell(summary.CurrentStock.ToString());
 
-        //        doc.Add(table);
-        //    });
-        //}
+            table.AddCell("Low Stock Items");
+            table.AddCell(summary.LowStockItems.ToString());
+
+            table.AddCell("Out of Stock Items");
+            table.AddCell(summary.OutOfStockItems.ToString());
+
+            table.AddCell("Inbound Today");
+            table.AddCell(summary.InboundToday.ToString());
+
+            table.AddCell("Outbound Today");
+            table.AddCell(summary.OutboundToday.ToString());
+
+            doc.Add(table);
+        }
+
+        public async Task<byte[]> ExportInventoryPdfAsync()
+        {
+            var inventory = await _dbCtx.ComponentBins
+                .Include(x => x.Component)
+                .Include(x => x.Bin)
+                .ToListAsync();
+
+            return GeneratePdf(doc =>
+            {
+                doc.Add(new Paragraph("INVENTORY REPORT")
+                    .SetBold()
+                    .SetFontSize(18));
+
+                var table = new Table(3).UseAllAvailableWidth();
+
+                table.AddHeaderCell("Component");
+                table.AddHeaderCell("Bin Location");
+                table.AddHeaderCell("Quantity");
+
+                foreach (var item in inventory)
+                {
+                    table.AddCell(item.Component?.Metadata?.Name ?? "N/A");
+                    table.AddCell(item.Bin?.LocationInWarehouse ?? "N/A");
+                    table.AddCell(item.Quantity.ToString());
+                }
+
+                doc.Add(table);
+            });
+        }
+
+        public async Task<byte[]> ExportStatisticsPdfAsync(int days)
+        {
+            var summaryResult = await GetSummaryAsync();
+            var chartResult = await GetChartDataAsync(days);
+
+            if (summaryResult.ResultCode != ApiResultCode.Success && chartResult.ResultCode != ApiResultCode.Success)
+            {
+                throw new Exception("Unable to retrieve dashboard data for export.");
+            }
+
+            return GeneratePdf(doc =>
+            {
+                doc.Add(new Paragraph("WAREHOUSE STATISTICS REPORT")
+                    .SetTextAlignment(TextAlignment.CENTER)
+                    .SetBold()
+                    .SetFontSize(18));
+
+                doc.Add(new Paragraph($"Generated: {DateTime.Now:dd/MM/yyyy HH:mm}"));
+                doc.Add(new Paragraph("\n"));
+
+                if (summaryResult.ResultCode == ApiResultCode.Success)
+                {
+                    BuildSummarySection(doc, summaryResult.Data);
+                }
+                else
+                {
+                    doc.Add(new Paragraph("Summary data currently unavailable."));
+                }
+
+                doc.Add(new Paragraph("\n"));
+
+                if (chartResult.ResultCode == ApiResultCode.Success && chartResult.Data?.transferChart?.Any() == true)
+                {
+                    BuildChartSection(doc, chartResult.Data);
+                }
+                else
+                {
+                    doc.Add(new Paragraph("No transfer activity found for the requested period."));
+                }
+            });
+        }
+
+        private void BuildChartSection(Document doc, DashboardChartResp chartData)
+        {
+            doc.Add(new Paragraph("Daily Transfer Statistics")
+                .SetBold()
+                .SetFontSize(14));
+
+            float[] widths = { 4, 3, 3 };
+            var table = new Table(UnitValue.CreatePercentArray(widths))
+                .UseAllAvailableWidth();
+
+            table.AddHeaderCell("Date");
+            table.AddHeaderCell("Import (Qty)");
+            table.AddHeaderCell("Export (Qty)");
+
+            foreach (var record in chartData.transferChart)
+            {
+                table.AddCell(record.Date.ToString("dd/MM/yyyy"));
+                table.AddCell(record.Import.ToString());
+                table.AddCell(record.Export.ToString());
+            }
+
+            doc.Add(table);
+        }
     }
 }
