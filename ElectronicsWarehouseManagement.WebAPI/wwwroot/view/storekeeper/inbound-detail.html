@@ -4,20 +4,47 @@
     <meta charset="UTF-8">
     <title>Inbound Detail</title>
     <style>
-        body{font-family:Arial;padding:30px;background:#eef2f7}
-        .card{background:white;padding:20px;border-radius:8px}
-        button{padding:8px 12px;border:none;border-radius:6px;cursor:pointer}
-        .confirm{background:#16a34a;color:white}
-        .back{background:#64748b;color:white}
+        :root{--muted:#64748b;--accent:#16a34a}
+        body{font-family:Inter, 'Segoe UI', Roboto, Arial, sans-serif;padding:24px;background:#f6fbf9;color:#0f172a}
+        .container{max-width:1000px;margin:0 auto}
+        .card{background:#fff;padding:18px;border-radius:12px;box-shadow:0 10px 30px rgba(2,6,23,0.06)}
+        .header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+        .title{display:flex;flex-direction:column}
+        h2{margin:0;font-size:20px}
+        .meta{color:var(--muted);font-size:13px}
+        .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+        .info-block{background:#f8fff9;padding:12px;border-radius:8px;border:1px solid #ecfdf6}
+        table{width:100%;border-collapse:collapse;margin-top:12px}
+        th,td{padding:10px;border-bottom:1px solid #f1f5f4;text-align:left}
+        thead th{background:#f0fdf4;color:#065f46}
+        .actions{display:flex;gap:8px;margin-top:14px}
+        .btn{padding:8px 12px;border-radius:8px;border:none;cursor:pointer}
+        .btn.primary{background:var(--accent);color:#fff}
+        .btn.ghost{background:transparent;border:1px solid #e6f7ef}
+        .table-card{background:#fff;border-radius:8px;padding:8px;border:1px solid #ecfdf6}
     </style>
 </head>
 <body>
-    <div class="card">
-        <button class="back" onclick="location.href='inbound-list.html'">⬅ Back</button>
-        <h2>Inbound Detail</h2>
-        <div id="detail"></div>
-        <div style="margin-top:20px">
-            <button id="confirmBtn" class="confirm" onclick="confirmOrder()" style="display:none">Confirm</button>
+    <div class="container">
+        <div class="card">
+            <div class="header">
+                <div class="title">
+                    <button class="btn ghost" onclick="location.href='inbound-list.html'">⬅ Back</button>
+                    <h2>Phiếu Nhập</h2>
+                    <div class="meta">Chi tiết phiếu nhập kho</div>
+                </div>
+                <div style="text-align:right">
+                    <div id="createdBy" class="meta">Người tạo: -</div>
+                    <div id="createdAt" class="meta">Ngày tạo: -</div>
+                </div>
+            </div>
+
+            <div id="detail"></div>
+
+            <div class="actions">
+                <button id="confirmBtn" class="btn primary" onclick="confirmOrder()" style="display:none">Xác nhận</button>
+                <button class="btn ghost" onclick="location.href='inbound-list.html'">Quay lại</button>
+            </div>
         </div>
     </div>
 
@@ -78,6 +105,13 @@
             await resolveWarehouses(transfer);
             console.debug('transfer loaded', transfer);
             render();
+            // set created info
+            try{
+                const createdBy = transfer.created_by ?? transfer.createdBy ?? transfer.created_by_name ?? transfer.createdByName ?? transfer.owner ?? null;
+                const createdAt = transfer.creation_date ?? transfer.creationDate ?? transfer.created_at ?? transfer.createdAt ?? null;
+                if(document.getElementById('createdBy')) document.getElementById('createdBy').innerText = 'Người tạo: ' + (createdBy ?? 'Auto');
+                if(document.getElementById('createdAt')) document.getElementById('createdAt').innerText = 'Ngày tạo: ' + (createdAt ? new Date(createdAt).toLocaleString('vi-VN') : '-');
+            }catch(e){/* ignore */}
         }
 
         async function resolveComponentNames(comps) {

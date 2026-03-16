@@ -5,110 +5,63 @@
     <title>Outbound Orders - Storekeeper</title>
 
     <style>
-        body {
-            font-family: Arial;
-            background: #fdf2f2;
-            padding: 40px;
-        }
-
-        /* helper functions moved to script */
-
-        .top-bar {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 20px;
-        }
-
-        button {
-            padding: 6px 12px;
-            border: none;
-            cursor: pointer;
-            border-radius: 4px;
-        }
-
-        .home-btn {
-            background: #6c757d;
-            color: white;
-        }
-
-        .detail-btn {
-            background: #3498db;
-            color: white;
-        }
-
-        .confirm-btn {
-            background: #e74c3c;
-            color: white;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            background: white;
-        }
-
-        th, td {
-            padding: 10px;
-            border: 1px solid #ddd;
-            text-align: center;
-        }
-
-        th {
-            background: #e74c3c;
-            color: white;
-        }
-
-        .status-complete {
-            color: green;
-            font-weight: bold;
-        }
-
-        .status-pending {
-            color: orange;
-            font-weight: bold;
-        }
-
-        .modal {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.5);
-            justify-content: center;
-            align-items: center;
-        }
-
-        .modal-content {
-            background: white;
-            width: 800px;
-            padding: 20px;
-            border-radius: 8px;
-            max-height: 90vh;
-            overflow-y: auto;
-        }
+        body{font-family:Inter, 'Segoe UI', Roboto, Arial, sans-serif;background:#f6f8fb;padding:28px;color:#0f172a}
+        .page{max-width:1200px;margin:0 auto}
+        .top-bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+        h2{margin:0;font-size:20px}
+        .controls{display:flex;gap:8px}
+        .btn{padding:8px 12px;border-radius:8px;border:none;cursor:pointer}
+        .btn.ghost{background:transparent;border:1px solid #e6eef6}
+        .btn.primary{background:#2563eb;color:#fff}
+        .table-card{background:#fff;border-radius:12px;padding:12px;box-shadow:0 6px 20px rgba(2,6,23,0.06)}
+        table{width:100%;border-collapse:collapse}
+        th,td{padding:12px;border-bottom:1px solid #f1f5f9;text-align:left}
+        th{background:#fafcff;color:#64748b;font-weight:700}
+        tr:hover td{background:#fbfdff}
+        .status-complete{color:#16a34a;font-weight:700}
+        .status-pending{color:#f59e0b;font-weight:700}
+        .action-btn{background:#2563eb;color:#fff;padding:6px 10px;border-radius:8px;border:none;cursor:pointer}
+        .search{display:flex;gap:8px;align-items:center}
+        .search input{padding:8px;border-radius:8px;border:1px solid #eef2f6}
+        .modal{display:none;position:fixed;inset:0;background:rgba(2,6,23,0.5);justify-content:center;align-items:center}
+        .modal-content{background:#fff;width:900px;padding:18px;border-radius:10px;max-height:90vh;overflow:auto}
     </style>
 </head>
 
 <body>
 
-    <div class="top-bar">
-        <h2>Outbound Orders</h2>
-        <button class="home-btn" onclick="goHome()">⬅ Back to Home</button>
-    </div>
+    <div class="page">
+        <div class="top-bar">
+            <div>
+                <h2>Outbound Orders</h2>
+                <div style="color:var(--muted);font-size:13px">Quản lý các phiếu xuất hàng đã tạo</div>
+            </div>
+            <div class="controls">
+                <div class="search">
+                    <input id="q" placeholder="Tìm theo mã, kho, bin..." />
+                    <button class="btn ghost" onclick="load()">Search</button>
+                </div>
+                <button class="btn primary" onclick="goHome()">Back</button>
+            </div>
+        </div>
 
-    <table>
-        <thead>
-            <tr>
-                <th>Order Code</th>
-                <th>Date</th>
-                <th>Warehouse</th>
-                <th>Bin</th>
-                <th>Total Items</th>
-                <th>Status</th>
-                <th>Action</th>
-            </tr>
-        </thead>
-        <tbody id="orderTable"></tbody>
-    </table>
+        <div class="table-card">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Order Code</th>
+                        <th>Date</th>
+                        <th>Warehouse</th>
+                        <th>Bin</th>
+                        <th>Total Items</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="orderTable"></tbody>
+            </table>
+        </div>
+    </div>
 
     <div class="modal" id="detailModal">
         <div class="modal-content">

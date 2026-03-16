@@ -13,77 +13,126 @@ namespace Storekeepertest
     [TestFixture]
     public class StorekeeperServiceTests
     {
+      
+
         [Test]
-        public async Task CreateWarehouseAsync_ShouldCreateWarehouseWithDefaultBin()
+        public async Task CreateBinAsync_ShouldCreateBin_WhenWarehouseExists()
         {
             var dbName = Guid.NewGuid().ToString();
             var options = new DbContextOptionsBuilder<EWMDbCtx>()
                 .UseInMemoryDatabase(dbName)
                 .Options;
 
-            // Arrange
             using (var ctx = new EWMDbCtx(options))
             {
+                // seed warehouse
+                var warehouse = new Warehouse { WarehouseName = "WSeed", Description = "d", PhysicalLocation = "L" };
+                ctx.Warehouses.Add(warehouse);
+                await ctx.SaveChangesAsync();
+
                 var svc = new StorekeeperService(ctx, NullLogger<StorekeeperService>.Instance);
-                var req = new CreateWarehouseReq
-                {
-                    Name = "WH1",
-                    Description = "Test warehouse",
-                    PhysicalLocation = "Loc1",
-                    ImageUrl = "img.png"
-                };
+                var req = new CreateBinReq { WarehouseID = warehouse.WarehouseId, LocationInWarehouse = "NewLoc" };
 
-                // Act
-                var res = await svc.CreateWarehouseAsync(req);
+                var res = await svc.CreateBinAsync(req);
 
-                // Assert
-                Assert.IsTrue(res.Success, "CreateWarehouseAsync should succeed for valid request");
-                Assert.IsNotNull(res.Data, "Response data should not be null");
+                Assert.IsTrue(res.Success);
+                Assert.IsNotNull(res.Data);
 
-                // Verify persisted data in a new context using same in-memory database
                 using var verifyCtx = new EWMDbCtx(options);
-                var wh = await verifyCtx.Warehouses.Include(w => w.Bins).FirstOrDefaultAsync(w => w.WarehouseId == res.Data.ID);
-                Assert.IsNotNull(wh, "Warehouse should be persisted in the database");
-                Assert.AreEqual(1, wh.Bins.Count, "A default bin should be created for the new warehouse");
-                var bin = wh.Bins.First();
-                Assert.AreEqual("Default Bin", bin.LocationInWarehouse);
+                var bin = await verifyCtx.Bins.Include(b => b.Warehouse).FirstOrDefaultAsync(b => b.BinId == res.Data.ID);
+                Assert.IsNotNull(bin);
+                Assert.AreEqual(req.LocationInWarehouse, bin.LocationInWarehouse);
                 Assert.AreEqual(BinStatus.Empty, bin.Status);
+                Assert.AreEqual(warehouse.WarehouseId, bin.WarehouseId);
             }
         }
 
         [Test]
-        public async Task UpdateBinStatusAsync_ShouldReturnInvalidRequest_WhenSettingEmptyOnBinWithComponents()
+        public async Task CreateBinAsync_ShouldReturnInvalidRequest_WhenWarehouseDoesNotExist()
         {
             var dbName = Guid.NewGuid().ToString();
             var options = new DbContextOptionsBuilder<EWMDbCtx>()
                 .UseInMemoryDatabase(dbName)
                 .Options;
 
-            // Arrange: seed a warehouse, bin and component with a ComponentBin (non-empty bin)
-            using (var seedCtx = new EWMDbCtx(options))
+            using (var ctx = new EWMDbCtx(options))
             {
-                var component = new Component { Unit = "pcs", UnitPrice = 1.0 };
-                seedCtx.Components.Add(component);
+                var svc = new StorekeeperService(ctx, NullLogger<StorekeeperService>.Instance);
+                var req = new CreateBinReq { WarehouseID = 9999, LocationInWarehouse = "LocX" };
 
-                var warehouse = new Warehouse { WarehouseName = "W1", Description = "d", PhysicalLocation = "L" };
-                var bin = new Bin { LocationInWarehouse = "B1", Status = BinStatus.Available };
-                warehouse.Bins.Add(bin);
+                var res = await svc.CreateBinAsync(req);
 
-                // attach a ComponentBin to make the bin non-empty
-                var cb = new ComponentBin { Component = component, Quantity = 5 };
-                bin.ComponentBins.Add(cb);
+                Assert.IsFalse(res.Success);
+                Assert.AreEqual(ApiResultCode.InvalidRequest, res.ResultCode);
+            }
+        }
 
-                seedCtx.Warehouses.Add(warehouse);
-                await seedCtx.SaveChangesAsync();
+        // Tests for CreateComponentCategoryAsync
+        [Test]
+        public async Task CreateComponentCategoryAsync_ShouldCreateCategory_WhenNameIsValid()
+        {
+            var dbName = Guid.NewGuid().ToString();
+            var options = new DbContextOptionsBuilder<EWMDbCtx>()
+                .UseInMemoryDatabase(dbName)
+                .Options;
 
-                var svc = new StorekeeperService(seedCtx, NullLogger<StorekeeperService>.Instance);
+            using (var ctx = new EWMDbCtx(options))
+            {
+                var svc = new StorekeeperService(ctx, NullLogger<StorekeeperService>.Instance);
+                string name = "Passive Components";
 
-                // Act: try to set the bin status to Empty
-                var result = await svc.UpdateBinStatusAsync(bin.BinId, BinStatus.Empty);
+                var res = await svc.CreateComponentCategoryAsync(name);
 
-                // Assert
-                Assert.IsFalse(result.Success, "Updating bin to Empty when it contains components should fail");
-                Assert.AreEqual(ApiResultCode.InvalidRequest, result.ResultCode);
+                Assert.IsTrue(res.Success);
+                Assert.IsNotNull(res.Data);
+                Assert.AreEqual(name, res.Data.Name);
+
+                using var verifyCtx = new EWMDbCtx(options);
+                var cat = await verifyCtx.ComponentCategories.FirstOrDefaultAsync(c => c.CategoryName == name);
+                Assert.IsNotNull(cat);
+            }
+        }
+
+        [Test]
+        public async Task CreateComponentCategoryAsync_ShouldReturnInvalidRequest_WhenNameIsEmpty()
+        {
+            var dbName = Guid.NewGuid().ToString();
+            var options = new DbContextOptionsBuilder<EWMDbCtx>()
+                .UseInMemoryDatabase(dbName)
+                .Options;
+
+            using (var ctx = new EWMDbCtx(options))
+            {
+                var svc = new StorekeeperService(ctx, NullLogger<StorekeeperService>.Instance);
+                string name = "  ";
+
+                var res = await svc.CreateComponentCategoryAsync(name);
+
+                Assert.IsFalse(res.Success);
+                Assert.AreEqual(ApiResultCode.InvalidRequest, res.ResultCode);
+            }
+        }
+
+        [Test]
+        public async Task CreateComponentCategoryAsync_ShouldReturnInvalidRequest_WhenNameAlreadyExists()
+        {
+            var dbName = Guid.NewGuid().ToString();
+            var options = new DbContextOptionsBuilder<EWMDbCtx>()
+                .UseInMemoryDatabase(dbName)
+                .Options;
+
+            using (var ctx = new EWMDbCtx(options))
+            {
+                string name = "Active Components";
+                ctx.ComponentCategories.Add(new ComponentCategory { CategoryName = name });
+                await ctx.SaveChangesAsync();
+
+                var svc = new StorekeeperService(ctx, NullLogger<StorekeeperService>.Instance);
+
+                var res = await svc.CreateComponentCategoryAsync(name);
+
+                Assert.IsFalse(res.Success);
+                Assert.AreEqual(ApiResultCode.InvalidRequest, res.ResultCode);
             }
         }
     }

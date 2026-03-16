@@ -5,114 +5,90 @@
     <title>Component Management</title>
 
     <style>
-        body {
-            font-family: Arial;
-            padding: 40px;
-            background: #f8fafc;
-        }
+        :root{--accent:#2563eb;--muted:#64748b;--card:#ffffff}
+        *{box-sizing:border-box}
+        body{font-family:Inter, 'Segoe UI', Roboto, Arial, sans-serif;padding:24px;background:#f6f8fb;color:#0f172a}
+        .page{max-width:1200px;margin:0 auto}
+        .top-bar{display:flex;justify-content:space-between;align-items:center;gap:12px}
+        .title{display:flex;flex-direction:column}
+        .title h2{margin:0;font-size:20px}
+        .title p{margin:6px 0 0 0;color:var(--muted);font-size:13px}
 
-        .top-bar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
+        .layout{display:grid;grid-template-columns:1fr 360px;gap:18px;margin-top:18px}
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            background: white;
-            margin-top: 15px;
-        }
+        .table-card{background:var(--card);border-radius:12px;padding:14px;box-shadow:0 8px 30px rgba(2,6,23,0.06)}
+        table{width:100%;border-collapse:collapse}
+        thead th{background:linear-gradient(90deg,#bfdbfe,#dbeafe);color:#0b5cff;padding:12px;text-align:left}
+        th,td{padding:12px;border-bottom:1px solid #f1f5f9}
+        tr:hover td{background:#fbfdff}
 
-        th, td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: center;
-        }
+        .form-panel{background:var(--card);padding:14px;border-radius:12px;box-shadow:0 6px 20px rgba(2,6,23,0.04)}
+        .form-panel h3{margin:0 0 10px 0}
+        .form-panel input,.form-panel select{width:100%;padding:10px;border-radius:8px;border:1px solid #eef2ff;margin-bottom:10px}
+        .form-panel .actions{display:flex;gap:8px}
+        .btn{padding:10px 12px;border-radius:8px;border:none;cursor:pointer}
+        .btn.primary{background:var(--accent);color:#fff}
+        .btn.ghost{background:transparent;border:1px solid #e6eefb}
 
-        th {
-            background: #2563eb;
-            color: white;
-        }
+        .thumbnail{width:72px;height:72px;border-radius:8px;object-fit:cover;border:1px solid #eef6ff}
+        .meta{font-size:13px;color:var(--muted)}
 
-        .form-box {
-            background: white;
-            padding: 20px;
-            margin-top: 20px;
-        }
-
-        input, select {
-            width: 100%;
-            padding: 6px;
-            margin-bottom: 8px;
-        }
-
-        button {
-            padding: 8px 15px;
-            background: #2563eb;
-            color: white;
-            border: none;
-            cursor: pointer;
-            margin-right: 5px;
-        }
-
-            button:hover {
-                opacity: 0.9;
-            }
-
-        .thumbnail {
-            width: 60px;
-            height: 60px;
-            object-fit: cover;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: transform 0.2s;
-        }
-
-            .thumbnail:hover {
-                transform: scale(1.1);
-            }
+        @media(max-width:900px){.layout{grid-template-columns:1fr}}
     </style>
 </head>
 <body>
 
-    <div class="top-bar">
-        <h2>📦 Component List</h2>
-        <div>
-            <button onclick="goHome()">⬅ Back Home</button>
-            <button onclick="loadComponents()">Refresh</button>
+    <div class="page">
+        <div class="top-bar">
+            <div class="title">
+                <h2>📦 Components</h2>
+                <p>Quản lý sản phẩm — xem, tạo hoặc tải ảnh mới cho component</p>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center">
+                <button class="btn ghost" onclick="goHome()">⬅ Back</button>
+                <button class="btn primary" onclick="loadComponents()">Refresh</button>
+            </div>
         </div>
-    </div>
 
-    <table>
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Image</th>
-                <th>Name</th>
-                <th>Unit</th>
-                <th>Price</th>
-            </tr>
-        </thead>
-        <tbody id="componentBody"></tbody>
-    </table>
+        <div class="layout">
+            <div class="table-card">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width:70px">ID</th>
+                            <th style="width:90px">Image</th>
+                            <th>Name</th>
+                            <th style="width:100px">Unit</th>
+                            <th style="width:120px">Price</th>
+                        </tr>
+                    </thead>
+                    <tbody id="componentBody"></tbody>
+                </table>
+            </div>
 
-    <div class="form-box">
-        <h3>➕ Create Component</h3>
-
-        <input id="name" placeholder="Name">
-        <input id="desc" placeholder="Description">
-        <input id="manufacturer" placeholder="Manufacturer">
-        <input id="unit" placeholder="Unit (pcs, kg...)">
-        <input id="price" type="number" placeholder="Unit Price">
-        <input id="datasheet" placeholder="Datasheet URL">
-        <input type="date" id="mfgDate">
-
-        <select id="categorySelect"></select>
-
-        <input type="file" id="imageFile">
-
-        <button onclick="createComponent()">Create</button>
+            <aside class="form-panel">
+                <h3>➕ Create Component</h3>
+                <div class="meta">Điền thông tin cơ bản của component rồi nhấn Create</div>
+                <div style="height:10px"></div>
+                <input id="name" placeholder="Name">
+                <input id="desc" placeholder="Description">
+                <input id="manufacturer" placeholder="Manufacturer">
+                <input id="unit" placeholder="Unit (pcs, kg...)">
+                <input id="price" type="number" placeholder="Unit Price">
+                <input id="datasheet" placeholder="Datasheet URL">
+                <input type="date" id="mfgDate">
+                <select id="categorySelect"></select>
+                <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
+                    <input type="file" id="imageFile" />
+                    <div style="flex:1;color:var(--muted);font-size:13px">Ảnh (tùy chọn)</div>
+                </div>
+                <div style="height:8px"></div>
+                <div class="actions">
+                    <button class="btn primary" onclick="createComponent()">Create</button>
+                    <button class="btn ghost" onclick="document.querySelectorAll('.form-panel input').forEach(i=>i.value='')">Clear</button>
+                </div>
+            </aside>
+        </div>
     </div>
 
     <script>
