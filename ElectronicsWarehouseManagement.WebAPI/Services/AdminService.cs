@@ -7,14 +7,15 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
 {
     public interface IAdminService
     {
-        Task<ApiResult> CreateAccountAsync(CreateAccReq request);
+        Task<ApiResult> CreateUserAsync(CreateUserReq request);
         Task<ApiResult> DeleteUserAsync(int userId, int currentUserId);
         Task<ApiResult<List<RoleResp>>> GetRolesAsync();
         Task<ApiResult<List<UserResp>>> GetUsersAsync();
-        Task<ApiResult> SetRoleAsync(SetRoleReq request, int currentUserId);
+        Task<ApiResult> SetRoleAsync(int userId, SetRoleReq request, int currentUserId);
         Task<ApiResult<UserResp>> GetUserAsync(int userId);
         Task<ApiResult<List<UserResp>>> SearchUsersAsync(string query);
-        Task<ApiResult> SetStatusAsync(SetStatusReq setStatusReq);
+        Task<ApiResult> SetStatusAsync(int userId, SetStatusReq setStatusReq);
+        Task<ApiResult<int>> GetUserCountAsync();
     }
 
     public class AdminService : IAdminService
@@ -26,7 +27,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             _dbCtx = dbCtx;
         }
 
-        public async Task<ApiResult> CreateAccountAsync(CreateAccReq request)
+        public async Task<ApiResult> CreateUserAsync(CreateUserReq request)
         {
             if (!request.Verify(out string failedReason))
                 return new ApiResult(ApiResultCode.InvalidRequest, failedReason);
@@ -76,19 +77,25 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
         public async Task<ApiResult<List<UserResp>>> GetUsersAsync() => new ApiResult<List<UserResp>>((await _dbCtx.Users.AsNoTracking().Include(u => u.Roles).Where(u => u.StatusInt != (int)UserStatus.Deleted).ToListAsync()).Select(u => new UserResp(u, false)).ToList());
 #pragma warning restore CS0618 // Type or member is obsolete
 
-        public async Task<ApiResult> SetRoleAsync(SetRoleReq request, int currentUserId)
+        public async Task<ApiResult> SetRoleAsync(int userId, SetRoleReq request, int currentUserId)
         {
+            if (userId < 1)
+                return new ApiResult(ApiResultCode.InvalidRequest, "Invalid user ID.");
             if (!request.Verify(out string failedReason))
                 return new ApiResult(ApiResultCode.InvalidRequest, failedReason);
-            var user = await _dbCtx.Users.Include(u => u.Roles).FirstOrDefaultAsync(u => u.UserId == request.UserId);
+            var user = await _dbCtx.Users.Include(u => u.Roles).FirstOrDefaultAsync(u => u.UserId == userId);
             if (user is null)
                 return new ApiResult(ApiResultCode.InvalidRequest, "User does not exist.");
-            var role = await _dbCtx.Roles.FirstOrDefaultAsync(r => r.RoleId == request.RoleId);
-            if (role is null)
-                return new ApiResult(ApiResultCode.InvalidRequest, "Role does not exist.");
-            if (user.UserId == currentUserId && role.RoleId != 1)
-                return new ApiResult(ApiResultCode.InvalidRequest, "Cannot change own role.");
-            user.Roles = [role];
+            List<Role> roles = [];
+            foreach (int id in request.RoleIds)
+            {
+                var role = await _dbCtx.Roles.FirstOrDefaultAsync(r => r.RoleId == id);
+                if (role is null)
+                    return new ApiResult(ApiResultCode.InvalidRequest, "Role does not exist.");
+                if (user.UserId == currentUserId && role.RoleId != 1)
+                    return new ApiResult(ApiResultCode.InvalidRequest, "Cannot change own role.");
+            }
+            user.Roles = roles;
             await _dbCtx.SaveChangesAsync();
             return new ApiResult();
         }
@@ -121,16 +128,26 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             return new ApiResult<List<UserResp>>(users.Select(u => new UserResp(u, false)).ToList());
         }
 
-        public async Task<ApiResult> SetStatusAsync(SetStatusReq setStatusReq)
+        public async Task<ApiResult> SetStatusAsync(int userId, SetStatusReq setStatusReq)
         {
+            if (userId < 1)
+                return new ApiResult(ApiResultCode.InvalidRequest, "Invalid user ID.");
             if (!setStatusReq.Verify(out string failedReason))
                 return new ApiResult(ApiResultCode.InvalidRequest, failedReason);
-            var user = await _dbCtx.Users.FirstOrDefaultAsync(u => u.UserId == setStatusReq.UserId);
+            var user = await _dbCtx.Users.FirstOrDefaultAsync(u => u.UserId == userId);
             if (user is null)
                 return new ApiResult(ApiResultCode.InvalidRequest, "User does not exist.");
             user.Status = (UserStatus)setStatusReq.Status;
             await _dbCtx.SaveChangesAsync();
             return new ApiResult();
+        }
+
+        public async Task<ApiResult<int>> GetUserCountAsync()
+        {
+#pragma warning disable CS0618 // Type or member is obsolete
+            int count = await _dbCtx.Users.CountAsync(u => u.StatusInt != (int)UserStatus.Deleted);
+#pragma warning restore CS0618 // Type or member is obsolete
+            return new ApiResult<int>(count);
         }
     }
 }

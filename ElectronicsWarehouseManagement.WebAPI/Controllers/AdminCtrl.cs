@@ -20,10 +20,10 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
             _logger = logger;
         }
 
-        [HttpPost("create-account")]
-        public async Task<IActionResult> CreateAccount([FromBody] CreateAccReq createAccReq)
+        [HttpPost("users/create")]
+        public async Task<IActionResult> CreateUser([FromBody] CreateUserReq createUserReq)
         {
-            ApiResult result = await _adminService.CreateAccountAsync(createAccReq);
+            ApiResult result = await _adminService.CreateUserAsync(createUserReq);
             if (result.Success)
                 return Ok(result);
             return BadRequest(result);
@@ -47,11 +47,19 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
             return BadRequest(result);
         }
 
-        //TODO: Patch method for add/remove role instead of set role
-        [HttpPost("set-role")]
-        public async Task<IActionResult> SetRole([FromBody] SetRoleReq setRoleReq)
+        [HttpGet("users/count")]
+        public async Task<IActionResult> GetUserCount()
         {
-            var result = await _adminService.SetRoleAsync(setRoleReq, int.Parse(HttpContext.Session.GetString("UserId")!));
+            var result = await _adminService.GetUserCountAsync();
+            if (result.Success)
+                return Ok(result);
+            return BadRequest(result);
+        }
+
+        [HttpPatch("users/{userId:int}/role")]
+        public async Task<IActionResult> SetRole([FromRoute] int userId, [FromBody] SetRoleReq setRoleReq)
+        {
+            var result = await _adminService.SetRoleAsync(userId, setRoleReq, int.Parse(HttpContext.Session.GetString("UserId")!));
             if (result.Success)
                 return Ok(result);
             return BadRequest(result);
@@ -75,7 +83,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
             return BadRequest(result);
         }
 
-        [HttpGet("search-users")]
+        [HttpGet("users/search")]
         public async Task<IActionResult> SearchUsers([FromQuery] string query)
         {
             var result = await _adminService.SearchUsersAsync(query);
@@ -84,10 +92,10 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
             return BadRequest(result);
         }
 
-        [HttpPost("set-status")]
-        public async Task<IActionResult> SetStatus([FromBody] SetStatusReq setStatusReq)
+        [HttpPatch("users/{userId:int}/status")]
+        public async Task<IActionResult> SetStatus([FromRoute] int userId, [FromBody] SetStatusReq setStatusReq)
         {
-            var result = await _adminService.SetStatusAsync(setStatusReq);
+            var result = await _adminService.SetStatusAsync(userId, setStatusReq);
             if (result.Success)
                 return Ok(result);
             return BadRequest(result);

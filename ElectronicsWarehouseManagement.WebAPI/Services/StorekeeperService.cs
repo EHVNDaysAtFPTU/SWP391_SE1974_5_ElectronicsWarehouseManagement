@@ -22,16 +22,21 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
         Task<ApiResult<BinResp>> GetBinAsync(int binId);
         Task<ApiResult<BinResp>> CreateBinAsync(CreateBinReq request);
 
-        Task<ApiResult<List<WarehouseResp>>> GetWarehouseListAsync();
+        Task<ApiResult<List<WarehouseResp>>> GetWarehousesAsync();
         Task<ApiResult<WarehouseResp>> GetWarehouseAsync(int warehouseId);
         Task<ApiResult<WarehouseResp>> CreateWarehouseAsync(CreateWarehouseReq request);
 
         Task<ApiResult<BinResp>> UpdateBinStatusAsync(int binId, BinStatus status);
 
-        Task<ApiResult<List<TransferRequestResp>>> GetTransferRequestsAsync();
-        Task<ApiResult<TransferRequestResp>> GetTransferRequestAsync(int requestId);
+        Task<ApiResult<List<TransferRequestResp>>> GetTransferRequestsAsync(int creatorId);
+        Task<ApiResult<TransferRequestResp>> GetTransferRequestAsync(int requestId, int creatorId);
         Task<ApiResult<TransferRequestResp>> CreateTransferRequestAsync(CreateTransferRequestReq request, TransferType type, int creatorId);
         Task<ApiResult<TransferRequestResp>> ConfirmTransferRequestAsync(ConfirmTransferRequestReq request, int approverId);
+   
+        Task<ApiResult<int>> GetWarehouseCountAsync();
+        Task<ApiResult<int>> GetBinCountAsync();
+        Task<ApiResult<int>> GetComponentInBinCountAsync();
+        Task<ApiResult<int>> GetTransferRequestCountAsync(int creatorId);
     }
 
     public class StorekeeperService : IStorekeeperService
@@ -186,7 +191,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
         }
 
 
-        public async Task<ApiResult<List<WarehouseResp>>> GetWarehouseListAsync()
+        public async Task<ApiResult<List<WarehouseResp>>> GetWarehousesAsync()
         {
             var warehouses = await _dbCtx.Warehouses.AsNoTracking().Select(w => new WarehouseResp(w, false)).ToListAsync();
             return new ApiResult<List<WarehouseResp>>(warehouses);
@@ -244,19 +249,22 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
         }
 
 
-        public async Task<ApiResult<List<TransferRequestResp>>> GetTransferRequestsAsync()
+        public async Task<ApiResult<List<TransferRequestResp>>> GetTransferRequestsAsync(int creatorId)
         {
-            var transferReqs = await _dbCtx.TransferRequests.AsNoTracking().Select(tr => new TransferRequestResp(tr, false)).ToListAsync();
+            var transferReqs = await _dbCtx.TransferRequests.AsNoTracking()
+                .Where(tr => tr.CreatorId == creatorId)
+                .Select(tr => new TransferRequestResp(tr, false)).ToListAsync();
             return new ApiResult<List<TransferRequestResp>>(transferReqs);
         }
 
-        public async Task<ApiResult<TransferRequestResp>> GetTransferRequestAsync(int requestId)
+        public async Task<ApiResult<TransferRequestResp>> GetTransferRequestAsync(int requestId, int creatorId)
         {
             return new ApiResult<TransferRequestResp>(await _dbCtx.TransferRequests.AsNoTracking()
                 .Include(tr => tr.Creator).Include(tr => tr.Approver)
                 .Include(tr => tr.BinFrom).Include(tr => tr.BinTo)
                 .Include(tr => tr.TransferRequestComponents)
-                .Where(tr => tr.RequestId == requestId).Select(tr => new TransferRequestResp(tr, true)).FirstOrDefaultAsync());
+                .Where(tr => tr.RequestId == requestId && tr.CreatorId == creatorId)
+                .Select(tr => new TransferRequestResp(tr, true)).FirstOrDefaultAsync());
         }
 
         public async Task<ApiResult<TransferRequestResp>> CreateTransferRequestAsync(CreateTransferRequestReq request, TransferType type, int creatorId)
@@ -275,13 +283,13 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
                 case TransferType.Inbound:
                     if (binTo is null)
                         return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Bin with ID '{request.BinToId}' does not exist.");
-                    if (binTo.Status == BinStatus.Full)
+                    if (binTo.Status == BinStatus.Locked)
                         return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Bin with ID '{request.BinToId}' is full.");
                     break;
                 case TransferType.Outbound:
                     if (binFrom is null)
                         return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Bin with ID '{request.BinFromId}' does not exist.");
-                    if (binFrom.Status == BinStatus.Full)
+                    if (binFrom.Status == BinStatus.Locked)
                         return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Bin with ID '{request.BinFromId}' is full.");
                     break;
                 case TransferType.InternalTransfer:
@@ -289,9 +297,9 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
                         return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Bin with ID '{request.BinFromId}' does not exist.");
                     if (binTo is null)
                         return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Bin with ID '{request.BinToId}' does not exist.");
-                    if (binFrom.Status == BinStatus.Full)
+                    if (binFrom.Status == BinStatus.Locked)
                         return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Bin with ID '{request.BinFromId}' is full.");
-                    if (binTo.Status == BinStatus.Full)
+                    if (binTo.Status == BinStatus.Locked)
                         return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Bin with ID '{request.BinToId}' is full.");
                     break;
             }
@@ -301,6 +309,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
                 var component = await _dbCtx.Components.FindAsync(componentReq.ComponentId);
                 if (component is null)
                     return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Component with ID '{componentReq.ComponentId}' does not exist.");
+<<<<<<< HEAD
                 // For outbound requests unit price may be omitted by client. Use current component.UnitPrice as fallback.
                 var unitPrice = componentReq.UnitPrice;
                 if (type == TransferType.Outbound && (unitPrice <= 0))
@@ -312,6 +321,22 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
                     Quantity = componentReq.Quantity,
                     UnitPrice = unitPrice
                 });
+=======
+                if (type == TransferType.Outbound && componentReq.Quantity > component.TotalQuantity)
+                    return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Requested quantity for component with ID '{componentReq.ComponentId}' exceeds available quantity.");
+                TransferRequestComponent item = new TransferRequestComponent()
+                {
+                    ComponentId = componentReq.ComponentId,
+                    Quantity = componentReq.Quantity,
+                };
+                if (type == TransferType.Inbound)
+                {
+                    if (componentReq.UnitPrice is null)
+                        return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Unit price is required for component with ID '{componentReq.ComponentId}' in inbound transfer request.");
+                    item.UnitPrice = componentReq.UnitPrice.Value;
+                }
+                tComponents.Add(item);
+>>>>>>> main
             }
             var transferRequest = new TransferRequest
             {
@@ -349,6 +374,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
                 return new ApiResult<TransferRequestResp>(ApiResultCode.NotFound);
 
             if (transferRequest.Status != TransferStatus.ApprovedAndWaitForConfirm)
+<<<<<<< HEAD
                 return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest);
 
             foreach (var binReq in request.Bins)
@@ -374,6 +400,54 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
                         var existingTotalPrice = existingTotalQuantity * component.UnitPrice;
 
                         if (componentBin == null)
+=======
+                return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Transfer request with ID '{request.RequestId}' cannot be confirmed.");
+            // verify components in confirmation request to match those in original transfer request
+            List<TransferRequestComponent> originalComponentsInTransferRequest = transferRequest.TransferRequestComponents.OrderBy(c => c.ComponentId).ToList();
+
+            List<ConfirmTransferRequestComponentReq> confirmComponentsTakeFromBin = [];
+            foreach (ConfirmTransferBinReq ctBinTakeFrom in request.BinsFrom ?? [])
+            {
+                Bin? bin = await _dbCtx.Bins.FindAsync(ctBinTakeFrom.BinId);
+                if (bin is null)
+                    return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Bin with ID '{ctBinTakeFrom.BinId}' does not exist.");
+                if (bin.Status == BinStatus.Locked)
+                    return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Bin with ID '{ctBinTakeFrom.BinId}' is full.");
+                foreach (ConfirmTransferRequestComponentReq ctComponentTakeFromBin in ctBinTakeFrom.Components.OrderBy(c => c.ComponentId))
+                {
+                    if (!originalComponentsInTransferRequest.Any(c => c.ComponentId == ctComponentTakeFromBin.ComponentId))
+                        return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Component with ID '{ctComponentTakeFromBin.ComponentId}' is not in the original transfer request.");
+                    var confirmComponentTakeFromBin = confirmComponentsTakeFromBin.FirstOrDefault(c => c.ComponentId == ctComponentTakeFromBin.ComponentId);
+                    if (confirmComponentTakeFromBin is null)
+                    {
+                        confirmComponentsTakeFromBin.Add(new ConfirmTransferRequestComponentReq
+                        {
+                            ComponentId = ctComponentTakeFromBin.ComponentId,
+                            Quantity = ctComponentTakeFromBin.Quantity
+                        });
+                    }
+                    else
+                        confirmComponentTakeFromBin.Quantity += ctComponentTakeFromBin.Quantity;
+                }
+            }
+
+            List<ConfirmTransferRequestComponentReq> confirmComponentsAddToBin = [];
+            foreach (ConfirmTransferBinReq ctBinAddTo in request.BinsTo ?? [])
+            {
+                Bin? bin = await _dbCtx.Bins.FindAsync(ctBinAddTo.BinId);
+                if (bin is null)
+                    return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Bin with ID '{ctBinAddTo.BinId}' does not exist.");
+                if (bin.Status == BinStatus.Locked)
+                    return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Bin with ID '{ctBinAddTo.BinId}' is full.");
+                foreach (ConfirmTransferRequestComponentReq ctComponentReq in ctBinAddTo.Components.OrderBy(c => c.ComponentId))
+                {
+                    if (!originalComponentsInTransferRequest.Any(c => c.ComponentId == ctComponentReq.ComponentId))
+                        return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Component with ID '{ctComponentReq.ComponentId}' is not in the original transfer request.");
+                    var confirmComponentAddToBin = confirmComponentsAddToBin.FirstOrDefault(c => c.ComponentId == ctComponentReq.ComponentId);
+                    if (confirmComponentAddToBin is null)
+                    {
+                        confirmComponentsAddToBin.Add(new ConfirmTransferRequestComponentReq
+>>>>>>> main
                         {
                             componentBin = new ComponentBin { BinId = bin.BinId, ComponentId = compReq.ComponentId, Quantity = compReq.Quantity };
                             _dbCtx.ComponentBins.Add(componentBin);
@@ -511,15 +585,83 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
 
                         binTo.Status = binTo.ComponentBins.Any(cb => cb.Quantity > 0) ? BinStatus.Available : BinStatus.Empty;
                     }
+<<<<<<< HEAD
                 }
 
                 // Update current bin status
                 bin.Status = bin.ComponentBins.Any(cb => cb.Quantity > 0) ? BinStatus.Available : BinStatus.Empty;
+=======
+                    else
+                        confirmComponentAddToBin.Quantity += ctComponentReq.Quantity;
+                }
+            }
+
+            foreach (ConfirmTransferRequestComponentReq confirmComponent in confirmComponentsAddToBin.Concat(confirmComponentsTakeFromBin))
+            {
+                var originalComponent = originalComponentsInTransferRequest.First(c => c.ComponentId == confirmComponent.ComponentId);
+                if (confirmComponent.Quantity != originalComponent.Quantity)
+                    return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Confirmed quantity for component with ID '{confirmComponent.ComponentId}' does not match the original transfer request.");
+>>>>>>> main
             }
 
             transferRequest.Status = TransferStatus.Confirmed;
             transferRequest.ExecutionTime = DateTime.UtcNow;
+<<<<<<< HEAD
             transferRequest.ApproverId = approverId;
+=======
+
+            // add/remove/update components in bins
+            foreach (ConfirmTransferBinReq binFrom in request.BinsFrom ?? [])
+            {
+                Bin bin = await _dbCtx.Bins.Include(b => b.ComponentBins).FirstAsync(b => b.BinId == binFrom.BinId);
+                foreach (ConfirmTransferRequestComponentReq componentTakeFromBin in binFrom.Components)
+                {
+                    ComponentBin? componentBin = bin.ComponentBins.FirstOrDefault(cb => cb.ComponentId == componentTakeFromBin.ComponentId);
+                    if (componentBin is null)
+                        throw new InvalidOperationException($"Component with ID '{componentTakeFromBin.ComponentId}' is not in bin with ID '{bin.BinId}'.");
+                    if (componentBin.Quantity < componentTakeFromBin.Quantity)
+                        throw new InvalidOperationException($"Not enough quantity of component with ID '{componentTakeFromBin.ComponentId}' in bin with ID '{bin.BinId}' to take from.");
+                    componentBin.Quantity -= componentTakeFromBin.Quantity;
+                    if (componentBin.Quantity == 0)
+                        _dbCtx.ComponentBins.Remove(componentBin);
+                }
+                if (bin.Status != BinStatus.Empty && bin.ComponentBins.Count == 0)
+                    bin.Status = BinStatus.Empty;
+            }
+            foreach (ConfirmTransferBinReq binTo in request.BinsTo ?? [])
+            {
+                Bin bin = await _dbCtx.Bins.Include(b => b.ComponentBins).FirstAsync(b => b.BinId == binTo.BinId);
+                foreach (ConfirmTransferRequestComponentReq componentAddToBin in binTo.Components)
+                {
+                    ComponentBin? componentBin = bin.ComponentBins.FirstOrDefault(cb => cb.ComponentId == componentAddToBin.ComponentId);
+                    if (componentBin is null)
+                    {
+                        componentBin = new ComponentBin
+                        {
+                            BinId = bin.BinId,
+                            ComponentId = componentAddToBin.ComponentId,
+                            Quantity = componentAddToBin.Quantity
+                        };
+                        _dbCtx.ComponentBins.Add(componentBin);
+                    }
+                    else
+                        componentBin.Quantity += componentAddToBin.Quantity;
+                }
+                if (bin.Status == BinStatus.Empty)
+                    bin.Status = BinStatus.Available;
+            }
+
+            // calculate new average price for the component after transfer
+            if (transferRequest.Type == TransferType.Inbound)
+            {
+                foreach (TransferRequestComponent tComponent in originalComponentsInTransferRequest)
+                {
+                    Component component = await _dbCtx.Components.FirstAsync(c => c.ComponentId == tComponent.ComponentId);
+                    double newPrice = (component.TotalPrice + tComponent.Quantity * tComponent.UnitPrice) / (component.TotalQuantity + tComponent.Quantity);
+                    component.UnitPrice = newPrice;
+                }
+            }
+>>>>>>> main
 
             await _dbCtx.SaveChangesAsync();
 
@@ -532,5 +674,34 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
 
             return new ApiResult<TransferRequestResp>(new TransferRequestResp(transferRequest, true));
         }
+
+
+        public async Task<ApiResult<int>> GetWarehouseCountAsync()
+        {
+            int result = await _dbCtx.Warehouses.CountAsync();
+            return new ApiResult<int>(result);
+        }
+
+        public async Task<ApiResult<int>> GetBinCountAsync()
+        {
+            int result = await _dbCtx.Bins.CountAsync();
+            return new ApiResult<int>(result);
+        }
+
+        public async Task<ApiResult<int>> GetComponentInBinCountAsync()
+        {
+            int result = await _dbCtx.ComponentBins.CountAsync();
+            return new ApiResult<int>(result);
+        }
+
+        public async Task<ApiResult<int>> GetTransferRequestCountAsync(int creatorId)
+        {
+            int result = await _dbCtx.TransferRequests.Where(tr => tr.CreatorId == creatorId).CountAsync();
+            return new ApiResult<int>(result);
+        }
     }
+<<<<<<< HEAD
     }
+=======
+}
+>>>>>>> main

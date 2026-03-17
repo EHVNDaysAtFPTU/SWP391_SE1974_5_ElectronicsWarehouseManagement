@@ -40,6 +40,12 @@ namespace ElectronicsWarehouseManagement.Repositories.Entities
                 get => (TransferType)transferRequest.TypeInt;
                 set => transferRequest.TypeInt = (int)value;
             }
+
+            public CustomerInfo CustomerInfo
+            {
+                get => JsonSerializer.Deserialize<CustomerInfo>(transferRequest.CustomerInfoJson) ?? new CustomerInfo();
+                set => transferRequest.CustomerInfoJson = JsonSerializer.Serialize(value);
+            }
         }
 
         extension(Bin bin)
