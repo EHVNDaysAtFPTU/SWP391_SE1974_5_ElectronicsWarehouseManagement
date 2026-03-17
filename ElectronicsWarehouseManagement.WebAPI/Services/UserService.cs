@@ -12,7 +12,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
         Task<ApiResult<UserResp>> GetMyInfoAsync(string username);
     }
 
-    public class UserService : IUserService
+    internal class UserService : IUserService
     {
         readonly EWMDbCtx _dbCtx;
 

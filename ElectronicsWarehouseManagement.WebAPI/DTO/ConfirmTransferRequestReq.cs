@@ -7,8 +7,13 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
         [JsonPropertyName("request_id")]
         public int RequestId { get; set; }
 
-        [JsonPropertyName("bins")]
-        public List<ConfirmTransferBinReq> Bins { get; set; } = [];
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        [JsonPropertyName("bins_to")]
+        public List<ConfirmTransferBinReq>? BinsTo { get; set; }
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        [JsonPropertyName("bins_from")]
+        public List<ConfirmTransferBinReq>? BinsFrom { get; set; }
 
         public bool Verify(out string failedReason)
         {
@@ -17,12 +22,30 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
                 failedReason = "Invalid transfer ID.";
                 return false;
             }
-            if (Bins.Count == 0)
+            if (BinsFrom is null && BinsTo is null)
+            {
+                failedReason = "At least one kind of bins must be provided.";
+                return false;
+            }
+            if (BinsFrom is not null && BinsFrom.Count == 0)
             {
                 failedReason = "At least one bin must be provided.";
                 return false;
             }
-            foreach (var bin in Bins)
+            if (BinsTo is not null && BinsTo.Count == 0)
+            {
+                failedReason = "At least one bin must be provided.";
+                return false;
+            }
+            if (BinsFrom is not null && BinsTo is not null)
+            {
+                if (BinsFrom.Count != BinsTo.Count)
+                {
+                    failedReason = "The number of bins from and to must be the same.";
+                    return false;
+                }
+            }
+            foreach (var bin in (BinsFrom ?? []).Concat(BinsTo ?? []))
             {
                 if (!bin.Verify(out failedReason))
                     return false;

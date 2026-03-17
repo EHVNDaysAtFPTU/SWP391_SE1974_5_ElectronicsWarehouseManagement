@@ -22,6 +22,11 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
                 failedReason = "Password cannot exceed 256 characters.";
                 return false;
             }
+            if (OldPassword.Length < 6 || NewPassword.Length < 6)
+            {
+                failedReason = "Password is too short.";
+                return false;
+            }
             failedReason = string.Empty;
             return true;
         }

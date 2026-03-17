@@ -45,16 +45,23 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
                 HttpContext.Session.SetString("UserId", result.user.UserId.ToString());
                 return Ok(result.resp);
             }
-            return NotFound(result.resp);
+            if (result.user is null && result.resp.ResultCode == ApiResultCode.NotFound)
+                return NotFound(result.resp);
+            return BadRequest(result.resp);
         }
 
         [Authorize]
         [HttpPost("logout")]
         public async Task<IActionResult> Logout()
         {
-            HttpContext.Session.Remove("User");
-            await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-            return Ok(new ApiResult());
+            var result = await _authService.LogoutAsync(int.Parse(HttpContext.Session.GetString("UserId")!));
+            if (result.Success)
+            {
+                HttpContext.Session.Clear();
+                await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+                return Ok(result);
+            }
+            return BadRequest(result);
         }
     }
 }

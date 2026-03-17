@@ -5,6 +5,6 @@
         Unknown,
         Empty,
         Available,
-        Full,
+        Locked,
     }
 }
