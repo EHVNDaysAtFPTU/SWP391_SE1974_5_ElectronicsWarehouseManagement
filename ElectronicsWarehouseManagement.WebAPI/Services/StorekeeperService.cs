@@ -309,8 +309,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
                 var component = await _dbCtx.Components.FindAsync(componentReq.ComponentId);
                 if (component is null)
                     return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Component with ID '{componentReq.ComponentId}' does not exist.");
-<<<<<<< HEAD
-                // For outbound requests unit price may be omitted by client. Use current component.UnitPrice as fallback.
+
                 var unitPrice = componentReq.UnitPrice;
                 if (type == TransferType.Outbound && (unitPrice <= 0))
                     unitPrice = component.UnitPrice;
@@ -321,7 +320,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
                     Quantity = componentReq.Quantity,
                     UnitPrice = unitPrice
                 });
-=======
+
                 if (type == TransferType.Outbound && componentReq.Quantity > component.TotalQuantity)
                     return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Requested quantity for component with ID '{componentReq.ComponentId}' exceeds available quantity.");
                 TransferRequestComponent item = new TransferRequestComponent()
@@ -336,7 +335,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
                     item.UnitPrice = componentReq.UnitPrice.Value;
                 }
                 tComponents.Add(item);
->>>>>>> main
+
             }
             var transferRequest = new TransferRequest
             {

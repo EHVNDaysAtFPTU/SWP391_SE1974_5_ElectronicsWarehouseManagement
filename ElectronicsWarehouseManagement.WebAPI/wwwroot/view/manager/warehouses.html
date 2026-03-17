@@ -1,0 +1,191 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Warehouse List</title>
+
+    <link rel="stylesheet" href="css/layout.css">
+    <link rel="stylesheet" href="css/table-style.css">
+    <link rel="stylesheet" href="css/detail-style.css">
+    <style>
+        .detail-box {
+            background: #f5f9fb;
+            padding: 15px;
+            border-radius: 8px;
+            line-height: 1.6;
+        }
+
+            .detail-box img {
+                margin-top: 8px;
+                border-radius: 6px;
+                border: 1px solid #ddd;
+            }
+    </style>
+</head>
+
+<body>
+
+    <!-- HEADER -->
+    <header class="header">
+        <div class="logo">My Manager</div>
+
+        <div class="profile-container">
+            <div class="profile" onclick="toggleProfileMenu()">
+                <img src="https://i.pravatar.cc/40" alt="Profile">
+                <span class="username">Manager</span>
+            </div>
+
+            <div class="profile-dropdown" id="profileDropdown">
+                <a href="profile.html">Thông tin cá nhân</a>
+                <a href="account.html">Quản lí tài khoản</a>
+                <a href="logout.html" class="logout">Logout</a>
+            </div>
+        </div>
+    </header>
+
+    <div class="wrapper">
+
+        <!-- SIDEBAR -->
+        <div class="sidebar">
+            <ul>
+                <li><a href="home.html">Dashboard</a></li>
+                <li><a href="component-inventory.html">Components</a></li>
+                <li><a href="transfers.html">Transfers</a></li>
+                <li><a href="warehouses.html">Warehouses</a></li>
+                <li><a href="bin.html">Bins</a></li>
+            </ul>
+        </div>
+
+        <!-- CONTENT -->
+        <div class="content">
+
+            <h2>Warehouse List</h2>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Description</th>
+                        <th>Location</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="warehouseTable"></tbody>
+            </table>
+
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            loadWarehouses();
+        });
+
+        async function loadWarehouses() {
+
+            const response = await fetch(
+                `/api/manager/get-warehouses?pageNumber=1&pageSize=100`,
+                { credentials: 'include' }
+            );
+
+            const result = await response.json();
+
+            if (!result.success) {
+                alert(result.msg || "Load warehouse failed");
+                return;
+            }
+
+            renderWarehouseTable(result.data.data);
+        }
+
+        function renderWarehouseTable(warehouses) {
+
+            const tbody = document.getElementById("warehouseTable");
+            tbody.innerHTML = "";
+
+            warehouses.forEach(w => {
+
+                const row = tbody.insertRow();
+                row.setAttribute("data-id", w.id);
+
+                row.insertCell().innerText = w.id;
+                row.insertCell().innerText = w.name;
+                row.insertCell().innerText = w.desc || "";
+                row.insertCell().innerText = w.physical_location || "";
+
+                const actionCell = row.insertCell();
+
+                const detailBtn = document.createElement("button");
+                detailBtn.innerText = "View Detail";
+                detailBtn.onclick = function () {
+                    toggleWarehouseDetail(w, row);
+                };
+                actionCell.appendChild(detailBtn);
+
+                actionCell.appendChild(document.createTextNode(" "));
+
+                const binBtn = document.createElement("button");
+                binBtn.innerText = "View Bins";
+                binBtn.onclick = function () {
+                    window.location.href = `bins.html?warehouseId=${w.id}`;
+                };
+                actionCell.appendChild(binBtn);
+            });
+        }
+
+        function toggleWarehouseDetail(w, mainRow) {
+
+            const nextRow = mainRow.nextElementSibling;
+
+            if (nextRow && nextRow.classList.contains("detail-row")) {
+                nextRow.remove();
+                return;
+            }
+
+            document.querySelectorAll(".detail-row").forEach(r => r.remove());
+
+            const detailRow = document.createElement("tr");
+            detailRow.classList.add("detail-row");
+
+            const detailCell = document.createElement("td");
+            detailCell.colSpan = 5;
+
+            let imageHtml = "No image";
+
+            if (w.image_url && w.image_url.trim() !== "") {
+                imageHtml = `
+                <img src="${w.image_url}"
+                     alt="Warehouse Image"
+                     width="200">
+            `;
+            }
+
+            detailCell.innerHTML = `
+            <div class="detail-box">
+                <p><strong>ID:</strong> ${w.id}</p>
+                <p><strong>Name:</strong> ${w.name}</p>
+                <p><strong>Description:</strong> ${w.desc || ""}</p>
+                <p><strong>Location:</strong> ${w.physical_location || ""}</p>
+                <p><strong>Image:</strong><br>${imageHtml}</p>
+            </div>
+        `;
+
+            detailRow.appendChild(detailCell);
+            mainRow.parentNode.insertBefore(detailRow, mainRow.nextSibling);
+        }
+        //Profile
+        function toggleProfileMenu() {
+            document.getElementById("profileDropdown").classList.toggle("show");
+        }
+
+        // Đóng dropdown khi click ra ngoài
+        window.onclick = function (event) {
+            if (!event.target.closest('.profile-container')) {
+                document.getElementById("profileDropdown").classList.remove("show");
+            }
+        }
+    </script>
+
+</body>
+</html>

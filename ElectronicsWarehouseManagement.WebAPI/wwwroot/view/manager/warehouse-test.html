@@ -1,0 +1,133 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Warehouse List</title>
+</head>
+<body>
+
+<h2>Warehouse List</h2>
+
+<table border="1" cellpadding="8" cellspacing="0" width="100%">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Description</th>
+            <th>Location</th>
+            <th>Action</th>
+        </tr>
+    </thead>
+    <tbody id="warehouseTable"></tbody>
+</table>
+
+<script>
+
+document.addEventListener("DOMContentLoaded", function () {
+    loadWarehouses();
+});
+
+async function loadWarehouses() {
+
+    const response = await fetch(
+        `/api/manager/get-warehouses?pageNumber=1&pageSize=100`,
+        { credentials: 'include' }
+    );
+
+    const result = await response.json();
+
+    if (!result.success) {
+        alert(result.msg || "Load warehouse failed");
+        return;
+    }
+
+    renderWarehouseTable(result.data.data);
+}
+
+function renderWarehouseTable(warehouses) {
+
+    const tbody = document.getElementById("warehouseTable");
+    tbody.innerHTML = "";
+
+    warehouses.forEach(w => {
+
+        const row = tbody.insertRow();
+        row.setAttribute("data-id", w.id);
+
+        row.insertCell().innerText = w.id;
+        row.insertCell().innerText = w.name;
+        row.insertCell().innerText = w.desc || "";
+        row.insertCell().innerText = w.physical_location || "";
+
+        const actionCell = row.insertCell();
+
+        // View Detail
+        const detailBtn = document.createElement("button");
+        detailBtn.innerText = "View Detail";
+        detailBtn.onclick = function () {
+            toggleWarehouseDetail(w, row);
+        };
+        actionCell.appendChild(detailBtn);
+
+        actionCell.appendChild(document.createTextNode(" "));
+
+        // View Bins
+        const binBtn = document.createElement("button");
+        binBtn.innerText = "View Bins";
+        binBtn.onclick = function () {
+            window.location.href = `bins-test.html?warehouseId=${w.id}`;
+        };
+        actionCell.appendChild(binBtn);
+    });
+}
+
+function toggleWarehouseDetail(w, mainRow) {
+
+    // Nếu đã mở detail rồi thì xóa đi (toggle)
+    const nextRow = mainRow.nextElementSibling;
+
+    if (nextRow && nextRow.classList.contains("detail-row")) {
+        nextRow.remove();
+        return;
+    }
+
+    // Xóa tất cả detail đang mở trước đó
+    document.querySelectorAll(".detail-row").forEach(r => r.remove());
+
+    const detailRow = document.createElement("tr");
+    detailRow.classList.add("detail-row");
+
+    const detailCell = document.createElement("td");
+    detailCell.colSpan = 5; // full width
+
+    let imageHtml = "null";
+
+    if (w.image_url && w.image_url.trim() !== "") {
+        imageHtml = `
+            <img src="${w.image_url}" 
+                 alt="Warehouse Image" 
+                 width="200"
+                 style="border:1px solid #ccc; padding:4px;">
+        `;
+    }
+
+    detailCell.innerHTML = `
+        <div style="background:#f9f9f9; padding:15px;">
+            <p><strong>ID:</strong> ${w.id}</p>
+            <p><strong>Name:</strong> ${w.name}</p>
+            <p><strong>Description:</strong> ${w.desc || ""}</p>
+            <p><strong>Location:</strong> ${w.physical_location || ""}</p>
+            <p><strong>Image:</strong><br>${imageHtml}</p>
+        </div>
+    `;
+
+    detailRow.appendChild(detailCell);
+
+    // chèn ngay dưới row chính
+    mainRow.parentNode.insertBefore(detailRow, mainRow.nextSibling);
+}
+
+</script>
+
+</body>
+</html>

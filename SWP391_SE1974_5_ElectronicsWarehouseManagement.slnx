@@ -1,4 +1,7 @@
 <Solution>
+  <Folder Name="/Test/">
+    <Project Path="ManagerSerivce.Test/ManagerSerivce.Test.csproj" Id="53920750-1435-44ee-995f-fa7aac427573" />
+  </Folder>
   <Project Path="ElectronicsWarehouseManagement.DTO/ElectronicsWarehouseManagement.DTO.csproj" Id="1fc938ce-6698-4573-a798-2f806ca9a917" />
   <Project Path="ElectronicsWarehouseManagement.Repositories\ElectronicsWarehouseManagement.Repositories.csproj" />
   <Project Path="ElectronicsWarehouseManagement.Services\ElectronicsWarehouseManagement.Services.csproj" />
