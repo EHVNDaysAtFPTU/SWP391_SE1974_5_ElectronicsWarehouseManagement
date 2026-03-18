@@ -94,7 +94,7 @@
     </div>
 
     <script>
-        const BASE = "https://localhost:7297/api";
+       
 
         function go(url) {
             window.location.href = url;
@@ -109,7 +109,7 @@
 
             if (body) opt.body = JSON.stringify(body);
 
-            const res = await fetch(BASE + endpoint, opt);
+            const res = await fetch(`/api${endpoint}`, opt);;
             if (!res.ok) return { success: false };
             return await res.json();
         }

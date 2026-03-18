@@ -126,7 +126,7 @@
     </div>
 
     <script>
-        const BASE = "https://localhost:7297/api";
+
 
         async function api(endpoint, method = "GET", body = null) {
             const opt = {
@@ -135,7 +135,7 @@
                 credentials: "include"
             };
             if (body) opt.body = JSON.stringify(body);
-            const res = await fetch(BASE + endpoint, opt);
+            const res = await fetch(`/api${endpoint}`, opt);
             return await res.json();
         }
 
@@ -192,7 +192,7 @@
             const password = newPassword.value;
             const roleId = parseInt(newRole.value);
 
-            const r = await api("/admin/create-account", "POST", {
+            const r = await api("/admin/users/create", "POST", {
                 username, email, password, role_id: roleId
             });
 
