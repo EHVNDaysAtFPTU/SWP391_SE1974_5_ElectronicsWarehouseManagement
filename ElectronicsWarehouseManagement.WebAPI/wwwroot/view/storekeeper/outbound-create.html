@@ -360,6 +360,30 @@ onclick="addItem(${id},'${name}','${unit}')">
         /* INIT */
         loadWarehouses();
         loadComponents();
+        // populate creator name and date from backend if available
+        async function setCreatorAndDate(){
+            try{
+                const apiRoot = BASE.replace('/storekeeper','');
+                const res = await fetch(apiRoot + '/me/info', { credentials: 'include' });
+                const elBy = document.getElementById('createdBy');
+                const elAt = document.getElementById('createdAt');
+                if(elAt) elAt.innerText = new Date().toLocaleString('vi-VN');
+                if(!elBy) return;
+                if(res && res.ok){
+                    const j = await res.json().catch(()=>null);
+                    if(j && j.success && j.data){
+                        const u = j.data;
+                        const display = u.display_name ?? u.DisplayName ?? u.username ?? u.Username ?? u.fullname ?? u.FullName;
+                        elBy.innerText = (display || '').toString() || elBy.innerText || 'Auto';
+                        return;
+                    }
+                }
+                // fallback to cookies
+                function _getCookie(name){ const v = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)'); return v ? decodeURIComponent(v.pop()) : null; }
+                elBy.innerText = _getCookie('username') || _getCookie('displayName') || _getCookie('fullname') || elBy.innerText || 'Auto';
+            }catch(e){ console.warn('setCreatorAndDate error', e); }
+        }
+        setCreatorAndDate();
 
     </script>
 

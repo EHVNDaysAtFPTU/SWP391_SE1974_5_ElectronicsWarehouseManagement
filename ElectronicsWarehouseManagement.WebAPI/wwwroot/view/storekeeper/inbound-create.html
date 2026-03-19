@@ -70,6 +70,10 @@
                                 <label for="binTo">Bin đích</label>
                                 <select id="binTo"></select>
                             </div>
+                            <div style="width:260px">
+                                <label for="customerSelect">Khách hàng</label>
+                                <select id="customerSelect"><option value="">-- Chọn nhà cung cấp (tùy chọn) --</option></select>
+                            </div>
                         </div>
 
                         <div class="product-actions">
@@ -111,13 +115,15 @@
                             <div style="font-size:13px" id="createdBy">Auto</div>
                             <div style="font-size:13px;color:var(--muted)">Ngày tạo</div>
                             <div style="font-size:13px" id="createdAt">-</div>
+                            <div style="font-size:13px;color:var(--muted)">Supplier</div>
+                            <div style="font-size:13px" id="customerInfo">-</div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-
+    
     <!-- MODAL -->
     <div id="modal" class="modal">
         <div class="modal-box">
@@ -228,6 +234,42 @@
             components = json.data;
         }
 
+        /* LOAD CUSTOMERS */
+        async function loadCustomers(){
+            try{
+                const res = await fetch(BASE + '/customers', { credentials: 'include' });
+                if(!res.ok) return;
+                const json = await res.json();
+                if(!json.success || !json.data) return;
+                const select = document.getElementById('customerSelect');
+                if(!select) return;
+                select.innerHTML = '';
+                const emptyOpt = document.createElement('option');
+                emptyOpt.value = '';
+                emptyOpt.text = '-- Không chọn --';
+                select.appendChild(emptyOpt);
+                json.data.forEach(ci => {
+                    try{
+                        const opt = document.createElement('option');
+                        opt.value = (ci.id ?? ci.ID ?? ci.customerId ?? '');
+                        opt.text = ci.name ?? ci.Name ?? ci.displayName ?? (ci.contact ?? 'Nhà cung cấp');
+                        opt.dataset.raw = JSON.stringify(ci);
+                        select.appendChild(opt);
+                    }catch(e){ /* ignore this item */ }
+                });
+                // update quick info when selection changes
+                select.addEventListener('change', function(){
+                    const el = document.getElementById('customerInfo');
+                    const opt = this.options[this.selectedIndex];
+                    if(!el) return;
+                    if(opt && opt.dataset && opt.dataset.raw){
+                        try{ const o = JSON.parse(opt.dataset.raw); el.innerText = o.name ?? o.contact ?? '-'; el.dataset.raw = opt.dataset.raw; }
+                        catch{ el.innerText = '-'; delete el.dataset.raw; }
+                    } else { el.innerText = '-'; delete el.dataset.raw; }
+                });
+            }catch(e){ console.warn('loadCustomers error', e); }
+        }
+
         /* MODAL */
         function openModal() {
             renderList();
@@ -333,22 +375,44 @@
                 components: componentList
             };
 
+            // attach selected customer id (and optional full info) if available
+            try{
+                const sel = document.getElementById('customerSelect');
+                const opt = sel.options[sel.selectedIndex];
+                if(opt && opt.value){
+                    const id = parseInt(opt.value);
+                    if(!isNaN(id)) payload.customer_id = id;
+                }
+                if(opt && opt.dataset && opt.dataset.raw){
+                    // keep legacy customer_info_json for backward compatibility
+                    try{ payload.customer_info_json = JSON.parse(opt.dataset.raw); } catch(e){}
+                }
+            }catch(e){ /* ignore */ }
+
             console.log("SEND:", payload);
 
-            const res = await fetch(BASE + "/create-inbound", {
+            const res = await fetch(BASE + "/transfers/inbound/create", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 credentials: "include",
                 body: JSON.stringify(payload)
             });
-
-            const json = await res.json();
-            console.log("RESPONSE:", json);
-
-            if (!json.success) {
-                return alert("Tạo thất bại: " + json.msg);
+            if (!res.ok) {
+                const txt = await res.text();
+                console.error('server error', txt);
+                return alert('Tạo thất bại: ' + (txt || res.statusText));
             }
-
+            let json;
+            try {
+                json = await res.json();
+            } catch (e) {
+                console.error('Invalid JSON response', e);
+                return alert('Tạo thất bại: server returned invalid response');
+            }
+            console.log("RESPONSE:", json);
+            if (!json.success) {
+                return alert("Tạo thất bại: " + (json.msg || 'unknown'));
+            }
             alert("Tạo phiếu thành công!");
             location.reload();
         }
@@ -359,22 +423,53 @@
             return v ? decodeURIComponent(v.pop()) : null;
         }
 
-        function setCreatorAndDate(){
+        async function setCreatorAndDate(){
             try{
                 const elDate = document.getElementById('createdAt');
                 if(elDate) elDate.innerText = new Date().toLocaleString('vi-VN');
+
                 const elBy = document.getElementById('createdBy');
-                if(elBy){
-                    // prefer username cookie specifically as requested
-                    const name = _getCookie('username') || _getCookie('displayName') || _getCookie('fullname') || elBy.innerText || 'Auto';
-                    elBy.innerText = name;
+
+                // Try to get current user from backend /me/info first (preferred)
+                try{
+                    const apiRoot = BASE.replace('/storekeeper','');
+                    const res = await fetch(apiRoot + '/me/info', { credentials: 'include' });
+                    if(res.ok){
+                        const j = await res.json();
+                        if(j && j.success && j.data){
+                            const u = j.data;
+                            const display = u.display_name ?? u.DisplayName ?? u.username ?? u.Username ?? u.fullname ?? u.FullName;
+                            if(elBy) elBy.innerText = (display || '').toString() || elBy.innerText || 'Auto';
+                        } else {
+                            // fallback to cookies/local storage
+                            const name = _getCookie('username') || _getCookie('displayName') || _getCookie('fullname') || elBy.innerText || 'Auto';
+                            if(elBy) elBy.innerText = name;
+                        }
+                    } else {
+                        const name = _getCookie('username') || _getCookie('displayName') || _getCookie('fullname') || elBy.innerText || 'Auto';
+                        if(elBy) elBy.innerText = name;
+                    }
+                }catch(e){
+                    const name = _getCookie('username') || _getCookie('displayName') || _getCookie('fullname') || (elBy ? elBy.innerText : null) || 'Auto';
+                    if(elBy) elBy.innerText = name;
                 }
+
+                // try parse customer info from cookie or localStorage if provided by server
+                try{
+                    const raw = _getCookie('customer_info_json') || localStorage.getItem('customer_info_json');
+                    if(raw){
+                        const obj = JSON.parse(raw);
+                        const elCust = document.getElementById('customerInfo');
+                        if(elCust){ elCust.innerText = obj.name ?? obj.contact ?? '-'; elCust.dataset.raw = raw; }
+                    }
+                }catch(e){ /* ignore */ }
             }catch(e){ /* ignore */ }
         }
         /* INIT */
         setCreatorAndDate();
         loadWarehouses();
         loadComponents();
+        loadCustomers();
     </script>
 
 </body>

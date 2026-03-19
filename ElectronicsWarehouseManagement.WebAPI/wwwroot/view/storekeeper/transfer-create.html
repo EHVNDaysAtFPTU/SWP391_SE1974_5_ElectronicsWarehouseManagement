@@ -185,8 +185,6 @@
                     <th>Tên hàng</th>
                     <th>Đơn vị</th>
                     <th>Số lượng</th>
-                    <th>Đơn giá</th>
-                    <th>Thành tiền</th>
                     <th>X</th>
                 </tr>
             </thead>
@@ -194,7 +192,7 @@
         </table>
 
         <div class="total">
-            Tổng tiền: <span id="totalMoney">0</span>
+            Tổng số lượng: <span id="totalMoney">0</span>
         </div>
 
         <button class="save" onclick="submitTransfer()">Lưu Phiếu</button>
@@ -307,19 +305,17 @@
                 const id = c.componentId ?? c.id;
                 const name = c.name ?? c.metadata?.name ?? "No name";
                 const unit = c.unit ?? "N/A";
-                const price = c.unitPrice ?? 0;
                 list.innerHTML += `
 <div class="modal-item"
-onclick="addItem(${id},'${name}',${price},'${unit}')">
+onclick="addItem(${id},'${name}','${unit}')">
 <b>${name}</b><br>
-Đơn vị: ${unit}<br>
-Giá: ${price}
+Đơn vị: ${unit}
 </div>`;
             });
         }
 
         /* ADD ROW */
-        function addItem(id, name, price, unit) {
+        function addItem(id, name, unit) {
             count++;
             const row = `
 <tr>
@@ -327,8 +323,6 @@ Giá: ${price}
 <td data-id="${id}">${name}</td>
 <td>${unit}</td>
 <td><input type="number" value="1" min="1" onchange="calc()"></td>
-<td><input type="number" value="${price}" onchange="calc()"></td>
-<td class="money">${price}</td>
 <td><button class="remove" onclick="removeRow(this)">X</button></td>
 </tr>`;
             document.getElementById("tableBody").insertAdjacentHTML("beforeend", row);
@@ -343,10 +337,7 @@ Giá: ${price}
             let total = 0;
             document.querySelectorAll("#tableBody tr").forEach(r => {
                 const q = parseFloat(r.cells[3].querySelector("input").value) || 0;
-                const p = parseFloat(r.cells[4].querySelector("input").value) || 0;
-                const money = q * p;
-                r.querySelector(".money").innerText = money;
-                total += money;
+                total += q;
             });
             document.getElementById("totalMoney").innerText = total;
         }
@@ -373,8 +364,7 @@ Giá: ${price}
             rows.forEach(r => {
                 payload.components.push({
                     component_id: parseInt(r.cells[1].dataset.id),
-                    quantity: parseInt(r.cells[3].querySelector("input").value),
-                    unit_price: parseFloat(r.cells[4].querySelector("input").value)
+                    quantity: parseInt(r.cells[3].querySelector("input").value)
                 });
             });
 
@@ -397,6 +387,31 @@ Giá: ${price}
         /* INIT */
         loadWarehouses();
         loadComponents();
+
+        // populate creator name and date from backend if available
+        async function setCreatorAndDate(){
+            try{
+                const apiRoot = BASE.replace('/storekeeper','');
+                const res = await fetch(apiRoot + '/me/info', { credentials: 'include' });
+                const elBy = document.getElementById('createdBy');
+                const elAt = document.getElementById('createdAt');
+                if(elAt) elAt.innerText = new Date().toLocaleString('vi-VN');
+                if(!elBy) return;
+                if(res && res.ok){
+                    const j = await res.json().catch(()=>null);
+                    if(j && j.success && j.data){
+                        const u = j.data;
+                        const display = u.display_name ?? u.DisplayName ?? u.username ?? u.Username ?? u.fullname ?? u.FullName;
+                        elBy.innerText = (display || '').toString() || elBy.innerText || 'Auto';
+                        return;
+                    }
+                }
+                // fallback to cookies
+                function _getCookie(name){ const v = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)'); return v ? decodeURIComponent(v.pop()) : null; }
+                elBy.innerText = _getCookie('username') || _getCookie('displayName') || _getCookie('fullname') || elBy.innerText || 'Auto';
+            }catch(e){ console.warn('setCreatorAndDate error', e); }
+        }
+        setCreatorAndDate();
 
     </script>
 

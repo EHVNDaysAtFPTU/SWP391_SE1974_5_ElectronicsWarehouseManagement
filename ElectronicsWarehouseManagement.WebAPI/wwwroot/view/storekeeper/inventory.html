@@ -90,37 +90,19 @@
         /* ================= LOAD ================= */
         async function loadInventory() {
             try {
-                // fetch components and component-bins in parallel, then aggregate stock per component
-                const [compRes, binsRes] = await Promise.all([
-                    api("/storekeeper/components"),
-                    api("/storekeeper/component-bins")
-                ]);
-
+                // fetch components (components response includes aggregated quantity when available)
+                const compRes = await api("/storekeeper/components");
                 if (!compRes.success) {
                     alert(compRes.msg || compRes.message || 'Failed to load components');
                     return;
                 }
-                if (!binsRes.success) {
-                    // if bins endpoint fails, still show components with stock 0
-                    console.warn('component-bins API failed, showing components without stocks');
-                }
-
                 const components = compRes.data || [];
-                const bins = (binsRes.success && binsRes.data) ? binsRes.data : [];
 
-                // aggregate stock per component id from bins
-                const stockMap = {};
-                bins.forEach(b => {
-                    const cid = b.component_id ?? b.componentId ?? b.component?.id ?? b.component?.ID ?? b.ComponentId ?? b.Component?.id;
-                    const qty = Number(b.quantity ?? b.Quantity ?? 0) || 0;
-                    if (!cid) return;
-                    stockMap[cid] = (stockMap[cid] ?? 0) + qty;
-                });
-
-                // attach normalized stock and keep original component info
+                // attach normalized stock using quantity field returned by components API
                 fullData = components.map(c => {
                     const id = c.id ?? c.ID ?? c.componentId ?? c.ComponentId;
-                    return Object.assign({}, c, { _stock: stockMap[id] ?? 0 });
+                    const qty = Number(c.quantity ?? c.Quantity ?? c.TotalQuantity ?? 0) || 0;
+                    return Object.assign({}, c, { _stock: qty });
                 });
 
                 currentPage = 1;

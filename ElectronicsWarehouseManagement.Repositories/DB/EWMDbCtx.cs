@@ -144,6 +144,7 @@ public partial class EWMDbCtx : DbContext
             entity.Property(e => e.CreationTime)
                 .HasColumnType("datetime")
                 .HasColumnName("creation_time");
+            entity.Property(e => e.CustomerId).HasColumnName("customer_id");
             entity.Property(e => e.CreatorId).HasColumnName("creator_id");
             entity.Property(e => e.Description)
                 .IsRequired()

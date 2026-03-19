@@ -5,6 +5,8 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
 {
     public class TransferRequestResp
     {
+        public TransferRequestResp() { }
+
         [JsonPropertyName("id")]
         public int ID { get; set; }
 

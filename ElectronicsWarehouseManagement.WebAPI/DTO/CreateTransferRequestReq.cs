@@ -22,6 +22,14 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
         [JsonIgnore]
         internal TransferType Type { get; set; }
 
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        [JsonPropertyName("customer_info_json")]
+        public CustomerInfo? CustomerInfo { get; set; }
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        [JsonPropertyName("customer_id")]
+        public int? CustomerId { get; set; }
+
         public bool Verify(out string failedReason)
         {
             if (Components.Count == 0)
