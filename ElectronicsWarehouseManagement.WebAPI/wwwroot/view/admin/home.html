@@ -126,7 +126,11 @@
     </div>
 
     <script>
+<<<<<<< HEAD
 
+=======
+        const BASE = "https://localhost:7297/api";
+>>>>>>> FE645
 
         async function api(endpoint, method = "GET", body = null) {
             const opt = {
@@ -135,7 +139,11 @@
                 credentials: "include"
             };
             if (body) opt.body = JSON.stringify(body);
+<<<<<<< HEAD
             const res = await fetch(`/api${endpoint}`, opt);
+=======
+            const res = await fetch(BASE + endpoint, opt);
+>>>>>>> FE645
             return await res.json();
         }
 
@@ -192,7 +200,11 @@
             const password = newPassword.value;
             const roleId = parseInt(newRole.value);
 
+<<<<<<< HEAD
             const r = await api("/admin/users/create", "POST", {
+=======
+            const r = await api("/admin/create-account", "POST", {
+>>>>>>> FE645
                 username, email, password, role_id: roleId
             });
 

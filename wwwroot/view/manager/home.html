@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Manager Dashboard - Electronic Components Warehouse</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            display: flex;
+            background-color: #f4f6f9;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 250px;
+            height: 100vh;
+            background-color: #1e293b;
+            color: white;
+            padding: 20px;
+        }
+
+            .sidebar h2 {
+                text-align: center;
+                margin-bottom: 30px;
+            }
+
+            .sidebar ul {
+                list-style: none;
+            }
+
+                .sidebar ul li {
+                    padding: 12px;
+                    margin: 8px 0;
+                    background: #334155;
+                    border-radius: 6px;
+                    cursor: pointer;
+                    transition: 0.3s;
+                }
+
+                    .sidebar ul li:hover {
+                        background: #475569;
+                    }
+
+                    .sidebar ul li a {
+                        text-decoration: none;
+                        color: white;
+                        display: block;
+                    }
+
+        /* Main content */
+        .main-content {
+            flex: 1;
+            padding: 30px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+            .header h1 {
+                font-size: 24px;
+            }
+
+        .logout-btn {
+            background: #dc2626;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+            .logout-btn:hover {
+                background: #b91c1c;
+            }
+
+        /* Cards */
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+        }
+
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+            transition: 0.3s;
+        }
+
+            .card:hover {
+                transform: translateY(-5px);
+            }
+
+            .card h3 {
+                margin-bottom: 10px;
+                color: #1e293b;
+            }
+
+            .card p {
+                color: #555;
+                font-size: 14px;
+            }
+
+            .card button {
+                margin-top: 15px;
+                padding: 8px 12px;
+                border: none;
+                background: #2563eb;
+                color: white;
+                border-radius: 6px;
+                cursor: pointer;
+            }
+
+                .card button:hover {
+                    background: #1d4ed8;
+                }
+
+        /* Footer */
+        footer {
+            margin-top: 40px;
+            text-align: center;
+            color: #777;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <h2>Manager Panel</h2>
+        <ul>
+            <li><a href="#">View Inventory</a></li>
+            <li><a href="#">View Transfer Requests</a></li>
+            <li><a href="#">View Receipts</a></li>
+            <li><a href="#">Approve GR</a></li>
+            <li><a href="#">Reports</a></li>
+            <li><a href="#">Export Report</a></li>
+        </ul>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <div class="header">
+            <h1>Electronic Components Warehouse Management</h1>
+            <button class="logout-btn">Logout</button>
+        </div>
+
+        <div class="cards">
+
+            <div class="card">
+                <h3>Inventory</h3>
+                <p>View inventory list and check product details.</p>
+                <button>View Inventory</button>
+            </div>
+
+            <div class="card">
+                <h3>Transfer Requests</h3>
+                <p>Review and approve transfer requests.</p>
+                <button>View Requests</button>
+            </div>
+
+            <div class="card">
+                <h3>Receipts (GR)</h3>
+                <p>View receipt list and approve Goods Receipt.</p>
+                <button>View Receipts</button>
+            </div>
+
+            <div class="card">
+                <h3>Reports</h3>
+                <p>View, filter and export warehouse reports.</p>
+                <button>View Reports</button>
+            </div>
+
+        </div>
+
+        <footer>
+            © 2026 Electronic Components Warehouse Management System
+        </footer>
+    </div>
+
+</body>
+</html>

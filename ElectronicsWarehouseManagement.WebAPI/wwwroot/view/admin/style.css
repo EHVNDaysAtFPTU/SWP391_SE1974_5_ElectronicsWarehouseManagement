@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 ﻿/* ===== RESET ===== */
+=======
+/* ===== RESET ===== */
+>>>>>>> FE645
 * {
     margin: 0;
     padding: 0;
@@ -422,7 +426,10 @@ td button {
     border-radius: 50%;
     object-fit: cover;
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> FE645
 .user-menu {
     position: absolute;
     left: 0; /* canh theo avatar */
@@ -442,7 +449,10 @@ td button {
         .user-menu div:hover {
             background: rgba(255,255,255,0.1);
         }
+<<<<<<< HEAD
 
+=======
+>>>>>>> FE645
 .menu {
     margin-top: 40px;
 }
@@ -451,7 +461,13 @@ td button {
     padding: 10px 0;
     cursor: pointer;
 }
+<<<<<<< HEAD
 
 .hidden {
     display: none;
 }
+=======
+.hidden {
+    display: none;
+}
+>>>>>>> FE645
