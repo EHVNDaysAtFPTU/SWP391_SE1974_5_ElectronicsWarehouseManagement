@@ -14,7 +14,7 @@ internal class AuthService : IAuthService
 {
     readonly EWMDbCtx _dbCtx;
 
-    List<int> loggedInUsers = [];
+    static List<int> loggedInUsers = [];
 
     public AuthService(EWMDbCtx dbCtx)
     {
