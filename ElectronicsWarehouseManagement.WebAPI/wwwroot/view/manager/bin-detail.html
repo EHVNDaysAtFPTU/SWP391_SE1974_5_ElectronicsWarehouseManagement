@@ -44,7 +44,7 @@
                 <a href="profile.html">My Profile</a>
                 <a href="account.html">Settings</a>
                 <hr class="my-1">
-                <a href="logout.html" class="text-danger">Logout</a>
+                <a href="#" onclick="logout()" class="text-danger">Logout</a>
             </div>
         </div>
     </header>
@@ -60,7 +60,7 @@
             </div>
 
             <!-- Bin Header Info -->
-            <div id="binHeader">
+            <div id="binInfo">
                 <!-- JS content -->
             </div>
 
@@ -73,14 +73,14 @@
                             <thead class="table-light">
                                 <tr>
                                     <th class="ps-4">Component</th>
+                                    <th>Image</th>
                                     <th>Unit</th>
                                     <th>Price</th>
                                     <th>Quantity</th>
-                                    <th>Minimum</th>
-                                    <th class="text-end pe-4">Status</th>
+                                    <th>Total</th>
                                 </tr>
                             </thead>
-                            <tbody id="componentTable">
+                            <tbody id="componentList">
                                 <!-- JS content -->
                             </tbody>
                         </table>

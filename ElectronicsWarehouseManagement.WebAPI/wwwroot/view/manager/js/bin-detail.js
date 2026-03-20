@@ -27,7 +27,7 @@ async function loadBinDetail() {
             <p class="mt-2 text-muted small">Loading bin details...</p>
         </div>
     `;
-    listContainer.innerHTML = '<tr><td colspan="3" class="text-center py-4"><div class="spinner-border spinner-border-sm text-secondary"></div></td></tr>';
+    listContainer.innerHTML = '<tr><td colspan="6"> class="text-center py-4"><div class="spinner-border spinner-border-sm text-secondary"></div></td></tr>';
 
     try {
         const result = await apiFetch(`/api/manager/get-bin/${binId}?fullInfo=true`);
@@ -111,31 +111,67 @@ async function renderBinComponents(binComponents) {
         const meta = comp.metadata || {};
         
         row.innerHTML = `
-            <td class="align-middle fw-bold">#${comp.id}</td>
-            <td class="align-middle py-3">
-                <div class="d-flex align-items-start">
-                    ${meta.image_url 
-                        ? `<img src="${meta.image_url}" class="rounded shadow-sm border me-3" style="width: 60px; height: 60px; object-fit: cover;">`
-                        : '<div class="rounded bg-light border me-3 d-flex align-items-center justify-content-center text-muted" style="width: 60px; height: 60px;"><small>No image</small></div>'}
-                    <div>
-                        <h6 class="mb-1 fw-bold">${meta.name || "Unnamed Component"}</h6>
-                        <p class="small text-muted mb-2 line-clamp-2">${meta.desc || "No description provided."}</p>
-                        <div class="d-flex flex-wrap gap-2">
-                            <span class="badge bg-light text-dark border rounded-pill">Mfr: ${meta.manufacturer || "N/A"}</span>
-                            <span class="badge bg-light text-primary border rounded-pill">${formatCurrency(comp.unit_price || 0)}</span>
-                            ${meta.datasheet_url ? `<a href="${meta.datasheet_url}" target="_blank" class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 text-decoration-none rounded-pill">Datasheet</a>` : ''}
-                        </div>
-                    </div>
-                </div>
-            </td>
-            <td class="align-middle">
-                <div class="d-inline-block px-3 py-1 rounded-pill bg-dark text-white fw-bold">
-                    ${bc.quantity} <small class="fw-normal opacity-75">${comp.unit || 'units'}</small>
-                </div>
-            </td>
-        `;
+  <!-- Component -->
+  <td class="align-middle py-3">
+    <div>
+      <h6 class="mb-1 fw-bold">${meta.name || "Unnamed Component"}</h6>
+      <p class="small text-muted mb-2">${meta.desc || "No description provided."}</p>
+      <span class="badge bg-light text-dark border rounded-pill">
+        Mfr: ${meta.manufacturer || "N/A"}
+      </span>
+      ${meta.datasheet_url
+                ? `<a href="${meta.datasheet_url}" target="_blank"
+              class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 text-decoration-none rounded-pill">
+              Datasheet
+            </a>`
+                : ''
+            }
+    </div>
+  </td>
+
+  <!-- Image -->
+  <td class="align-middle">
+    ${meta.image_url
+                ? `<img src="${meta.image_url}" class="rounded shadow-sm border"
+             style="width: 80px; height: 80px; object-fit: cover;">`
+                : `<div class="rounded bg-light border d-flex align-items-center justify-content-center text-muted"
+             style="width: 80px; height: 80px;">
+             <small>No image</small>
+           </div>`
+            }
+  </td>
+
+  <!-- Unit -->
+  <td class="align-middle">
+    <span class="badge bg-light text-primary border rounded-pill">
+      ${comp.unit || "N/A"}
+    </span>
+  </td>
+
+  <!-- Price -->
+  <td class="align-middle">
+    <span class="badge bg-light text-primary border rounded-pill">
+      ${formatCurrency(comp.unit_price || 0)}
+    </span>
+  </td>
+
+  <!-- Quantity -->
+  <td class="align-middle">
+    <span class="badge bg-dark text-white rounded-pill">
+      ${bc.quantity || 0}
+    </span>
+  </td>
+
+  <!-- Total -->
+  <td class="align-middle">
+    <div class="fw-bold text-success">
+      ${formatCurrency((comp.unit_price || 0) * (bc.quantity || 0))}
+    </div>
+  </td>
+`;
         container.appendChild(row);
     });
+
 }
 
 function getBinStatusBadge(status) {

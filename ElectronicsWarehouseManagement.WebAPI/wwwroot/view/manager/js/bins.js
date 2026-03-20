@@ -1,124 +1,111 @@
-/**
- * Bin List JS
- */
+﻿let currentPage = 1;
+const pageSize = 5;
 
-let warehouseId = null;
-
-document.addEventListener("DOMContentLoaded", function () {
-    const params = new URLSearchParams(window.location.search);
-    warehouseId = params.get("warehouseId");
-
-    if (!warehouseId) {
-        showMessage("Warehouse ID not found in URL", "danger");
-        return;
-    }
-
+document.addEventListener("DOMContentLoaded", () => {
     loadBins();
 });
 
-function goBack() {
-    window.location.href = "warehouses.html";
-}
+async function loadBins(page = 1) {
+    const container = document.getElementById("binTable");
 
-async function loadBins() {
-    const container = document.getElementById("binList");
-    // Skeleton-like loading
+    // loading
     container.innerHTML = `
-        <div class="text-center py-5">
-            <div class="spinner-border text-primary" role="status"></div>
-            <p class="mt-2 text-muted">Fetching bins...</p>
-        </div>
+        <tr>
+            <td colspan="5" class="text-center py-4">
+                <div class="spinner-border spinner-border-sm"></div>
+            </td>
+        </tr>
     `;
 
     try {
-        const result = await apiFetch(`/api/manager/get-warehouse-bins/${warehouseId}?pageNumber=1&pageSize=100&fullInfo=true`);
+        const res = await apiFetch(`/api/manager/get-bins?pageNumber=${page}&pageSize=${pageSize}`);
 
-        if (!result.success) {
-            showMessage(result.msg || "Load bins failed", "danger");
+        if (!res.success) {
+            container.innerHTML = `
+                <tr>
+                    <td colspan="5" class="text-center text-danger py-4">
+                        Failed to load bins
+                    </td>
+                </tr>
+            `;
             return;
         }
 
-        renderBins(result.data.data);
-    } catch (error) {
-        showMessage("Error loading bins: " + error.message, "danger");
+        const data = res.data;
+
+        renderBins(data.data);
+        renderPagination(data);
+
+        currentPage = data.pageNumber;
+
+    } catch (err) {
+        console.error(err);
     }
 }
 
 function renderBins(bins) {
-    const container = document.getElementById("binList");
+    const container = document.getElementById("binTable");
     container.innerHTML = "";
 
     if (!bins || bins.length === 0) {
         container.innerHTML = `
-            <div class="text-center py-5">
-                <div class="mb-3 text-muted" style="font-size: 3rem;">📂</div>
-                <h5 class="text-secondary">No bins found in this warehouse</h5>
-                <p class="small text-muted">Warehouse ID: ${warehouseId}</p>
-                <button class="btn btn-sm btn-outline-primary rounded-pill mt-2" onclick="goBack()">Return to Warehouses</button>
-            </div>
+            <tr>
+                <td colspan="5" class="text-center py-4 text-muted">
+                    No bins found
+                </td>
+            </tr>
         `;
         return;
     }
 
-    const table = document.createElement("table");
-    table.className = "table table-hover mb-0";
-    table.innerHTML = `
-        <thead>
-            <tr>
-                <th class="ps-4">Bin ID</th>
-                <th>Location String</th>
-                <th>Usage Status</th>
-                <th>Current Items</th>
-                <th class="text-end pe-4">Action</th>
-            </tr>
-        </thead>
-        <tbody></tbody>
-    `;
-    
-    const tbody = table.querySelector("tbody");
-    
-    bins.forEach(b => {
+    bins.forEach(bin => {
         const row = document.createElement("tr");
+
         row.innerHTML = `
-            <td class="ps-4 fw-bold align-middle">${b.id}</td>
-            <td class="align-middle fw-medium">${b.location_in_warehouse || "-"}</td>
-            <td class="align-middle">${getBinStatusBadge(b.status)}</td>
-            <td class="align-middle">
-                <span class="badge bg-light text-dark border rounded-pill px-3">
-                    ${b.components ? b.components.length : 0} items
-                </span>
-            </td>
-            <td class="text-end pe-4 align-middle">
-                <button class="btn btn-sm btn-outline-dark rounded-pill px-3" onclick="viewBinDetail(${b.id})">
-                    Explore Bin
-                </button>
+            <td>#${bin.id}</td>
+            <td>${bin.location_in_warehouse || "N/A"}</td>
+            <td>${getStatusBadge(bin.status)}</td>
+            <td>${bin.warehouse_id}</td>
+            <td class="text-end">
+                <a href="bin-detail.html?binId=${bin.id}" 
+                   class="btn btn-sm btn-primary">
+                   View
+                </a>
             </td>
         `;
-        tbody.appendChild(row);
-    });
 
-    container.appendChild(table);
+        container.appendChild(row);
+    });
 }
 
-function getBinStatusBadge(status) {
+function getStatusBadge(status) {
     switch (status) {
-        case 0: return '<span class="badge bg-secondary rounded-pill px-3">Empty</span>';
-        case 1: return '<span class="badge bg-success rounded-pill px-3">In Use</span>';
-        case 2: return '<span class="badge bg-danger rounded-pill px-3">Disabled</span>';
-        default: return `<span class="badge bg-light text-dark rounded-pill px-3">Status ${status}</span>`;
+        case 0:
+            return '<span class="badge bg-secondary">Empty</span>';
+        case 1:
+            return '<span class="badge bg-success">In Use</span>';
+        case 2:
+            return '<span class="badge bg-danger">Disabled</span>';
+        default:
+            return '<span class="badge bg-light text-dark">Unknown</span>';
     }
 }
 
-function viewBinDetail(id) {
-    window.location.href = `bin-detail.html?binId=${id}`;
+function renderPagination(data) {
+    document.getElementById("pageInfo").innerText =
+        `Page ${data.pageNumber} / ${data.totalPages}`;
+
+    document.getElementById("prevBtn").disabled = data.pageNumber === 1;
+    document.getElementById("nextBtn").disabled = data.pageNumber === data.totalPages;
 }
 
-function showMessage(msg, type = "info") {
-    const container = document.getElementById("binList");
-    container.innerHTML = `
-        <div class="alert alert-${type} m-4 shadow-sm" role="alert">
-            <h5 class="alert-heading">Notice</h5>
-            <p class="mb-0">${msg}</p>
-        </div>
-    `;
-}
+// Events
+document.getElementById("prevBtn").onclick = () => {
+    if (currentPage > 1) {
+        loadBins(currentPage - 1);
+    }
+};
+
+document.getElementById("nextBtn").onclick = () => {
+    loadBins(currentPage + 1);
+};

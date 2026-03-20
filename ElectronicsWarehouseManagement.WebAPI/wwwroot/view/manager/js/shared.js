@@ -59,3 +59,27 @@ async function apiFetch(url, options = {}) {
         throw error;
     }
 }
+
+function logout() {
+    if (!confirm("Are you sure you want to logout?")) return;
+
+    apiFetch("/api/auth/logout", {
+        method: "POST"
+    })
+        .then(res => {
+            if (res.success) {
+                // Xóa local data nếu có
+                localStorage.clear();
+                sessionStorage.clear();
+
+                // Redirect về login
+                window.location.href = "login.html";
+            } else {
+                alert(res.msg || "Logout failed");
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert("Error during logout");
+        });
+}

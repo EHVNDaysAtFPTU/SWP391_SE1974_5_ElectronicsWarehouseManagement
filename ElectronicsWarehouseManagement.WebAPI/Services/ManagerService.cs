@@ -32,6 +32,12 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
         Task<ApiResult<PagedResult<WarehouseResp>>> GetWareHouseListAsync(PagingRequest request);
         // Crud 
         Task<ApiResult> PostTransferDecisionAsync(int transferId, TransferDecisionType decision, int? approverId);
+        Task<ApiResult<ComponentResp>> CreateComponent(CreateComponentReq request);
+        Task<ApiResult<ComponentResp>> UpdateComponent();
+        Task<ApiResult<BinResp>> CreateBin();
+        Task<ApiResult<BinResp>> UpdateBin();
+        Task<ApiResult<WarehouseResp>> CreateWareHouse();
+        Task<ApiResult<WarehouseResp>> UpdateWareHouse();
 
         // Dashboard
         Task<ApiResult<DashboardSummaryResp>> GetSummaryAsync();
@@ -744,6 +750,36 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             }
 
             doc.Add(table);
+        }
+
+        public Task<ApiResult<ComponentResp>> CreateComponent(CreateComponentReq request)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<ApiResult<ComponentResp>> UpdateComponent()
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<ApiResult<BinResp>> CreateBin()
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<ApiResult<BinResp>> UpdateBin()
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<ApiResult<WarehouseResp>> CreateWareHouse()
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<ApiResult<WarehouseResp>> UpdateWareHouse()
+        {
+            throw new NotImplementedException();
         }
     }
 }

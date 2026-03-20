@@ -46,7 +46,7 @@ function renderWarehouseTable(warehouses) {
                 <button class="btn btn-sm btn-outline-primary rounded-pill px-3 me-2" onclick="toggleWarehouseDetail(${JSON.stringify(w).replace(/"/g, '&quot;')}, this)">
                     View Detail
                 </button>
-                <button class="btn btn-sm btn-primary rounded-pill px-3" onclick="window.location.href='bins.html?warehouseId=${w.id}'">
+                <button class="btn btn-sm btn-primary rounded-pill px-3" onclick="window.location.href='warehouse-bins.html?warehouseId=${w.id}'">
                     View Bins
                 </button>
             </td>
