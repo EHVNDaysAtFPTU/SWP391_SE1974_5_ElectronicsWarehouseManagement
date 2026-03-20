@@ -12,7 +12,6 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
     public class LoginCtrl : ControllerBase
     {
         readonly IAuthService _authService;
-
         private readonly ILogger<LoginCtrl> _logger;
 
         public LoginCtrl(IAuthService authService, ILogger<LoginCtrl> logger)
@@ -61,6 +60,28 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
                 await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
                 return Ok(result);
             }
+            return BadRequest(result);
+        }
+
+        [HttpPost("forgot-password")]
+        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordReq request)
+        {
+            var result = await _authService.ForgotPasswordAsync(request, $"{Request.Scheme}://{Request.Host}");
+            if (result.Success)
+                return Ok(result);
+            if (result.ResultCode == ApiResultCode.NotFound)
+                return NotFound(result);
+            return BadRequest(result);
+        }
+
+        [HttpPost("reset-password")]
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordReq request)
+        {
+            var result = await _authService.ResetPasswordAsync(request);
+            if (result.Success)
+                return Ok(result);
+            if (result.ResultCode == ApiResultCode.NotFound)
+                return NotFound(result);
             return BadRequest(result);
         }
     }
