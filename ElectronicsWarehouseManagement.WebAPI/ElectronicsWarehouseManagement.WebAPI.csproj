@@ -15,4 +15,7 @@
     <ProjectReference Include="..\ElectronicsWarehouseManagement.Services\ElectronicsWarehouseManagement.Services.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="ElectronicsWarehouseManagement.Tests" />
+  </ItemGroup>
 </Project>

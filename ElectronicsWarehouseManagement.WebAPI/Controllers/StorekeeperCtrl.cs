@@ -111,6 +111,15 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
                 return Ok(result);
             return BadRequest(result);
         }
+        
+        [HttpGet("warehouses/{warehouseId:int}/components")]
+        public async Task<IActionResult> GetWarehouseComponents([FromRoute] int warehouseId)
+        {
+            var result = await _storekeeperService.GetComponentsInWarehouseAsync(warehouseId);
+            if (result.Success)
+                return Ok(result);
+            return BadRequest(result);
+        }
 
         [HttpGet("bins/create")]
         public async Task<IActionResult> CreateBin([FromBody] CreateBinReq request)
