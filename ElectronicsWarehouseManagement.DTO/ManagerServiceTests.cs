@@ -90,7 +90,7 @@ namespace ElectronicsWarehouseManagement.Tests
                 StatusInt = 1
             };
             _dbCtx.Users.Add(user);
-            _dbCtx.SaveChanges();
+            _dbCtx.SaveChanges(); 
 
 
 
@@ -120,16 +120,16 @@ namespace ElectronicsWarehouseManagement.Tests
         // TEST: GetComponentAsync
         // =============================
 
-        //[Fact]
-        //public async Task GetComponentAsync_ValidId_ReturnSuccessAndCorrectData2()
-        //{
-        //    var componentId = 2;
-        //    var manufracture = "TestComp2";
-        //    var category1 = "Resistor";
-        //    var result = await _service.GetComponentAsync(componentId, true);
-        //    Assert.NotNull(result.Data);
-        //    Assert.Equal(category1, result.Data.Categories.First().Name);
-        //}
+        [Fact]
+        public async Task GetComponentAsync_ValidId_ReturnSuccessAndCorrectData2()
+        {
+            var componentId = 2;
+            var manufracture = "TestComp2";
+            var category1 = "Resistor";
+            var result = await _service.GetComponentAsync(componentId, true);
+            Assert.NotNull(result.Data);
+            Assert.Equal(category1, result.Data.Categories.First().Name);
+        }
 
         [Fact]
         public async Task GetComponentAsync_ValidId_ReturnsSuccessAndCorrectData()

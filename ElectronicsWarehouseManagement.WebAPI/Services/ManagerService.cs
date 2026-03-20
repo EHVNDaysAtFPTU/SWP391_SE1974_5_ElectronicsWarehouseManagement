@@ -7,6 +7,7 @@ using iText.Layout;
 using iText.Layout.Element;
 using iText.Layout.Properties;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using System.Linq;
 using System.Security.Claims;
 using System.Security.Cryptography;
@@ -55,6 +56,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             var component = await _dbCtx.Components
                .AsNoTracking()
                .Include(i=> i.Categories)
+               .Include(i=> i.ComponentBins)
                .Where(i => i.ComponentId == componentId)
                .Select(i => new ComponentResp(i, fullInfo))
                .FirstOrDefaultAsync();
@@ -91,10 +93,16 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             }
 
                 int totalCount = await query.CountAsync();
-                if (totalCount == 0)
+            if (totalCount == 0)
+            {
+                return new ApiResult<PagedResult<ComponentResp>>(new PagedResult<ComponentResp>
                 {
-                    return new ApiResult<PagedResult<ComponentResp>>(ApiResultCode.NotFound);
-                }
+                    data = new List<ComponentResp>(),
+                    TotalCount = 0,
+                    PageNumber = request.PageNumber,
+                    PageSize = request.PageSize
+                });
+            }
 
                 var data = await query.ApplyPaging(request).Select(i => new ComponentResp(i, false)).ToListAsync();
 
@@ -166,10 +174,17 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
                         query = query.ApplySort(request.SortDirection, c => c.RequestId);
                         break;
                 }
+            }
             int totalCount = await query.CountAsync();
             if (totalCount == 0)
             {
-                return new ApiResult<PagedResult<TransferRequestResp>>(ApiResultCode.NotFound);
+                return new ApiResult<PagedResult<TransferRequestResp>>(new PagedResult<TransferRequestResp>
+                {
+                    data = new List<TransferRequestResp>(),
+                    TotalCount = 0,
+                    PageNumber = request.PageNumber,
+                    PageSize = request.PageSize
+                });
             }
             var data = await query
                 .ApplyPaging(request)
@@ -311,7 +326,13 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             var totalCount = await query.CountAsync();
             if (totalCount == 0)
             {
-                return new ApiResult<PagedResult<WarehouseResp>>(ApiResultCode.NotFound);
+                return new ApiResult<PagedResult<WarehouseResp>>(new PagedResult<WarehouseResp>
+                {
+                    data = new List<WarehouseResp>(),
+                    TotalCount = 0,
+                    PageNumber = request.PageNumber,
+                    PageSize = request.PageSize
+                });
             }
 
             var data = await query

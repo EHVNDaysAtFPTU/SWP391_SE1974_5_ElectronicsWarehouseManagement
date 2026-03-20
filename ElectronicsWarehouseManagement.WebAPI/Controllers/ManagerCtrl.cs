@@ -228,7 +228,6 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
                 return null;
             }
             return result;
-
         }
 
 
