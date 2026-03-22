@@ -37,6 +37,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
         Task<ApiResult<TransferRequestResp>> CreateTransferRequestAsync(CreateTransferRequestReq request, TransferType type, int creatorId);
         Task<ApiResult<TransferRequestResp>> ConfirmTransferRequestAsync(ConfirmTransferRequestReq request, int approverId);
         Task<ApiResult<List<Repositories.Entities.CustomerInfo>>> GetCustomersAsync();
+        Task<ApiResult<List<ComponentBinResp>>> GetComponentBinsByBinIdAsync(int binId);
 
         Task<ApiResult<int>> GetWarehouseCountAsync();
         Task<ApiResult<int>> GetBinCountAsync();
@@ -44,15 +45,16 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
         Task<ApiResult<int>> GetTransferRequestCountAsync(int creatorId);
     }
 
+
     public class StorekeeperService : IStorekeeperService
     {
         readonly EWMDbCtx _dbCtx;
         readonly ILogger<StorekeeperService> _logger;
 
-        public StorekeeperService(EWMDbCtx dbCtx)
+        public StorekeeperService(EWMDbCtx dbCtx, ILogger<StorekeeperService> logger)
         {
             _dbCtx = dbCtx;
-            _logger = null; // Placeholder for logger initialization
+            _logger = logger;
         }
 
         public async Task<ApiResult<List<Repositories.Entities.CustomerInfo>>> GetCustomersAsync()
@@ -157,6 +159,16 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
                 .ToListAsync();
             var resp = components.Select(c => new ComponentResp(c, true)).ToList();
             return new ApiResult<List<ComponentResp>>(resp);
+        }
+
+        public async Task<ApiResult<List<ComponentBinResp>>> GetComponentBinsByBinIdAsync(int binId)
+        {
+            // Ensure Component navigation property is loaded so ComponentResp receives metadata
+            var bins = await _dbCtx.ComponentBins.AsNoTracking()
+                .Where(cb => cb.BinId == binId)
+                .Include(cb => cb.Component)
+                .Select(cb => new ComponentBinResp(cb, true)).ToListAsync();
+            return new ApiResult<List<ComponentBinResp>>(bins);
         }
 
         public async Task<ApiResult<ComponentResp>> GetComponentAsync(int componentId)
@@ -422,8 +434,23 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
                 var component = await _dbCtx.Components.FindAsync(componentReq.ComponentId);
                 if (component is null)
                     return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Component with ID '{componentReq.ComponentId}' does not exist.");
-                if (type == TransferType.Outbound && componentReq.Quantity > component.TotalQuantity)
-                    return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Requested quantity for component with ID '{componentReq.ComponentId}' exceeds available quantity.");
+                // If outbound and a source bin is specified, validate requested qty against that bin's quantity.
+                if (type == TransferType.Outbound)
+                {
+                    if (request.BinFromId.HasValue)
+                    {
+                        var cb = await _dbCtx.ComponentBins.FirstOrDefaultAsync(x => x.BinId == request.BinFromId.Value && x.ComponentId == componentReq.ComponentId);
+                        var availInBin = cb?.Quantity ?? 0;
+                        if (componentReq.Quantity > availInBin)
+                        {
+                            _logger?.LogWarning("Requested qty {Requested} for component {CompId} exceeds bin {BinId} qty {Avail}", componentReq.Quantity, componentReq.ComponentId, request.BinFromId.Value, availInBin);
+                            return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Requested quantity {componentReq.Quantity} for component ID '{componentReq.ComponentId}' exceeds available in bin {request.BinFromId.Value} ({availInBin}).");
+                        }
+                    }
+                    // fallback/or additional check: ensure total quantity available across bins is sufficient
+                    if (componentReq.Quantity > component.TotalQuantity)
+                        return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Requested quantity {componentReq.Quantity} for component ID '{componentReq.ComponentId}' exceeds total available ({component.TotalQuantity}).");
+                }
                 TransferRequestComponent item = new TransferRequestComponent()
                 {
                     ComponentId = componentReq.ComponentId,

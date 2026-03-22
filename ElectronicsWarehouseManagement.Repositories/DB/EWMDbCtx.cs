@@ -149,9 +149,8 @@ public partial class EWMDbCtx : DbContext
             entity.Property(e => e.Description)
                 .IsRequired()
                 .HasColumnName("description");
-            entity.Property(e => e.CustomerInfoJson)
-                .IsRequired()
-                .HasColumnName("customer_info_json");
+            // Legacy JSON column may not exist in newer schema; do not map it to avoid DB errors.
+            entity.Ignore(e => e.CustomerInfoJson);
             entity.Property(e => e.ExecutionTime)
                 .HasColumnType("datetime")
                 .HasColumnName("execution_time");

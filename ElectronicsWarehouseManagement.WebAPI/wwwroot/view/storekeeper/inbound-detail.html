@@ -227,20 +227,30 @@
             if (!confirm('Xác nhận đơn?')) return;
 
             const comps = getComponents(transfer);
-            const payload = {
-                request_id: transfer.id,
-                bins: [{
-                    bin_id: transfer.bin_to_id ?? transfer.bin_from_id,
-                    components: comps.map(c => ({ component_id: c.component_id ?? c.componentId ?? c.component?.id, quantity: c.quantity ?? c.qty ?? c.Quantity }))
-                }]
-            };
+            const requestId = transfer.id ?? transfer.ID ?? transfer.request_id ?? transfer.RequestId ?? 0;
+            // Build bins_to from related transfers (or single transfer)
+            const related = transfer._related ?? [transfer];
+            const binsTo = [];
+            for (const t of related) {
+                const binToId = t.bin_to_id ?? t.binToId ?? t.bin_to?.id ?? t.bin_to?.ID ?? null;
+                const compsT = getComponents(t) || [];
+                const compsPayload = compsT.map(c => ({ component_id: c.component_id ?? c.componentId ?? c.component?.id, quantity: c.quantity ?? c.qty ?? c.Quantity }));
+                if (binToId && compsPayload.length) binsTo.push({ bin_id: binToId, components: compsPayload });
+            }
+            const payload = { request_id: requestId, bins_to: binsTo.length ? binsTo : undefined };
 
-            const res = await fetch(BASE + '/storekeeper/confirm-transfer', {
-                method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify(payload)
+            const res = await fetch(BASE + '/storekeeper/transfers/confirm', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(payload)
             });
-            const json = await res.json();
-            if (json.success) { alert('Confirmed'); location.href='inbound-list.html'; }
-            else alert(json.message || 'Error');
+            if (!res.ok) {
+                const txt = await res.text().catch(()=>null);
+                console.error('confirm error', txt || res.statusText);
+                return alert('Tạo thất bại: ' + (txt || res.statusText));
+            }
+            let json;
+            try { json = await res.json(); } catch (e) { return alert('Server returned invalid response'); }
+            if (json?.success) { alert('Confirmed'); location.href='inbound-list.html'; }
+            else alert(json?.msg || json?.message || 'Error');
         }
 
         load();

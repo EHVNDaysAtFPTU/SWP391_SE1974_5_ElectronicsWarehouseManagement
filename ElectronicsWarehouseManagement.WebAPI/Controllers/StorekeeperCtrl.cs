@@ -199,6 +199,15 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
             return BadRequest(result);
         }
 
+        // Debug: get component bins by bin id
+        [HttpGet("debug/bin/{binId:int}")]
+        public async Task<IActionResult> DebugGetComponentBins([FromRoute] int binId)
+        {
+            var result = await _storekeeperService.GetComponentBinsByBinIdAsync(binId);
+            if (result.Success) return Ok(result);
+            return BadRequest(result);
+        }
+
         [HttpPost("transfers/outbound/create")]
         public async Task<IActionResult> CreateOutboundRequest([FromBody] CreateTransferRequestReq request)
         {

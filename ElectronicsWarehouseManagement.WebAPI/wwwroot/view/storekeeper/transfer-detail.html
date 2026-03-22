@@ -188,10 +188,33 @@
         async function confirmOrder() {
             if (!confirm('Confirm this transfer?')) return;
             const comps = getComponents(transfer);
-            const payload = { request_id: transfer.id, bins: [{ bin_id: transfer.bin_from_id ?? transfer.bin_to_id, components: comps.map(c=>({ component_id: c.component_id ?? c.componentId ?? c.component?.id, quantity: c.quantity ?? c.qty ?? c.Quantity })) }] };
-            const res = await fetch(BASE + '/storekeeper/confirm-transfer', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include', body: JSON.stringify(payload) });
-            const json = await res.json();
-            if (json.success) { alert('Confirmed'); location.href='transfer-list.html'; } else alert(json.message || 'Error');
+            // For internal transfer confirmation, send both bins_from and bins_to if available
+            // Build bins_from and bins_to from transfer details
+            const related = transfer._related ?? [transfer];
+            const binsFrom = [];
+            const binsTo = [];
+            for (const t of related) {
+                const binFromId = t.bin_from_id ?? t.binFromId ?? t.bin_from?.id ?? t.bin_from?.ID;
+                const binToId = t.bin_to_id ?? t.binToId ?? t.bin_to?.id ?? t.bin_to?.ID;
+                const comps = getComponents(t) || [];
+                const compsPayload = comps.map(c => ({ component_id: c.component_id ?? c.componentId ?? c.component?.id, quantity: c.quantity ?? c.qty ?? c.Quantity }));
+                if (binFromId && compsPayload.length > 0) binsFrom.push({ bin_id: binFromId, components: compsPayload });
+                if (binToId && compsPayload.length > 0) binsTo.push({ bin_id: binToId, components: compsPayload });
+            }
+            const payload = { request_id: transfer.id, bins_from: binsFrom.length ? binsFrom : undefined, bins_to: binsTo.length ? binsTo : undefined };
+
+            const res = await fetch(BASE + '/storekeeper/transfers/confirm', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(payload)
+            });
+            if (!res.ok) {
+                const txt = await res.text().catch(()=>null);
+                console.error('confirm error', txt || res.statusText);
+                return alert('Tạo thất bại: ' + (txt || res.statusText));
+            }
+            let json;
+            try { json = await res.json(); } catch(e) { return alert('Server returned invalid response'); }
+            if (json?.success) { alert('Confirmed'); location.href='transfer-list.html'; }
+            else alert(json?.msg || json?.message || 'Error');
         }
 
         load();

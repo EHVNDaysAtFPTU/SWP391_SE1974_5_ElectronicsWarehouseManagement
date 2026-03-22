@@ -123,7 +123,9 @@
             const outboundListSummary = (result.data || []).filter(x => x.type === 2);
             const warehouseCache = {};
 
-            const outboundList = await Promise.all(outboundListSummary.map(async t0 => {
+            const q = (document.getElementById('q')?.value || '').toString().toLowerCase();
+            // fetch full details for each outbound transfer
+            const detailedTransfers = await Promise.all(outboundListSummary.map(async t0 => {
                 try {
                     // always try to fetch full transfer detail first (contains components and bin info)
                     const dres = await fetch(BASE + "/storekeeper/transfers/" + (getId(t0)), { credentials: 'include' });
@@ -197,32 +199,56 @@
                     return t0;
                 }
             }));
+            // Group transfers that belong to the same outbound: use description + minute-bucket of creation time + creator
+            const groups = {};
+            detailedTransfers.forEach(t => {
+                const desc = (t.description ?? '').toString();
+                const createdTs = Date.parse(t.creation_date ?? t.creationDate ?? t.creationTime ?? '');
+                const dateBucket = isNaN(createdTs) ? 'na' : new Date(createdTs).toISOString().slice(0,10); // group by date
+                const creator = (t.creator_id ?? t.CreatorId ?? t.creator ?? t.Creator ?? '').toString();
+                const key = desc + '||' + dateBucket + '||' + creator;
+                if (!groups[key]) groups[key] = [];
+                groups[key].push(t);
+            });
 
             let html = "";
+            Object.values(groups).forEach(group => {
+                // aggregate bins and warehouses
+                const bins = new Set();
+                const warehouses = new Set();
+                let totalItems = 0;
+                const statuses = new Set();
+                const ids = [];
+                group.forEach(o => {
+                    ids.push(getId(o));
+                    const binFrom = o['bin_from'] ?? o.bin_from ?? null;
+                    const warehouseName = o._fromWarehouseName ?? (binFrom?.warehouse?.name ?? binFrom?.warehouse?.warehouseName ?? binFrom?.warehouse) ?? (o.warehouse?.name ?? o.warehouse?.warehouseName ?? o.warehouse) ?? '-';
+                    warehouses.add(warehouseName);
+                    const binName = binFrom?.location_in_warehouse ?? binFrom?.locationInWarehouse ?? binFrom?.binCode ?? o.location_in_warehouse ?? o.locationInWarehouse ?? '-';
+                    bins.add(binName);
+                    const comps = getComponents(o);
+                    totalItems += comps.reduce((s, c) => s + (c.quantity ?? c.Quantity ?? c.qty ?? 0), 0);
+                    statuses.add(o.status ?? o.Status ?? 0);
+                });
 
-            outboundList.forEach(o => {
+                // status: if multiple statuses, show 'Multiple' else show mapped status text
+                let statusText = 'Multiple';
+                if (statuses.size === 1) statusText = getStatusText(Array.from(statuses)[0]);
+                let statusClass = 'status-pending';
+                if (statusText.toLowerCase().includes('complete') || statusText.toLowerCase().includes('confirmed')) statusClass = 'status-complete';
 
-                let statusText = getStatusText(o.status);
-                let statusClass = o.status === 3 ? "status-complete" : "status-pending";
+                // action: open detail for first id in group
+                const action = `<button class="detail-btn" onclick="goDetail('${ids[0]}')">Detail</button>`;
 
-                const binFrom = o['bin_from'] ?? o.bin_from ?? null;
-                let warehouse = '-';
-                if (o._fromWarehouseName) warehouse = o._fromWarehouseName;
-                else if (binFrom?.warehouse) warehouse = binFrom.warehouse.name ?? binFrom.warehouse.warehouseName ?? binFrom.warehouse;
-                else if (o.warehouse) warehouse = o.warehouse.name ?? o.warehouse.warehouseName ?? o.warehouse;
-                const bin = binFrom?.location_in_warehouse ?? binFrom?.locationInWarehouse ?? binFrom?.binCode ?? o.location_in_warehouse ?? o.locationInWarehouse ?? '-';
-
-                const comps = getComponents(o);
-                const totalItems = comps.reduce((s, c) => s + (c.quantity ?? c.Quantity ?? c.qty ?? 0), 0);
-
-                let action = `<button class="detail-btn" onclick="goDetail('${getId(o)}')">Detail</button>`;
+                const rowText = ((group[0].description ?? '') + ' ' + Array.from(warehouses).join(' ') + ' ' + Array.from(bins).join(' ')).toLowerCase();
+                if (q && !rowText.includes(q)) return; // filter by search query
 
                 html += `
 <tr>
-<td>${o.description}</td>
-<td>${formatDate(o.creation_date)}</td>
-<td>${warehouse}</td>
-<td>${bin}</td>
+<td>${group[0].description}</td>
+<td>${formatDate(group[0].creation_date ?? group[0].creationDate)}</td>
+<td>${Array.from(warehouses).join(', ')}</td>
+<td>${Array.from(bins).join(', ')}</td>
 <td>${totalItems}</td>
 <td class="${statusClass}">${statusText}</td>
 <td>${action}</td>

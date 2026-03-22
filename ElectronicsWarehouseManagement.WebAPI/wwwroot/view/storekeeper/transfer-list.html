@@ -106,11 +106,13 @@
         }
 
         function getStatusText(status) {
+            // Match server TransferStatus enum: 0=Unknown,1=Pending,2=Approved - Waiting Confirm,3=Rejected,4=Confirmed
             switch (status) {
-                case 0: return "Pending";
-                case 1: return "Approved";
+                case 0: return "Unknown";
+                case 1: return "Pending";
                 case 2: return "Approved - Waiting Confirm";
-                case 3: return "Completed";
+                case 3: return "Rejected";
+                case 4: return "Confirmed";
                 default: return "Unknown";
             }
         }
@@ -123,6 +125,7 @@
             let result = await res.json();
 
             // 🔥 Transfer type = 3
+            const q = (document.getElementById('q')?.value || '').toString().toLowerCase();
             const listSummary = (result.data || []).filter(x => x.type === 3);
             const list = await Promise.all(listSummary.map(async t => {
                 try {
@@ -208,6 +211,9 @@
                 let statusClass = o.status === 3
                     ? "status-complete"
                     : "status-pending";
+
+                const rowText = ((o.description ?? '') + ' ' + (o._fromWarehouseName ?? '') + ' ' + (o.bin_from?.location_in_warehouse ?? '') + ' ' + (o._toWarehouseName ?? '') + ' ' + (o.bin_to?.location_in_warehouse ?? '')).toLowerCase();
+                if (q && !rowText.includes(q)) return;
 
                 html += `
 <tr>
