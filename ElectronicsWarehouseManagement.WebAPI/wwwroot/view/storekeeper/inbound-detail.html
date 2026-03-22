@@ -55,6 +55,7 @@
         let transfer = null;
         const componentCache = {};
         const warehouseCache = {};
+        const customerCache = {};
 
         async function resolveWarehouses(t) {
             if (!t) return;
@@ -95,6 +96,21 @@
             } catch (e) { console.error('resolveWarehouses failed', e); }
         }
 
+        async function resolveCustomers(transfers) {
+            if (!Array.isArray(transfers) || transfers.length === 0) return;
+            try {
+                const res = await fetch(BASE + '/storekeeper/customers', { credentials: 'include' });
+                if (!res.ok) return;
+                const json = await res.json();
+                if (!json?.success || !Array.isArray(json.data)) return;
+                json.data.forEach(c => { customerCache[c.id ?? c.customer_id ?? c.customerId] = c; });
+            } catch (e) { /* ignore */ }
+            transfers.forEach(t => {
+                const cid = t.customer_id ?? t.CustomerId ?? t.customerId ?? null;
+                if (cid && customerCache[cid]) t._customerName = customerCache[cid].name ?? customerCache[cid].customer_name ?? customerCache[cid].displayName ?? customerCache[cid].fullName ?? null;
+            });
+        }
+
         async function load() {
             const res = await fetch(BASE + '/storekeeper/transfers/' + id, {credentials:'include'});
             const json = await res.json();
@@ -103,8 +119,9 @@
             const comps = getComponents(transfer);
             await resolveComponentNames(comps);
             await resolveWarehouses(transfer);
+            await resolveCustomers([transfer]);
             console.debug('transfer loaded', transfer);
-            render();
+            try { render(); } catch(e) { console.error('render error', e); document.getElementById('detail').innerHTML = '<div style="color:#b91c1c;font-weight:600;padding:12px">Lỗi khi hiển thị chi tiết: ' + (e?.message || e) + '</div>'; }
             // set created info
             try{
                 const createdBy = transfer.created_by ?? transfer.createdBy ?? transfer.created_by_name ?? transfer.createdByName ?? transfer.owner ?? null;
@@ -126,45 +143,6 @@
                     c.component.metadata = componentCache[id].metadata ?? componentCache[id].Metadata ?? componentCache[id];
                     return;
                 }
-
-        async function resolveWarehouses(t) {
-            if (!t) return;
-            try {
-                const binFrom = t.bin_from ?? t.binFrom ?? null;
-                if (binFrom) {
-                    const w = binFrom.warehouse ?? binFrom.Warehouse ?? null;
-                    const wid = (typeof binFrom.warehouse === 'object') ? (binFrom.warehouse?.id) : (binFrom.warehouse ?? binFrom.warehouse_id ?? binFrom.warehouseId ?? binFrom.WarehouseId);
-                    const needFetch = !w || (typeof w !== 'object');
-                    if (needFetch && wid && !warehouseCache[wid]) {
-                        try {
-                            const wres = await fetch(BASE + '/storekeeper/warehouses/' + wid, { credentials: 'include' });
-                            if (wres.ok) {
-                                const wjson = await wres.json();
-                                if (wjson?.success && wjson.data) warehouseCache[wid] = wjson.data;
-                            }
-                        } catch (e) { console.error('warehouse fetch failed', e); }
-                    }
-                    if (warehouseCache[wid]) binFrom.warehouse = warehouseCache[wid];
-                }
-
-                const binTo = t.bin_to ?? t.binTo ?? null;
-                if (binTo) {
-                    const w2 = binTo.warehouse ?? binTo.Warehouse ?? null;
-                    const wid2 = (typeof binTo.warehouse === 'object') ? (binTo.warehouse?.id) : (binTo.warehouse ?? binTo.warehouse_id ?? binTo.warehouseId ?? binTo.WarehouseId);
-                    const needFetch2 = !w2 || (typeof w2 !== 'object');
-                    if (needFetch2 && wid2 && !warehouseCache[wid2]) {
-                        try {
-                            const wres2 = await fetch(BASE + '/storekeeper/warehouses/' + wid2, { credentials: 'include' });
-                            if (wres2.ok) {
-                                const wjson2 = await wres2.json();
-                                if (wjson2?.success && wjson2.data) warehouseCache[wid2] = wjson2.data;
-                            }
-                        } catch (e) { console.error('warehouse fetch failed', e); }
-                    }
-                    if (warehouseCache[wid2]) binTo.warehouse = warehouseCache[wid2];
-                }
-            } catch (e) { console.error('resolveWarehouses failed', e); }
-        }
                 try {
                     const cres = await fetch(BASE + '/storekeeper/components/' + id, { credentials: 'include' });
                     if (!cres.ok) return;
@@ -196,14 +174,30 @@
         function render() {
             if (!transfer) return;
             let html = `
-<p><b>Description:</b> ${transfer.description}</p>
-<p><b>Warehouse:</b> ${(transfer.bin_to?.warehouse?.warehouseName ?? transfer.bin_to?.warehouse?.name) ?? (transfer.bin_from?.warehouse?.warehouseName ?? transfer.bin_from?.warehouse?.name) ?? '-'}</p>
-<p><b>Bin:</b> ${transfer.bin_to?.location_in_warehouse ?? transfer.bin_to?.locationInWarehouse ?? transfer.bin_from?.location_in_warehouse ?? transfer.bin_from?.locationInWarehouse ?? '-'}</p>
-<p><b>Status:</b> ${transfer.status}</p>
-<hr>
+<div class="info-grid">
+  <div class="info-block">
+    <div style="font-weight:700">Description</div>
+    <div class="meta">${transfer.description ?? '-'}</div>
+  </div>
+  <div class="info-block">
+    <div style="font-weight:700">Warehouse / Bin</div>
+    <div class="meta">${(transfer.bin_to?.warehouse?.warehouseName ?? transfer.bin_to?.warehouse?.name) ?? (transfer.bin_from?.warehouse?.warehouseName ?? transfer.bin_from?.warehouse?.name) ?? '-'} / ${(transfer.bin_to?.location_in_warehouse ?? transfer.bin_to?.locationInWarehouse) ?? (transfer.bin_from?.location_in_warehouse ?? transfer.bin_from?.locationInWarehouse) ?? '-'}</div>
+    <div style="height:8px"></div>
+    <div style="font-weight:700">Status</div>
+    <div class="meta">${(function(s){ switch(s){case 0:return 'Unknown';case 1:return 'Pending';case 2:return 'Approved - Waiting Confirm';case 3:return 'Rejected';default:return 'Completed';}})(transfer.status)}</div>
+    <div style="height:8px"></div>
+    <div style="font-weight:700">Customer</div>
+    <div class="meta">${transfer._customerName ?? (transfer.customer_id ? ('Customer ID: ' + transfer.customer_id) : '-')}</div>
+  </div>
+</div>
+<hr />
 <h4>Products</h4>
-<table border="1" style="width:100%;border-collapse:collapse">
-<tr><th>Name</th><th>Quantity</th><th>Unit Price</th></tr>
+<div class="table-card">
+  <table>
+    <thead>
+      <tr><th>Name</th><th style="width:120px">Quantity</th><th style="width:140px">Unit Price</th></tr>
+    </thead>
+    <tbody>
 `;
 
             const comps = getComponents(transfer);

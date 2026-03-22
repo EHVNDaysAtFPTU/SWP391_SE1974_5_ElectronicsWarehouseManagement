@@ -44,6 +44,21 @@
             return c?.name ?? c?.Name ?? c?.metadata?.name ?? c?.Metadata?.name ?? c?.component?.metadata?.name ?? c?.component?.metadata?.Name ?? ('Component #' + (c.component_id ?? c.componentId ?? c.component?.id ?? '?'));
         }
 
+        async function resolveCustomers(transfers) {
+            if (!Array.isArray(transfers) || transfers.length === 0) return;
+            try {
+                const res = await fetch(BASE + '/storekeeper/customers', { credentials: 'include' });
+                if (!res.ok) return;
+                const json = await res.json();
+                if (!json?.success || !Array.isArray(json.data)) return;
+                json.data.forEach(c => { customerCache[c.id ?? c.customer_id ?? c.customerId] = c; });
+            } catch (e) { /* ignore */ }
+            transfers.forEach(t => {
+                const cid = t.customer_id ?? t.CustomerId ?? t.customerId ?? null;
+                if (cid && customerCache[cid]) t._customerName = customerCache[cid].name ?? customerCache[cid].customer_name ?? customerCache[cid].displayName ?? customerCache[cid].fullName ?? null;
+            });
+        }
+
         async function load() {
             const res = await fetch(BASE + '/storekeeper/transfers/' + id, {credentials:'include'});
             const json = await res.json();
@@ -156,6 +171,9 @@
                         <div style="height:6px"></div>
                         <div style="font-weight:700">To Warehouse / Bin</div>
                         <div class="meta">${toWarehouse} / ${toBin}</div>
+                        <div style="height:6px"></div>
+                        <div style="font-weight:700">Customer</div>
+                        <div class="meta">${transfer._customerName ?? (transfer.customer_id ? ('Customer ID: ' + transfer.customer_id) : '-')}</div>
                     </div>
                 </div>
                 <hr />

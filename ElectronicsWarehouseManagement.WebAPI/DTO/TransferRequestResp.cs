@@ -57,6 +57,10 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
         public BinResp? BinTo { get; set; }
 
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        [JsonPropertyName("customer_id")]
+        public int? CustomerId { get; set; }
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         [JsonPropertyName("components")]
         public List<TransferRequestComponentResp>? Components { get; set; }
 
@@ -69,6 +73,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
             ExecutionDate = request.ExecutionTime;
             Status = (int)request.Status;
             CreatorId = request.CreatorId;
+            CustomerId = request.CustomerId;
             ApproverId = request.ApproverId;
             BinFromId = request.BinFromId;
             BinToId = request.BinToId;
