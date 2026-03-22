@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Login | Warehouse Management</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            margin: 0;
+            height: 100vh;
+            background: linear-gradient(135deg, #4f46e5, #3b82f6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Glass container */
+        .login-container {
+            background: rgba(255,255,255,0.95);
+            width: 380px;
+            padding: 35px;
+            border-radius: 16px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+            backdrop-filter: blur(8px);
+            animation: fadeIn 0.6s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(15px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+            .login-header h2 {
+                margin: 0;
+                color: #111827;
+            }
+
+            .login-header p {
+                margin-top: 5px;
+                color: #6b7280;
+                font-size: 14px;
+            }
+
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+            .form-group input {
+                width: 100%;
+                padding: 12px 14px;
+                border-radius: 10px;
+                border: 1px solid #d1d5db;
+                transition: all 0.2s ease;
+            }
+
+                .form-group input:focus {
+                    border-color: #3b82f6;
+                    outline: none;
+                    box-shadow: 0 0 0 3px rgba(59,130,246,0.2);
+                }
+
+        .login-btn {
+            width: 100%;
+            padding: 12px;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+            .login-btn:hover {
+                background: #2563eb;
+            }
+
+            .login-btn.loading {
+                opacity: 0.7;
+                pointer-events: none;
+            }
+
+        .extra-links {
+            text-align: right;
+            margin-top: 10px;
+            font-size: 13px;
+        }
+
+            .extra-links a {
+                color: #3b82f6;
+                text-decoration: none;
+                cursor: pointer;
+            }
+
+                .extra-links a:hover {
+                    text-decoration: underline;
+                }
+
+        #error {
+            color: #ef4444;
+            font-size: 13px;
+            margin-top: 12px;
+            text-align: center;
+        }
+
+        /* Modal */
+        .modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            width: 320px;
+        }
+
+            .modal-content h3 {
+                margin-top: 0;
+            }
+
+            .modal-content input {
+                width: 100%;
+                padding: 10px;
+                margin-top: 10px;
+            }
+
+            .modal-content button {
+                margin-top: 15px;
+                padding: 10px;
+                width: 100%;
+                background: #3b82f6;
+                color: white;
+                border: none;
+                border-radius: 8px;
+            }
+    </style>
+</head>
+
+<body>
+
+    <div class="login-container">
+
+        <div class="login-header">
+            <h2>Warehouse System</h2>
+            <p>Đăng nhập hệ thống quản lý kho</p>
+        </div>
+
+        <div class="form-group">
+            <input type="text" id="username" placeholder="Tài khoản">
+        </div>
+
+        <div class="form-group">
+            <input type="password" id="password" placeholder="Mật khẩu">
+        </div>
+
+        <button class="login-btn" id="submitBtn">Đăng nhập</button>
+
+        <div class="extra-links">
+            <a onclick="openForgot()">Quên mật khẩu?</a>
+        </div>
+
+        <div id="error"></div>
+
+    </div>
+
+    <!-- Modal Forgot Password -->
+    <div class="modal" id="forgotModal">
+        <div class="modal-content">
+            <h3>Quên mật khẩu</h3>
+            <p>Nhập email để nhận link đặt lại mật khẩu</p>
+            <input type="email" id="forgotEmail" placeholder="Email">
+            <button onclick="sendReset()">Gửi yêu cầu</button>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById("submitBtn").addEventListener("click", login);
+
+        async function login() {
+
+            const btn = document.getElementById("submitBtn");
+            const user = document.getElementById("username").value.trim();
+            const pass = document.getElementById("password").value.trim();
+            const errorDiv = document.getElementById("error");
+
+            errorDiv.innerText = "";
+
+            if (!user || !pass) {
+                errorDiv.innerText = "Vui lòng nhập đầy đủ thông tin";
+                return;
+            }
+
+            btn.classList.add("loading");
+            btn.innerText = "Đang đăng nhập...";
+
+            try {
+
+                const response = await fetch("/api/auth/login", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ user, pass })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    window.location.href = "/";
+                }
+                else {
+                    errorDiv.innerText = result.msg || "Sai tài khoản hoặc mật khẩu";
+                }
+
+            } catch (e) {
+                errorDiv.innerText = "Không kết nối được server";
+            }
+
+            btn.classList.remove("loading");
+            btn.innerText = "Đăng nhập";
+        }
+
+        /* ===== Forgot password ===== */
+        function openForgot() {
+            document.getElementById("forgotModal").style.display = "flex";
+        }
+
+        async function sendReset() {
+
+            const email = document.getElementById("forgotEmail").value.trim();
+
+            if (!email) {
+                alert("Vui lòng nhập email");
+                return;
+            }
+
+            try {
+                await fetch("/api/auth/forgot-password", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ email })
+                });
+
+                alert("Nếu email tồn tại, hệ thống đã gửi link đặt lại mật khẩu.");
+                document.getElementById("forgotModal").style.display = "none";
+
+            } catch {
+                alert("Không gửi được yêu cầu.");
+            }
+        }
+
+        /* close modal when click outside */
+        window.onclick = function (e) {
+            const modal = document.getElementById("forgotModal");
+            if (e.target === modal) {
+                modal.style.display = "none";
+            }
+        }
+    </script>
+
+</body>
+</html>

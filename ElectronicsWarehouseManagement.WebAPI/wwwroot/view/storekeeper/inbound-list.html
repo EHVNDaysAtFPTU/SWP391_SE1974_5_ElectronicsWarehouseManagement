@@ -1,0 +1,293 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Inbound Orders - Storekeeper</title>
+
+    <style>
+        :root{--muted:#6b7280;--accent:#10b981}
+        body{font-family:Inter, 'Segoe UI', Roboto, Arial, sans-serif;background:#f4fbf7;padding:28px;color:#0f172a}
+        .page{max-width:1200px;margin:0 auto}
+        .top-bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+        h2{margin:0;font-size:20px}
+        .controls{display:flex;gap:12px;align-items:center}
+        .search{display:flex;gap:8px;align-items:center}
+        .search input{padding:8px;border-radius:8px;border:1px solid #eef6f0}
+        .btn{padding:8px 12px;border-radius:8px;border:none;cursor:pointer}
+        .btn.ghost{background:transparent;border:1px solid #e6f6ee}
+        .btn.primary{background:var(--accent);color:#fff}
+        .table-card{background:#fff;border-radius:12px;padding:12px;box-shadow:0 8px 30px rgba(2,6,23,0.06)}
+        table{width:100%;border-collapse:collapse}
+        thead th{background:linear-gradient(90deg,#bbf7d0,#ecfccb);color:#065f46;padding:12px;text-align:left;border-bottom:1px solid #eef6f0}
+        th,td{padding:12px;border-bottom:1px solid #f1f5f4}
+        tr:hover td{background:#fbfff8}
+        .status-complete{color:#059669;font-weight:700}
+        .status-pending{color:#d97706;font-weight:700}
+        .action-btn{background:#06b6d4;color:#fff;padding:6px 10px;border-radius:8px;border:none;cursor:pointer}
+        /* pagination */
+        .pagination{display:flex;gap:6px;justify-content:flex-end;margin-top:12px}
+        .page-item{padding:6px 10px;border-radius:8px;border:1px solid #e6f6ee;background:#fff;cursor:pointer}
+        .page-item.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+    </style>
+</head>
+
+<body>
+
+    <div class="page">
+        <div class="top-bar">
+            <div>
+                <h2>Inbound</h2>
+                <div style="color:var(--muted);font-size:13px">Danh sách phiếu nhập kho — phân trang 5 đơn / trang</div>
+            </div>
+            <div class="controls">
+                <div class="search">
+                    <input id="q" placeholder="Tìm theo mô tả, kho, bin..." />
+                    <button class="btn ghost" onclick="applyFilter()">Search</button>
+                </div>
+                <button class="btn primary" onclick="goHome()">Back</button>
+            </div>
+        </div>
+
+        <div class="table-card">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Order Code</th>
+                        <th>Date</th>
+                        <th>Warehouse</th>
+                        <th>Bin</th>
+                        <th>Total Items</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="orderTable"></tbody>
+            </table>
+
+    <div class="modal" id="detailModal">
+        <div class="modal-content">
+      
+            <div id="detailContent"></div>
+        </div>
+    </div>
+
+    <script>
+
+        const BASE = "https://localhost:7297/api";
+
+        function getField(obj, ...names) {
+            if (!obj) return "-";
+            for (const n of names) {
+                if (obj[n] !== undefined && obj[n] !== null) return obj[n];
+            }
+            return "-";
+        }
+
+        function getId(obj) {
+            if (!obj) return null;
+            return obj.id ?? obj.ID ?? obj.request_id ?? obj.requestId ?? obj.requestID ?? null;
+        }
+
+        function getComponents(obj) {
+            if (!obj) return [];
+            const keys = ['components','Components','transfer_request_components','transferRequestComponents','TransferRequestComponents'];
+            for (const k of keys) if (Array.isArray(obj[k])) return obj[k];
+            if (Array.isArray(obj.data)) return obj.data;
+            for (const k of Object.keys(obj)) {
+                if (Array.isArray(obj[k]) && obj[k].length>0 && (obj[k][0].quantity !== undefined || obj[k][0].component_id !== undefined))
+                    return obj[k];
+            }
+            return [];
+        }
+
+        function goHome() {
+            window.location = "home.html";
+        }
+
+        function getStatusText(status) {
+            switch (status) {
+                case 0: return "Unknown";
+                case 1: return "Pending";
+                case 2: return "Approved - Waiting Confirm";
+                case 3: return "Rejected";
+                default: return "Completed";
+            }
+        }
+
+        async function load() {
+            // load transfers summary
+            let res = await fetch(BASE + "/storekeeper/transfers", { credentials: "include" });
+            let result = await res.json();
+
+            const inboundListSummary = (result.data || []).filter(x => x.type === 1);
+            const warehouseCache = {};
+
+            const inboundList = await Promise.all(inboundListSummary.map(async t0 => {
+                try {
+                    // fetch full transfer detail first (to get components)
+                    const dres = await fetch(BASE + "/storekeeper/transfers/" + (getId(t0)), { credentials: 'include' });
+                    if (dres.ok) {
+                        const djson = await dres.json();
+                        if (djson?.success && djson.data) t0 = djson.data;
+                    }
+
+                    // if bin_to already contains useful info, attach helper name and try to resolve warehouse object if missing
+                    if (t0.bin_to && (t0.bin_to.location_in_warehouse || t0.bin_to.locationInWarehouse || t0.bin_to.binCode)) {
+                        try {
+                            const toName = t0.bin_to?.warehouse?.name ?? t0.bin_to?.warehouse?.warehouseName ?? t0.bin_to?.warehouse ?? null;
+                            t0._toWarehouseName = toName ?? null;
+                            // if warehouse object is missing but warehouse id exists, try fetch warehouse and cache it
+                            const wid = t0.bin_to?.warehouse?.id ?? t0.bin_to?.warehouse_id ?? t0.bin_to?.warehouseId ?? t0.bin_to?.WarehouseId;
+                            if (!t0.bin_to?.warehouse && wid) {
+                                if (!warehouseCache[wid]) {
+                                    try {
+                                        const wres = await fetch(BASE + "/storekeeper/warehouses/" + wid, { credentials: 'include' });
+                                        if (wres.ok) {
+                                            const wjson = await wres.json();
+                                            if (wjson?.success && wjson.data) warehouseCache[wid] = wjson.data;
+                                        }
+                                    } catch (e) { console.error('warehouse fetch failed', e); }
+                                }
+                                if (warehouseCache[wid]) {
+                                    t0.bin_to.warehouse = warehouseCache[wid];
+                                    t0._toWarehouseName = warehouseCache[wid].name ?? warehouseCache[wid].warehouseName ?? t0._toWarehouseName;
+                                }
+                            }
+                        } catch (e) { /* ignore */ }
+                        return t0;
+                    }
+
+                    const binId = t0.bin_to_id ?? t0.binToId ?? t0.bin_to?.id ?? t0.bin_to?.ID;
+                    if (!binId) return t0;
+
+                    const bres = await fetch(BASE + "/storekeeper/bins/" + binId, { credentials: 'include' });
+                    if (bres.ok) {
+                        const bjson = await bres.json();
+                        if (bjson?.success && bjson.data) {
+                            t0.bin_to = bjson.data;
+                            // try to attach warehouse object if only id is present
+                            const w = t0.bin_to.warehouse ?? t0.bin_to.Warehouse ?? null;
+                            // determine warehouse id: if `warehouse` is an object use its id, otherwise if it's primitive (number/string) use it
+                            const wid = (typeof t0.bin_to?.warehouse === 'object') ? (t0.bin_to.warehouse?.id) : (t0.bin_to?.warehouse ?? t0.bin_to.warehouse_id ?? t0.bin_to.warehouseId ?? t0.bin_to.WarehouseId);
+                            const needFetch = !t0.bin_to?.warehouse || (typeof t0.bin_to.warehouse !== 'object');
+                            if (needFetch && wid) {
+                                if (!warehouseCache[wid]) {
+                                    try {
+                                        const wres = await fetch(BASE + "/storekeeper/warehouses/" + wid, { credentials: 'include' });
+                                        if (wres.ok) {
+                                            const wjson = await wres.json();
+                                            if (wjson?.success && wjson.data) warehouseCache[wid] = wjson.data;
+                                        }
+                                    } catch (e) { console.error('warehouse fetch failed', e); }
+                                }
+                                if (warehouseCache[wid]) t0.bin_to.warehouse = warehouseCache[wid];
+                            }
+                            // set helper to-warehouse name
+                            try {
+                                const toName = t0.bin_to?.warehouse?.name ?? t0.bin_to?.warehouse?.warehouseName ?? t0.bin_to?.warehouse ?? null;
+                                t0._toWarehouseName = toName ?? null;
+                            } catch (e) { /* ignore */ }
+                        }
+                    }
+                } catch (e) {
+                    console.error('detail/bin fetch failed', e);
+                    return t0;
+                }
+                return t0;
+            }));
+
+            // store inbound list globally for pagination/filter
+            window._inboundListData = inboundList;
+            window._inboundFiltered = inboundList.slice();
+            window._inboundPageSize = 5;
+            window._inboundCurrentPage = 1;
+
+            function renderPage(page){
+                const pageSize = window._inboundPageSize;
+                const data = window._inboundFiltered || [];
+                const total = data.length;
+                const pages = Math.max(1, Math.ceil(total / pageSize));
+                if(page < 1) page = 1; if(page > pages) page = pages;
+                window._inboundCurrentPage = page;
+                const start = (page-1)*pageSize;
+                const slice = data.slice(start, start+pageSize);
+                let html = "";
+                slice.forEach(o => {
+
+                let statusText = getStatusText(o.status);
+                let statusClass = o.status === 3 ? "status-complete" : "status-pending";
+
+                // read using JSON names returned by API (snake_case) with fallbacks
+                const binTo = o['bin_to'] ?? o.bin_to ?? null;
+                let warehouse = '-';
+                if (o._toWarehouseName) warehouse = o._toWarehouseName;
+                else if (binTo?.warehouse) warehouse = binTo.warehouse.name ?? binTo.warehouse.warehouseName ?? binTo.warehouse;
+                else if (o.warehouse) warehouse = o.warehouse.name ?? o.warehouse.warehouseName ?? o.warehouse;
+                const bin = binTo?.location_in_warehouse ?? binTo?.locationInWarehouse ?? binTo?.binCode ?? o.location_in_warehouse ?? o.locationInWarehouse ?? '-';
+
+                const comps = getComponents(o);
+                const totalItems = comps.reduce((s, c) => s + (c.quantity ?? c.Quantity ?? c.qty ?? 0), 0);
+
+                // chỉ dẫn sang trang chi tiết (trang chi tiết có nút confirm)
+                let action = `<button class="detail-btn" onclick="goDetail('${getId(o)}')">Detail</button>`;
+
+                    html += `
+<tr>
+<td>${o.description}</td>
+<td>${formatDate(o.creation_date)}</td>
+<td>${warehouse}</td>
+<td>${bin}</td>
+<td>${totalItems}</td>
+<td class="${statusClass}">${statusText}</td>
+<td>${action}</td>
+</tr>`;
+                });
+
+                document.getElementById("orderTable").innerHTML = html;
+
+                // render pagination
+                const totalItemsAll = (window._inboundFiltered || []).length;
+                const totalPages = Math.max(1, Math.ceil(totalItemsAll / window._inboundPageSize));
+                const pag = document.getElementById('pagination');
+                pag.innerHTML = '';
+                for(let i=1;i<=totalPages;i++){
+                    const cls = 'page-item' + (i===page? ' active':'');
+                    pag.insertAdjacentHTML('beforeend', `<div class="${cls}" onclick="renderPage(${i})">${i}</div>`);
+                }
+            }
+
+            // initially render first page
+            renderPage(1);
+        }
+
+
+        function goDetail(id) {
+            if (!id) return;
+            window.location.href = `inbound-detail.html?id=${id}`;
+        }
+
+        // apply filter from search box and re-render
+        function applyFilter(){
+            const q = document.getElementById('q')?.value?.trim().toLowerCase() || '';
+            const all = window._inboundListData || [];
+            if(!q){ window._inboundFiltered = all.slice(); renderPage(1); return; }
+            window._inboundFiltered = all.filter(o => {
+                const txt = ((o.description||'') + ' ' + (o._toWarehouseName||'') + ' ' + (o.bin_to?.location_in_warehouse||'') ).toString().toLowerCase();
+                return txt.includes(q);
+            });
+            renderPage(1);
+        }
+
+
+        function formatDate(dateStr) {
+            const d = getField({d: dateStr}, 'd', 'creation_date', 'creationDate', 'created_at', 'createdAt');
+            if (!d || d === '-') return '-';
+            try { return new Date(d).toLocaleString(); } catch(e) { return d; }
+        }
+
+        load();
+
+    </script>
+
+</body>
+</html>

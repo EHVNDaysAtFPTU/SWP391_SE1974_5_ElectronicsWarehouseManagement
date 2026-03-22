@@ -32,7 +32,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
             PhysicalLocation = warehouse.PhysicalLocation;
             ImageUrl = warehouse.ImageUrl;
             if (fullInfo)
-                Bins = warehouse.Bins.Select(b => new BinResp(b, false)).ToList();
+                Bins = warehouse.Bins?.Where(b => b != null).Select(b => new BinResp(b, false)).ToList();
         }
     }
 }

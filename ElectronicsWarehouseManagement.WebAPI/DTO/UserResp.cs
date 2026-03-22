@@ -26,13 +26,24 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
 
         public UserResp(User user, bool fullInfo)
         {
+            if (user is null)
+            {
+                UserId = 0;
+                Username = string.Empty;
+                DisplayName = string.Empty;
+                Email = string.Empty;
+                Status = default;
+                Roles = null;
+                return;
+            }
+
             UserId = user.UserId;
             Username = user.Username;
             DisplayName = user.DisplayName;
             Email = user.Email;
             Status = user.Status;
             if (fullInfo)
-                Roles = user.Roles.Select(r => new RoleResp(r)).ToList();
+                Roles = user.Roles?.Select(r => new RoleResp(r)).ToList();
         }
     }
 }

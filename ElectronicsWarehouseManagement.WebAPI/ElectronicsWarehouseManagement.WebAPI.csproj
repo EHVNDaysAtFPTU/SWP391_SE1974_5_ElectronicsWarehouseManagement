@@ -8,7 +8,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="MailKit" Version="4.15.1" />
+    <PackageReference Include="itext7" Version="8.0.1" />
+    <PackageReference Include="itext7.bouncy-castle-adapter" Version="8.0.1" />
+	  
     <PackageReference Include="Swashbuckle.AspNetCore" Version="10.1.0" />
   </ItemGroup>
 

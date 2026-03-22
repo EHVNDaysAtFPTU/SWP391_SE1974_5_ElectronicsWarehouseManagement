@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>System Configuration</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="layout">
+
+        <aside class="sidebar">
+            <div class="brand">ECWMS</div>
+            <nav>
+                <a href="index.html">Dashboard</a>
+                <a href="user-management.html">User Management</a>
+                <a class="active">System Configuration</a>
+                <a>Logout</a>
+            </nav>
+        </aside>
+
+        <main class="main">
+            <header class="topbar">
+                <h1>System Configuration</h1>
+            </header>
+
+            <section class="content">
+                <div class="box">
+                    <div class="box-header">
+                        <h2>Configuration Settings</h2>
+                        <button>Save</button>
+                    </div>
+
+                    <div class="form">
+                        <label>Warehouse Rule</label>
+                        <input type="text" placeholder="FIFO / LIFO">
+
+                        <label>Approval Policy</label>
+                        <select>
+                            <option>Auto Approve</option>
+                            <option>Manager Approval</option>
+                        </select>
+
+                        <label>Max Items per Order</label>
+                        <input type="number" value="100">
+                    </div>
+                </div>
+            </section>
+        </main>
+
+    </div>
+
+</body>
+</html>

@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Transfer Detail</title>
+</head>
+<body>
+
+    <h2>Transfer Detail</h2>
+
+    <div id="infoSection"></div>
+    <hr>
+    <div id="componentSection"></div>
+
+    <br>
+    <button onclick="goBack()">Back</button>
+
+    <script>
+
+        document.addEventListener("DOMContentLoaded", function () {
+            const id = getTransferIdFromUrl();
+            loadTransferDetail(id);
+        });
+
+        function getTransferIdFromUrl() {
+            const params = new URLSearchParams(window.location.search);
+            return params.get("id");
+        }
+
+        async function loadTransferDetail(id) {
+
+            const response = await fetch(
+                `/api/manager/get-transfer/${id}?fullInfo=true`,
+                { credentials: "include" }
+            );
+
+            const result = await response.json();
+
+            if (!result.success) {
+                document.getElementById("infoSection").innerText = "Load failed";
+                return;
+            }
+
+            await renderInfo(result.data);
+            renderComponents(result.data);
+        }
+
+        async function renderInfo(t) {
+
+            const container = document.getElementById("infoSection");
+
+            const fromWarehouseName = t.bin_from
+                ? await getWarehouseName(t.bin_from.warehouse_id)
+                : "-";
+
+            const toWarehouseName = t.bin_to
+                ? await getWarehouseName(t.bin_to.warehouse_id)
+                : "-";
+
+            container.innerHTML = `
+            <h3>Transfer Information</h3>
+            <p><strong>ID:</strong> ${t.id}</p>
+            <p><strong>Description:</strong> ${t.description ?? "-"}</p>
+            <p><strong>Type:</strong> ${getTypeText(t.type)}</p>
+            <p><strong>Status:</strong> ${getStatusText(t.status)}</p>
+            <p><strong>Creation Date:</strong> ${formatDate(t.creation_date)}</p>
+            <p><strong>Execution Date:</strong> ${t.execution_date ? formatDate(t.execution_date) : "-"}</p>
+            <p><strong>Creator:</strong> ${t.creator?.username || "-"}</p>
+            <p><strong>Approver:</strong> ${t.approver?.username || "-"}</p>
+            <p><strong>From:</strong> ${t.bin_from
+                    ? `${t.bin_from.location_in_warehouse} - Warehouse: ${fromWarehouseName}`
+                    : "-"
+                }</p>
+            <p><strong>To:</strong> ${t.bin_to
+                    ? `${t.bin_to.location_in_warehouse} - Warehouse: ${toWarehouseName}`
+                    : "-"
+                }</p>
+            <p><strong>Monitor Status:</strong> ${transferMonitorStatus(t)}</p>
+        `;
+        }
+
+        function renderComponents(t) {
+
+            const container = document.getElementById("componentSection");
+
+            if (!t.components || t.components.length === 0) {
+                container.innerHTML = "<h3>Component List</h3><p>No components found</p>";
+                return;
+            }
+
+            let html = `
+        <h3>Component List</h3>
+        <table border="1" cellpadding="6" cellspacing="0">
+            <tr>
+                <th>Name</th>
+                <th>Quantity</th>
+                <th>Unit</th>
+                <th>Unit Price</th>
+                <th>Total</th>
+                <th>Action</th>
+            </tr>
+    `;
+
+            t.components.forEach((c, index) => {
+
+                const name = c.component?.metadata?.name ?? "-";
+                const quantity = c.quantity ?? 0;
+                const unit = c.component?.unit ?? "-";
+                const price = c.unit_price ?? 0;
+                const total = quantity * price;
+
+                html += `
+            <tr>
+                <td>${name}</td>
+                <td>${quantity}</td>
+                <td>${unit}</td>
+                <td>${price}</td>
+                <td>${total}</td>
+                <td>
+                    <button onclick="toggleDetail(${index}, ${c.component?.id})">
+                        View
+                    </button>
+                </td>
+            </tr>
+
+            <tr id="detail-row-${index}" style="display:none;">
+                <td colspan="6" id="detail-content-${index}">
+                    Loading...
+                </td>
+            </tr>
+        `;
+            });
+
+            html += `</table>`;
+
+            container.innerHTML = html;
+        }
+
+        function goBack() {
+            window.history.back();
+        }
+
+
+        //Display Function
+        function renderComponentDetail(component) {
+
+            const metadata = component.metadata ?? {};
+
+            const categoriesText = component.categories && component.categories.length > 0
+                ? component.categories.map(c => c.name).join(", ")
+                : "-";
+
+            const manufacturingDate =
+                metadata.manufacturing_date &&
+                    metadata.manufacturing_date !== "0001-01-01T00:00:00"
+                    ? new Date(metadata.manufacturing_date).toLocaleDateString("en-US")
+                    : "-";
+
+            return `
+        <div>
+            <strong>Component Detail</strong><br><br>
+
+            <b>ID:</b> ${component.id ?? "-"} <br>
+            <b>Name:</b> ${metadata.name ?? "-"} <br>
+            <b>Description:</b> ${metadata.desc || "-"} <br>
+            <b>Manufacturer:</b> ${metadata.manufacturer || "-"} <br>
+            <b>Manufacturing Date:</b> ${manufacturingDate} <br>
+            <b>Unit:</b> ${component.unit ?? "-"} <br>
+            <b>Unit Price:</b> ${component.unit_price ?? 0} <br>
+            <b>Categories:</b> ${categoriesText} <br>
+            <b>Datasheet:</b> ${metadata.datasheet_url
+                    ? `<a href="${metadata.datasheet_url}" target="_blank">View</a>`
+                    : "-"
+                }
+        </div>
+    `;
+        }
+
+        async function toggleDetail(index, componentId) {
+
+            const row = document.getElementById(`detail-row-${index}`);
+            const content = document.getElementById(`detail-content-${index}`);
+
+            if (row.style.display === "none") {
+
+                row.style.display = "table-row";
+
+                if (content.dataset.loaded !== "true") {
+
+                    try {
+                        const resp = await fetch(
+                            `/api/manager/get-component/${componentId}?fullInfo=true`,
+                            { credentials: "include" }
+                        );
+
+                        const result = await resp.json();
+
+                        if (!result.success) {
+                            content.innerHTML = "Failed to load detail";
+                            return;
+                        }
+
+                        content.innerHTML = renderComponentDetail(result.data);
+                        content.dataset.loaded = "true";
+
+                    } catch {
+                        content.innerHTML = "Error loading detail";
+                    }
+                }
+
+            } else {
+                row.style.display = "none";
+            }
+        }
+        /* ===== UTIL FUNCTIONS ===== */
+
+        function getStatusText(status) {
+            switch (status) {
+                case 0: return "Pending";
+                case 2: return "Approved";
+                case 3: return "Rejected";
+                default: return "Unknown";
+            }
+        }
+
+        function getTypeText(type) {
+            switch (type) {
+                case 1: return "Inbound";
+                case 2: return "Outbound";
+                case 3: return "Internal";
+                default: return "Unknown";
+            }
+        }
+
+        function transferMonitorStatus(t) {
+            if (t.status === 0) return "Not Yet";
+            if (t.status === 2 && t.execution_date) return "Done";
+            if (t.status === 2) return "Processing";
+            if (t.status === 3) return "Canceled";
+            return "Unknown";
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return "-";
+            return new Date(dateString).toLocaleDateString("en-US");
+        }
+
+        async function getWarehouseName(id) {
+            try {
+                const resp = await fetch(
+                    `/api/manager/get-warehouse/${id}?fullInfo=false`,
+                    { credentials: "include" }
+                );
+
+                const { success, data } = await resp.json();
+                return success ? data?.name ?? "-" : "-";
+            } catch {
+                return "-";
+            }
+        }
+
+    </script>
+
+</body>
+</html>

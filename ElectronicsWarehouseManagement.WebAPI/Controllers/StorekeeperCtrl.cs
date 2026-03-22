@@ -2,6 +2,7 @@
 using ElectronicsWarehouseManagement.WebAPI.DTO;
 using ElectronicsWarehouseManagement.WebAPI.Services;
 using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ElectronicsWarehouseManagement.WebAPI.Controllers
@@ -199,6 +200,23 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
             return await CreateTransferRequest(request, TransferType.Inbound);
         }
 
+        [HttpGet("customers")]
+        public async Task<IActionResult> GetCustomers()
+        {
+            var result = await _storekeeperService.GetCustomersAsync();
+            if (result.Success) return Ok(result);
+            return BadRequest(result);
+        }
+
+        // Debug: get component bins by bin id
+        [HttpGet("debug/bin/{binId:int}")]
+        public async Task<IActionResult> DebugGetComponentBins([FromRoute] int binId)
+        {
+            var result = await _storekeeperService.GetComponentBinsByBinIdAsync(binId);
+            if (result.Success) return Ok(result);
+            return BadRequest(result);
+        }
+
         [HttpPost("transfers/outbound/create")]
         public async Task<IActionResult> CreateOutboundRequest([FromBody] CreateTransferRequestReq request)
         {
@@ -214,7 +232,10 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
         [HttpPost("transfers/confirm")]
         public async Task<IActionResult> ConfirmTransferRequest([FromBody] ConfirmTransferRequestReq request)
         {
-            var result = await _storekeeperService.ConfirmTransferRequestAsync(request, int.Parse(HttpContext.Session.GetString("UserId")!));
+            var uid = GetUserId();
+            if (!uid.HasValue)
+                return BadRequest(new { code = 0, msg = "User not authenticated or session expired.", success = false });
+            var result = await _storekeeperService.ConfirmTransferRequestAsync(request, uid.Value);
             if (result.Success)
                 return Ok(result);
             return BadRequest(result);
@@ -223,7 +244,10 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
         [HttpGet("transfers")]
         public async Task<IActionResult> GetTransferRequests()
         {
-            var result = await _storekeeperService.GetTransferRequestsAsync(int.Parse(HttpContext.Session.GetString("UserId")!));
+            var uid = GetUserId();
+            if (!uid.HasValue)
+                return BadRequest(new { code = 0, msg = "User not authenticated or session expired.", success = false });
+            var result = await _storekeeperService.GetTransferRequestsAsync(uid.Value);
             if (result.Success)
                 return Ok(result);
             return BadRequest(result);
@@ -232,7 +256,10 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
         [HttpGet("transfers/count")]
         public async Task<IActionResult> GetTransferRequestCount()
         {
-            var result = await _storekeeperService.GetTransferRequestCountAsync(int.Parse(HttpContext.Session.GetString("UserId")!));
+            var uid = GetUserId();
+            if (!uid.HasValue)
+                return BadRequest(new { code = 0, msg = "User not authenticated or session expired.", success = false });
+            var result = await _storekeeperService.GetTransferRequestCountAsync(uid.Value);
             if (result.Success)
                 return Ok(result);
             return BadRequest(result);
@@ -241,7 +268,10 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
         [HttpGet("transfers/{transferId:int}")]
         public async Task<IActionResult> GetTransferRequest([FromRoute] int transferId)
         {
-            var result = await _storekeeperService.GetTransferRequestAsync(transferId, int.Parse(HttpContext.Session.GetString("UserId")!));
+            var uid = GetUserId();
+            if (!uid.HasValue)
+                return BadRequest(new { code = 0, msg = "User not authenticated or session expired.", success = false });
+            var result = await _storekeeperService.GetTransferRequestAsync(transferId, uid.Value);
             if (result.Success)
                 return Ok(result);
             return BadRequest(result);
@@ -249,10 +279,34 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
 
         async Task<IActionResult> CreateTransferRequest(CreateTransferRequestReq request, TransferType type)
         {
-            var result = await _storekeeperService.CreateTransferRequestAsync(request, type, int.Parse(HttpContext.Session.GetString("UserId")!));
+            var uid = GetUserId();
+            if (!uid.HasValue)
+                return BadRequest(new { code = 0, msg = "User not authenticated or session expired.", success = false });
+            var result = await _storekeeperService.CreateTransferRequestAsync(request, type, uid.Value);
             if (result.Success)
                 return Ok(result);
             return BadRequest(result);
+        }
+
+        int? GetUserId()
+        {
+            // Try session first
+            try
+            {
+                var s = HttpContext.Session.GetString("UserId");
+                if (!string.IsNullOrEmpty(s) && int.TryParse(s, out var id)) return id;
+            }
+            catch { }
+
+            // Fallback to claims
+            try
+            {
+                var claim = HttpContext.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? HttpContext.User?.FindFirst("sub")?.Value;
+                if (!string.IsNullOrEmpty(claim) && int.TryParse(claim, out var cid)) return cid;
+            }
+            catch { }
+
+            return null;
         }
     }
 }
