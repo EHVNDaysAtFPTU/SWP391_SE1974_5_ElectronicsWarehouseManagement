@@ -233,7 +233,7 @@ function applyFilter() {
     const sortDirectionValue = document.getElementById("sortDirection").value;
 
     search = searchValue.length > 0 ? searchValue : null;
-    sortBy = sortByValue || null;
+    sortBy = sortByValue || "id";
     sortDirection = sortDirectionValue || "asc";
 
     loadItems(1);
