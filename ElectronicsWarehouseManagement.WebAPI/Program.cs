@@ -65,7 +65,7 @@ namespace ElectronicsWarehouseManagement.WebAPI
 
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
-
+            
             builder.Services.AddDIService();
 
             builder.Services.AddRateLimiter(options =>
@@ -95,6 +95,19 @@ namespace ElectronicsWarehouseManagement.WebAPI
                                 ReplenishmentPeriod = TimeSpan.FromMinutes(1),
                                 TokensPerPeriod = 1,
                                 AutoReplenishment = true
+                            });
+                    }
+                    // check forgot password url
+                    if (httpContext.Request.Path.StartsWithSegments("/api/auth/forgot-password", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return RateLimitPartition.GetFixedWindowLimiter(
+                            partitionKey: key,
+                            factory: _ => new FixedWindowRateLimiterOptions
+                            {
+                                PermitLimit = 3,
+                                Window = TimeSpan.FromMinutes(10),
+                                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                                QueueLimit = 0
                             });
                     }
 

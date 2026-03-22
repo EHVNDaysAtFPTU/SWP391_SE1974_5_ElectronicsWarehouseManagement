@@ -97,6 +97,8 @@ public enum ApiResultCode
     SessionExpired,
     [Description("Rate limited")]
     RateLimited,
+    [Description("Internal server error")]
+    InternalError,
     [Description("Unknown error")]
     UnknownError = -1,
 }
