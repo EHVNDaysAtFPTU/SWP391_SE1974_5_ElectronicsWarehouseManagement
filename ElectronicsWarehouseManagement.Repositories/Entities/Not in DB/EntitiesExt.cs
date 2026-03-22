@@ -41,11 +41,11 @@ namespace ElectronicsWarehouseManagement.Repositories.Entities
                 set => transferRequest.TypeInt = (int)value;
             }
 
-            public CustomerInfo CustomerInfo
-            {
-                get => JsonSerializer.Deserialize<CustomerInfo>(transferRequest.CustomerInfoJson) ?? new CustomerInfo();
-                set => transferRequest.CustomerInfoJson = JsonSerializer.Serialize(value);
-            }
+            //public CustomerInfo CustomerInfo
+            //{
+            //    get => JsonSerializer.Deserialize<CustomerInfo>(transferRequest.CustomerInfoJson) ?? new CustomerInfo();
+            //    set => transferRequest.CustomerInfoJson = JsonSerializer.Serialize(value);
+            //}
         }
 
         extension(Bin bin)

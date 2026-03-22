@@ -1,262 +1,139 @@
-﻿<!DOCTYPE html>
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Transfer List</title>
-    <link rel="stylesheet" href="css/layout.css">
-    <link rel="stylesheet" href="css/table-style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transfers | Manager</title>
+
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Custom Manager Styles -->
+    <link rel="stylesheet" href="css/manager-basic.css">
 </head>
 
 <body>
 
-    <header class="header">
-        <div class="logo">My Manager</div>
+    <!-- Sidebar -->
+    <div class="sidebar d-flex flex-column">
+        <div class="p-3">
+            <h5 class="fw-bold mb-0">E-Warehouse</h5>
+        </div>
+        <nav class="nav flex-column mt-3">
+            <a class="nav-link" href="home.html">Dashboard</a>
+            <a class="nav-link" href="component-inventory.html">Components</a>
+            <a class="nav-link active" href="transfers.html">Transfers</a>
+            <a class="nav-link" href="warehouses.html">Warehouses</a>
+            <a class="nav-link" href="bin.html">Bins</a>
+        </nav>
+    </div>
 
-        <div class="profile-container">
-            <div class="profile" onclick="toggleProfileMenu()">
-                <img src="https://i.pravatar.cc/40" alt="Profile">
-                <span class="username">Manager</span>
+    <!-- Header -->
+    <header class="header d-flex justify-content-between align-items-center">
+        <div>
+            <h5 class="mb-0">Transfer Requests</h5>
+            <small class="text-muted">Manage stock movements and approvals</small>
+        </div>
+
+        <div class="profile-container position-relative">
+            <div class="cursor-pointer d-flex align-items-center" onclick="toggleProfileMenu()">
+                <img src="https://i.pravatar.cc/40?img=12" alt="Profile" class="rounded-circle me-2 border" width="40">
+                <span class="small fw-bold">Manager</span>
             </div>
 
             <div class="profile-dropdown" id="profileDropdown">
-                <a href="profile.html">Thông tin cá nhân</a>
-                <a href="account.html">Quản lí tài khoản</a>
-                <a href="logout.html" class="logout">Logout</a>
+                <a href="profile.html">My Profile</a>
+                <a href="account.html">Settings</a>
+                <hr class="my-1">
+                <a href="#" onclick="logout()" class="text-danger">Logout</a>
             </div>
         </div>
     </header>
 
-    <div class="wrapper">
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container-fluid">
+            
+            <div id="messageContainer"></div>
 
-        <div class="sidebar">
-            <ul>
-                <li><a href="home.html">Dashboard</a></li>
-                <li><a href="component-inventory.html">Components</a></li>
-                <li><a href="transfers.html">Transfers</a></li>
-                <li><a href="warehouses.html">Warehouses</a></li>
-                <li><a href="bin.html">Bins</a></li>
-            </ul>
+            <!-- Page Controls -->
+            <div class="card shadow-sm p-3 mb-4">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-4">
+                        <label class="form-label small">Search Description</label>
+                        <input type="text" id="searchInput" class="form-control" placeholder="Search keywords...">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small">Sort By</label>
+                        <select id="sortBy" class="form-select">
+                            <option value="">Default (ID)</option>
+                            <option value="creationTime">Creation Time</option>
+                            <option value="type">Type</option>
+                            <option value="status">Status</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small">Order</label>
+                        <select id="sortDirection" class="form-select">
+                            <option value="asc">Ascending</option>
+                            <option value="desc">Descending</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <button class="btn btn-primary w-100" onclick="applyFilter()">Search</button>
+                    </div>
+                </div>
+                <div class="row g-3 align-items-center mt-2">
+                    <div class="col-md-6">
+                        <label class="small me-2">Show</label>
+                        <select id="pageSize" class="form-select d-inline-block w-auto">
+                            <option value="5">5</option>
+                            <option value="10" selected>10</option>
+                            <option value="20">20</option>
+                        </select>
+                        <span class="small text-muted ms-2">items per page</span>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <button class="btn btn-outline-secondary" onclick="loadTransfers(1)">Refresh List</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Content Card -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-white py-3">
+                    <span id="infoText" class="small fw-bold text-muted">Loading transfers...</span>
+                </div>
+                
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0" id="transferTable">
+                        <thead class="table-light">
+                            <tr>
+                                <th>ID</th>
+                                <th>Description</th>
+                                <th>Type</th>
+                                <th>Created</th>
+                                <th>Executed</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- JS content -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="p-4 border-top">
+                    <div id="pagination"></div>
+                </div>
+            </div>
+            
         </div>
+    </main>
 
-        <div class="content">
-
-            <h2>Transfer List</h2>
-
-            Transfer per page:
-            <select id="pageSize">
-                <option value="5">5</option>
-                <option value="10" selected>10</option>
-                <option value="20">20</option>
-            </select>
-
-            <br><br>
-
-            <div id="infoText"></div>
-            <br>
-
-            <table id="transferTable" width="100%">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Description</th>
-                        <th>Type</th>
-                        <th>Creation Date</th>
-                        <th>Execution Date</th>
-                        <th>Status</th>
-                        <th>Monitor Status</th>
-                        <th>Detail</th>
-                        <th>Decision</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
-
-            <br>
-            <div id="pagination"></div>
-            <br>
-            <div id="message"></div>
-
-        </div>
-    </div>
-
-    <script>
-
-        const STATUS = {
-            PENDING: 1,
-            APPROVED: 2,
-            REJECTED: 3,
-            CONFIRMED:4
-        };
-
-        let currentPage = 1;
-        let pageSize = 10;
-        let totalPages = 1;
-
-        document.addEventListener("DOMContentLoaded", function () {
-            document.getElementById("pageSize").addEventListener("change", changePageSize);
-            loadTransfers(1);
-        });
-
-        async function loadTransfers(page) {
-            currentPage = page;
-
-            const response = await fetch(
-                `/api/manager/get-transfers?pageNumber=${page}&pageSize=${pageSize}`,
-                { credentials: "include" }
-            );
-
-            const result = await response.json();
-
-            if (!result.success) {
-                showMessage(result.msg || "Load failed");
-                return;
-            }
-
-            const data = result.data;
-            renderInfo(data.totalCount);
-            renderTable(data.data);
-            renderPagination(data.totalPages);
-        }
-
-        function renderTable(data) {
-            const tbody = document.querySelector("#transferTable tbody");
-            tbody.innerHTML = "";
-
-            if (!data || data.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="9">No transfers found</td></tr>`;
-                return;
-            }
-
-            data.forEach(t => {
-                const row = document.createElement("tr");
-
-                row.innerHTML = `
-                <td>${t.id ?? "-"}</td>
-                <td>${t.description ?? "-"}</td>
-                <td>${getTypeText(t.type)}</td>
-                <td>${formatDate(t.creation_date)}</td>
-                <td>${t.execution_date ? formatDate(t.execution_date) : "-"}</td>
-                <td>${getStatusText(t.status)}</td>
-                <td>${transferMonitorStatus(t)}</td>
-                <td>
-                    <button onclick="viewTransfer(${t.id})">View</button>
-                </td>
-                <td>
-                    ${renderDecisionButtons(t)}
-                </td>
-            `;
-
-                tbody.appendChild(row);
-            });
-        }
-
-        function renderDecisionButtons(t) {
-            if (t.status !== STATUS.PENDING) return "-";
-
-            return `
-            <button onclick="updateTransferStatus(${t.id}, ${STATUS.APPROVED})">Approve</button>
-            <button onclick="updateTransferStatus(${t.id}, ${STATUS.REJECTED})">Reject</button>
-        `;
-        }
-
-        async function updateTransferStatus(transferId, decision) {
-            const response = await fetch(
-                `/api/manager/transfer-requests/${transferId}/decisions`,
-                {
-                    method: "POST",
-                    credentials: "include",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ decision: decision })
-                }
-            );
-
-            const result = await response.json();
-
-            if (response.ok && result.success) {
-                showMessage("Updated successfully");
-                loadTransfers(currentPage);
-            } else {
-                showMessage(result.msg || "Update failed");
-            }
-        }
-
-        function getStatusText(status) {
-            switch (status) {
-                case STATUS.PENDING: return "Pending";
-                case STATUS.APPROVED: return "Approved";
-                case STATUS.REJECTED: return "Rejected";
-                case STATUS.CONFIRMED: return "Confirmed";
-                default: return "Unknown";
-            }
-        }
-
-        function transferMonitorStatus(t) {
-            if (t.status === STATUS.PENDING) return "Not Yet";
-            if (t.status === STATUS.CONFIRMED && t.execution_date) return "Done";
-            if (t.status === STATUS.APPROVED) return "Processing";
-            if (t.status === STATUS.REJECTED) return "Canceled";
-            return "Unknown";
-        }
-
-        function getTypeText(type) {
-            switch (type) {
-                case 1: return "Inbound";
-                case 2: return "Outbound";
-                case 3: return "Internal";
-                default: return "Unknown";
-            }
-        }
-
-        function formatDate(dateString) {
-            if (!dateString) return "-";
-            return new Date(dateString).toLocaleDateString("en-US");
-        }
-
-        function renderInfo(totalCount) {
-            document.getElementById("infoText").innerText =
-                `Showing ${(currentPage - 1) * pageSize + 1}
-             to ${Math.min(currentPage * pageSize, totalCount)}
-             of ${totalCount}`;
-        }
-
-        function renderPagination(pages) {
-            totalPages = pages;
-            const container = document.getElementById("pagination");
-            container.innerHTML = "";
-
-            for (let i = 1; i <= totalPages; i++) {
-                const btn = document.createElement("button");
-                btn.innerText = i;
-                btn.disabled = (i === currentPage);
-                btn.onclick = () => loadTransfers(i);
-                container.appendChild(btn);
-            }
-        }
-
-        function changePageSize() {
-            pageSize = parseInt(document.getElementById("pageSize").value);
-            loadTransfers(1);
-        }
-
-        function showMessage(msg) {
-            document.getElementById("message").innerText = msg;
-        }
-
-        function viewTransfer(id) {
-            window.location.href = `transfer-detail.html?id=${id}`;
-        }
-
-        function toggleProfileMenu() {
-            document.getElementById("profileDropdown").classList.toggle("show");
-        }
-
-        window.onclick = function (event) {
-            if (!event.target.closest('.profile-container')) {
-                document.getElementById("profileDropdown").classList.remove("show");
-            }
-        }
-
-    </script>
-
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/shared.js"></script>
+    <script src="js/transfers.js"></script>
 </body>
 </html>

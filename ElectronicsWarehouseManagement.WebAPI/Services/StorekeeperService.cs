@@ -57,81 +57,81 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             _logger = logger;
         }
 
-        public async Task<ApiResult<List<Repositories.Entities.CustomerInfo>>> GetCustomersAsync()
-        {
-            var customers = new List<Repositories.Entities.CustomerInfo>();
+        //public async Task<ApiResult<List<Repositories.Entities.CustomerInfo>>> GetCustomersAsync()
+        //{
+        //    var customers = new List<Repositories.Entities.CustomerInfo>();
 
-            // First: try to read from explicit Customer table if it exists (best-effort).
-            try
-            {
-                var conn = _dbCtx.Database.GetDbConnection();
-                await conn.OpenAsync();
-                using (var cmd = conn.CreateCommand())
-                {
-                    // best-effort select: try common column names
-                    cmd.CommandText = "SELECT TOP 200 * FROM [Customer]";
-                    using (var reader = await cmd.ExecuteReaderAsync())
-                    {
-                        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                        while (await reader.ReadAsync())
-                        {
-                            string name = "";
-                            string contact = "";
-                            string? address = null;
-                            int? id = null;
-                            for (int i = 0; i < reader.FieldCount; i++)
-                            {
-                                var col = reader.GetName(i).ToLowerInvariant();
-                                if (reader.IsDBNull(i)) continue;
-                                var val = reader.GetValue(i)?.ToString() ?? "";
-                                if (col.Contains("name") && string.IsNullOrWhiteSpace(name)) name = val;
-                                else if ((col.Contains("contact") || col.Contains("phone") || col.Contains("mobile") || col.Contains("tel")) && string.IsNullOrWhiteSpace(contact)) contact = val;
-                                else if (col.Contains("address") && string.IsNullOrWhiteSpace(address)) address = val;
-                                else if ((col == "customer_id" || col == "id" || col.EndsWith("_id")) && id == null)
-                                {
-                                    if (int.TryParse(val, out var parsed)) id = parsed;
-                                }
-                            }
-                            var key = (name ?? "") + "|" + (contact ?? "");
-                            if (string.IsNullOrWhiteSpace(name) && string.IsNullOrWhiteSpace(contact)) continue;
-                            var ci = new Repositories.Entities.CustomerInfo { Name = name, Contact = contact, Address = address, Id = id };
-                            if (seen.Add(key)) customers.Add(ci);
-                        }
-                    }
-                }
-                try { await conn.CloseAsync(); } catch { }
-            }
-            catch
-            {
-                // ignore and fallback to previous behavior
-            }
+        //    // First: try to read from explicit Customer table if it exists (best-effort).
+        //    try
+        //    {
+        //        var conn = _dbCtx.Database.GetDbConnection();
+        //        await conn.OpenAsync();
+        //        using (var cmd = conn.CreateCommand())
+        //        {
+        //            // best-effort select: try common column names
+        //            cmd.CommandText = "SELECT TOP 200 * FROM [Customer]";
+        //            using (var reader = await cmd.ExecuteReaderAsync())
+        //            {
+        //                var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        //                while (await reader.ReadAsync())
+        //                {
+        //                    string name = "";
+        //                    string contact = "";
+        //                    string? address = null;
+        //                    int? id = null;
+        //                    for (int i = 0; i < reader.FieldCount; i++)
+        //                    {
+        //                        var col = reader.GetName(i).ToLowerInvariant();
+        //                        if (reader.IsDBNull(i)) continue;
+        //                        var val = reader.GetValue(i)?.ToString() ?? "";
+        //                        if (col.Contains("name") && string.IsNullOrWhiteSpace(name)) name = val;
+        //                        else if ((col.Contains("contact") || col.Contains("phone") || col.Contains("mobile") || col.Contains("tel")) && string.IsNullOrWhiteSpace(contact)) contact = val;
+        //                        else if (col.Contains("address") && string.IsNullOrWhiteSpace(address)) address = val;
+        //                        else if ((col == "customer_id" || col == "id" || col.EndsWith("_id")) && id == null)
+        //                        {
+        //                            if (int.TryParse(val, out var parsed)) id = parsed;
+        //                        }
+        //                    }
+        //                    var key = (name ?? "") + "|" + (contact ?? "");
+        //                    if (string.IsNullOrWhiteSpace(name) && string.IsNullOrWhiteSpace(contact)) continue;
+        //                    var ci = new Repositories.Entities.CustomerInfo { Name = name, Contact = contact, Address = address, Id = id };
+        //                    if (seen.Add(key)) customers.Add(ci);
+        //                }
+        //            }
+        //        }
+        //        try { await conn.CloseAsync(); } catch { }
+        //    }
+        //    catch
+        //    {
+        //        // ignore and fallback to previous behavior
+        //    }
 
-            // If found customers in table, return them
-            if (customers.Count > 0)
-                return new ApiResult<List<Repositories.Entities.CustomerInfo>>(customers);
+        //    // If found customers in table, return them
+        //    if (customers.Count > 0)
+        //        return new ApiResult<List<Repositories.Entities.CustomerInfo>>(customers);
 
-            // Fallback: Prefer extracting customer info from existing TransferRequest.customer_info_json entries.
-            var jsons = await _dbCtx.TransferRequests.AsNoTracking()
-                .Where(tr => !string.IsNullOrEmpty(tr.CustomerInfoJson))
-                .Select(tr => tr.CustomerInfoJson)
-                .ToListAsync();
+        //    // Fallback: Prefer extracting customer info from existing TransferRequest.customer_info_json entries.
+        //    var jsons = await _dbCtx.TransferRequests.AsNoTracking()
+        //        //.Where(tr => !string.IsNullOrEmpty(tr.CustomerInfoJson))
+        //        .Select(tr => tr.CustomerInfoJson)
+        //        .ToListAsync();
 
-            var seen2 = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var j in jsons)
-            {
-                try
-                {
-                    var ci = System.Text.Json.JsonSerializer.Deserialize<Repositories.Entities.CustomerInfo>(j);
-                    if (ci is null) continue;
-                    var key = (ci.Name ?? "") + "|" + (ci.Contact ?? "");
-                    if (seen2.Add(key)) customers.Add(ci);
-                }
-                catch { /* ignore malformed json */ }
-            }
+        //    var seen2 = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        //    foreach (var j in jsons)
+        //    {
+        //        try
+        //        {
+        //            var ci = System.Text.Json.JsonSerializer.Deserialize<Repositories.Entities.CustomerInfo>(j);
+        //            if (ci is null) continue;
+        //            var key = (ci.Name ?? "") + "|" + (ci.Contact ?? "");
+        //            if (seen2.Add(key)) customers.Add(ci);
+        //        }
+        //        catch { /* ignore malformed json */ }
+        //    }
 
-            // return any found (may be empty)
-            return new ApiResult<List<Repositories.Entities.CustomerInfo>>(customers);
-        }
+        //    // return any found (may be empty)
+        //    return new ApiResult<List<Repositories.Entities.CustomerInfo>>(customers);
+        //}
 
         public async Task<ApiResult<string>> UploadImageAsync(IFormFile image)
         {
@@ -462,12 +462,12 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             try
             {
                 var ci = request.CustomerInfo ?? new Repositories.Entities.CustomerInfo();
-                transferRequest.CustomerInfoJson = JsonSerializer.Serialize(ci);
+                //transferRequest.CustomerInfoJson = JsonSerializer.Serialize(ci);
             }
             catch
             {
                 // fallback to empty JSON object if serialization fails
-                transferRequest.CustomerInfoJson = "{}";
+                //transferRequest.CustomerInfoJson = "{}";
             }
             _dbCtx.TransferRequests.Add(transferRequest);
             await _dbCtx.SaveChangesAsync();

@@ -7,6 +7,7 @@ using iText.Layout;
 using iText.Layout.Element;
 using iText.Layout.Properties;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using System.Linq;
 using System.Security.Claims;
 using System.Security.Cryptography;
@@ -31,11 +32,19 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
         Task<ApiResult<PagedResult<WarehouseResp>>> GetWareHouseListAsync(PagingRequest request);
         // Crud 
         Task<ApiResult> PostTransferDecisionAsync(int transferId, TransferDecisionType decision, int? approverId);
+        Task<ApiResult<ComponentResp>> CreateComponent(CreateComponentReq request);
+        Task<ApiResult<ComponentResp>> UpdateComponent();
+        Task<ApiResult<BinResp>> CreateBin();
+        Task<ApiResult<BinResp>> UpdateBin();
+        Task<ApiResult<WarehouseResp>> CreateWareHouse();
+        Task<ApiResult<WarehouseResp>> UpdateWareHouse();
 
         // Dashboard
         Task<ApiResult<DashboardSummaryResp>> GetSummaryAsync();
         Task<ApiResult<DashboardChartResp>> GetChartDataAsync(int days);
         Task<byte[]> ExportTransferPdfAsync(int transferId);
+        Task<byte[]> ExportInventoryPdfAsync();
+        Task<byte[]> ExportStatisticsPdfAsync(int days);
 
     }
 
@@ -53,6 +62,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             var component = await _dbCtx.Components
                .AsNoTracking()
                .Include(i=> i.Categories)
+               .Include(i=> i.ComponentBins)
                .Where(i => i.ComponentId == componentId)
                .Select(i => new ComponentResp(i, fullInfo))
                .FirstOrDefaultAsync();
@@ -71,10 +81,9 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
                 .AsNoTracking()
                 .AsQueryable();
 
-            // search method
             if (!string.IsNullOrEmpty(request.Search))
             {
-                query = query.Where(c => c.MetadataJson.Contains($"\"name\":\"{request.Search}"));
+                query = query.Where(c => c.MetadataJson.Contains(request.Search));
             }
             if (request.SortBy != null && request.SortDirection != null)
             {
@@ -90,10 +99,16 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             }
 
                 int totalCount = await query.CountAsync();
-                if (totalCount == 0)
+            if (totalCount == 0)
+            {
+                return new ApiResult<PagedResult<ComponentResp>>(new PagedResult<ComponentResp>
                 {
-                    return new ApiResult<PagedResult<ComponentResp>>(ApiResultCode.NotFound);
-                }
+                    data = new List<ComponentResp>(),
+                    TotalCount = 0,
+                    PageNumber = request.PageNumber,
+                    PageSize = request.PageSize
+                });
+            }
 
                 var data = await query.ApplyPaging(request).Select(i => new ComponentResp(i, false)).ToListAsync();
 
@@ -143,11 +158,10 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
                 .Include(i => i.Creator)
                 .Include(i => i.BinFrom)
                 .Include(i => i.BinTo);
-
-            // search method
+    
             if (!string.IsNullOrEmpty(request.Search))
             {
-                query = query.ApplySearchByName(request.Search, t => t.Description.Contains(request.Search));
+                query = query.Where(t => t.Description.Contains(request.Search));
             }
             if (request.SortBy != null && request.SortDirection != null)
             {
@@ -167,11 +181,16 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
                         break;
                 }
             }
-
             int totalCount = await query.CountAsync();
-            if(totalCount == 0)
+            if (totalCount == 0)
             {
-                return new ApiResult<PagedResult<TransferRequestResp>>(ApiResultCode.NotFound);
+                return new ApiResult<PagedResult<TransferRequestResp>>(new PagedResult<TransferRequestResp>
+                {
+                    data = new List<TransferRequestResp>(),
+                    TotalCount = 0,
+                    PageNumber = request.PageNumber,
+                    PageSize = request.PageSize
+                });
             }
             var data = await query
                 .ApplyPaging(request)
@@ -269,7 +288,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
                 }
             }
             int totalCount = await query.CountAsync();
-            if(totalCount == 0)
+            if (totalCount == 0)
             {
                 return new ApiResult<PagedResult<BinResp>>(ApiResultCode.NotFound);
             }
@@ -311,11 +330,17 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             }
 
             var totalCount = await query.CountAsync();
-
-            if(totalCount == 0)
+            if (totalCount == 0)
             {
-                return new ApiResult<PagedResult<WarehouseResp>>(ApiResultCode.NotFound);         
+                return new ApiResult<PagedResult<WarehouseResp>>(new PagedResult<WarehouseResp>
+                {
+                    data = new List<WarehouseResp>(),
+                    TotalCount = 0,
+                    PageNumber = request.PageNumber,
+                    PageSize = request.PageSize
+                });
             }
+
             var data = await query
                 .Skip((request.PageNumber - 1) * request.PageSize)
                 .Take(request.PageSize).ToListAsync();
@@ -464,6 +489,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
 
         private byte[] GeneratePdf(Action<Document> buildContent)
         {
+            if (buildContent == null) throw new ArgumentNullException(nameof(buildContent));
             using var stream = new MemoryStream();
 
             var writer = new PdfWriter(stream);
@@ -482,6 +508,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
                 .Include(x => x.Approver)
                 .Include(x => x.BinFrom).ThenInclude(x => x.Warehouse)
                 .Include(x => x.BinTo).ThenInclude(x => x.Warehouse)
+                .Include(x => x.Customer)
                 .Include(x => x.TransferRequestComponents)
                     .ThenInclude(x => x.Component)
                 .FirstOrDefaultAsync(x => x.RequestId == transferId);
@@ -518,7 +545,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             doc.Add(new Paragraph($"Request ID: {transfer.RequestId}"));
             doc.Add(new Paragraph($"Date: {transfer.CreationTime:dd/MM/yyyy}"));
 
-            doc.Add(new Paragraph($"Supplier: {transfer.CustomerInfoJson}"));
+            doc.Add(new Paragraph($"Supplier: {transfer.Customer.CustomerName ?? ""}"));
             doc.Add(new Paragraph($"Address: ..."));
 
             doc.Add(new Paragraph("\n"));
@@ -528,7 +555,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             table.AddCell("Supplier");
             table.AddCell("Receiver");
 
-            table.AddCell(transfer.CustomerInfoJson);
+            table.AddCell(transfer.Customer.CustomerName ?? "");
             table.AddCell(transfer.Creator?.DisplayName ?? "");
 
             doc.Add(table);
@@ -545,7 +572,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             doc.Add(new Paragraph($"Request ID: {transfer.RequestId}"));
             doc.Add(new Paragraph($"Date: {transfer.CreationTime:dd/MM/yyyy}"));
 
-            doc.Add(new Paragraph($"Customer: {transfer.CustomerInfoJson}"));
+            doc.Add(new Paragraph($"Customer: {transfer.Customer.CustomerName ?? ""}"));
 
             doc.Add(new Paragraph("\n"));
 
@@ -554,7 +581,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             table.AddCell("Customer");
             table.AddCell("Invoice Writer");
 
-            table.AddCell(transfer.CustomerInfoJson);
+            table.AddCell(transfer.Customer.CustomerName ?? "");
             table.AddCell(transfer.Creator?.DisplayName ?? "");
 
             doc.Add(table);
@@ -598,34 +625,162 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
 
             doc.Add(table);
         }
-        //public async Task<byte[]> ExportInventoryPdfAsync()
-        //{
-        //    var inventory = await _dbCtx.ComponentBins
-        //        .Include(x => x.Component)
-        //        .Include(x => x.Bin)
-        //        .ToListAsync();
+        private void BuildSummarySection(Document doc, DashboardSummaryResp summary)
+        {
+            doc.Add(new Paragraph("Inventory Summary")
+                .SetBold()
+                .SetFontSize(14));
 
-        //    return GeneratePdf(doc =>
-        //    {
-        //        doc.Add(new Paragraph("INVENTORY REPORT")
-        //            .SetBold()
-        //            .SetFontSize(18));
+            var table = new Table(2).UseAllAvailableWidth();
 
-        //        var table = new Table(3);
+            table.AddCell("Total Components");
+            table.AddCell(summary.TotalComponents.ToString());
 
-        //        table.AddHeaderCell("Component");
-        //        table.AddHeaderCell("Bin");
-        //        table.AddHeaderCell("Quantity");
+            table.AddCell("Total Warehouses");
+            table.AddCell(summary.TotalWarehouses.ToString());
 
-        //        foreach (var item in inventory)
-        //        {
-        //            table.AddCell(item.Component.Name);
-        //            table.AddCell(item.Bin.Code);
-        //            table.AddCell(item.Quantity.ToString());
-        //        }
+            table.AddCell("Current Total Stock");
+            table.AddCell(summary.CurrentStock.ToString());
 
-        //        doc.Add(table);
-        //    });
-        //}
+            table.AddCell("Low Stock Items");
+            table.AddCell(summary.LowStockItems.ToString());
+
+            table.AddCell("Out of Stock Items");
+            table.AddCell(summary.OutOfStockItems.ToString());
+
+            table.AddCell("Inbound Today");
+            table.AddCell(summary.InboundToday.ToString());
+
+            table.AddCell("Outbound Today");
+            table.AddCell(summary.OutboundToday.ToString());
+
+            doc.Add(table);
+        }
+
+        public async Task<byte[]> ExportInventoryPdfAsync()
+        {
+            var inventory = await _dbCtx.ComponentBins
+                .Include(x => x.Component)
+                .Include(x => x.Bin)
+                .ToListAsync();
+
+            return GeneratePdf(doc =>
+            {
+                doc.Add(new Paragraph("INVENTORY REPORT")
+                    .SetBold()
+                    .SetFontSize(18));
+
+                var table = new Table(3).UseAllAvailableWidth();
+
+                table.AddHeaderCell("Component");
+                table.AddHeaderCell("Bin Location");
+                table.AddHeaderCell("Quantity");
+
+                foreach (var item in inventory)
+                {
+                    table.AddCell(item.Component?.Metadata?.Name ?? "N/A");
+                    table.AddCell(item.Bin?.LocationInWarehouse ?? "N/A");
+                    table.AddCell(item.Quantity.ToString());
+                }
+
+                doc.Add(table);
+            });
+        }
+
+        public async Task<byte[]> ExportStatisticsPdfAsync(int days)
+        {
+            var summaryResult = await GetSummaryAsync();
+            var chartResult = await GetChartDataAsync(days);
+
+            if (summaryResult.ResultCode != ApiResultCode.Success && chartResult.ResultCode != ApiResultCode.Success)
+            {
+                throw new Exception("Unable to retrieve dashboard data for export.");
+            }
+
+            return GeneratePdf(doc =>
+            {
+                doc.Add(new Paragraph("WAREHOUSE STATISTICS REPORT")
+                    .SetTextAlignment(TextAlignment.CENTER)
+                    .SetBold()
+                    .SetFontSize(18));
+
+                doc.Add(new Paragraph($"Generated: {DateTime.Now:dd/MM/yyyy HH:mm}"));
+                doc.Add(new Paragraph("\n"));
+
+                if (summaryResult.ResultCode == ApiResultCode.Success)
+                {
+                    BuildSummarySection(doc, summaryResult.Data);
+                }
+                else
+                {
+                    doc.Add(new Paragraph("Summary data currently unavailable."));
+                }
+
+                doc.Add(new Paragraph("\n"));
+
+                if (chartResult.ResultCode == ApiResultCode.Success && chartResult.Data?.transferChart?.Any() == true)
+                {
+                    BuildChartSection(doc, chartResult.Data);
+                }
+                else
+                {
+                    doc.Add(new Paragraph("No transfer activity found for the requested period."));
+                }
+            });
+        }
+
+        private void BuildChartSection(Document doc, DashboardChartResp chartData)
+        {
+            doc.Add(new Paragraph("Daily Transfer Statistics")
+                .SetBold()
+                .SetFontSize(14));
+
+            float[] widths = { 4, 3, 3 };
+            var table = new Table(UnitValue.CreatePercentArray(widths))
+                .UseAllAvailableWidth();
+
+            table.AddHeaderCell("Date");
+            table.AddHeaderCell("Import (Qty)");
+            table.AddHeaderCell("Export (Qty)");
+
+            foreach (var record in chartData.transferChart)
+            {
+                table.AddCell(record.Date.ToString("dd/MM/yyyy"));
+                table.AddCell(record.Import.ToString());
+                table.AddCell(record.Export.ToString());
+            }
+
+            doc.Add(table);
+        }
+
+        public Task<ApiResult<ComponentResp>> CreateComponent(CreateComponentReq request)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<ApiResult<ComponentResp>> UpdateComponent()
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<ApiResult<BinResp>> CreateBin()
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<ApiResult<BinResp>> UpdateBin()
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<ApiResult<WarehouseResp>> CreateWareHouse()
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<ApiResult<WarehouseResp>> UpdateWareHouse()
+        {
+            throw new NotImplementedException();
+        }
     }
 }

@@ -5,40 +5,44 @@ using System.Collections.Generic;
 
 namespace ElectronicsWarehouseManagement.Repositories.Entities;
 
-public partial class TransferRequest
-{
-    public int RequestId { get; set; }
 
-    public string Description { get; set; }
+    public partial class TransferRequest
+    {
+        public int RequestId { get; set; }
 
-    [Obsolete("Use Type instead.")]
-    public int TypeInt { get; set; }
+        public string Description { get; set; }
 
-    public DateTime CreationTime { get; set; }
+        [Obsolete("Use Type instead.")]
+        public int TypeInt { get; set; }
 
-    public DateTime? ExecutionTime { get; set; }
+        public DateTime CreationTime { get; set; }
 
-    //[Obsolete("Use Status instead.")]
-    public int StatusInt { get; set; }
+        public DateTime? ExecutionTime { get; set; }
 
-    public int CreatorId { get; set; }
+        public int StatusInt { get; set; }
 
-    public int? ApproverId { get; set; }
+        public int CreatorId { get; set; }
 
-    public int? BinFromId { get; set; }
+        public int? ApproverId { get; set; }
 
-    public int? BinToId { get; set; }
+        public int? BinFromId { get; set; }
 
-    [Obsolete("Use CustomerInfo instead.")]
-    public string CustomerInfoJson { get; set; }
+        public int? BinToId { get; set; }
 
-    public virtual User Approver { get; set; }
+        // Thêm thuộc tính này để map với FK trong DB
+        public int? CustomerId { get; set; }
 
-    public virtual Bin BinFrom { get; set; }
+        // Navigation Properties
+        public virtual User Approver { get; set; }
 
-    public virtual Bin BinTo { get; set; }
+        public virtual Bin BinFrom { get; set; }
 
-    public virtual User Creator { get; set; }
+        public virtual Bin BinTo { get; set; }
 
-    public virtual ICollection<TransferRequestComponent> TransferRequestComponents { get; set; } = new List<TransferRequestComponent>();
-}
+        public virtual User Creator { get; set; }
+
+        // Navigation Property tới bảng Customer mới
+        public virtual Customer Customer { get; set; }
+
+        public virtual ICollection<TransferRequestComponent> TransferRequestComponents { get; set; } = new List<TransferRequestComponent>();
+    }
