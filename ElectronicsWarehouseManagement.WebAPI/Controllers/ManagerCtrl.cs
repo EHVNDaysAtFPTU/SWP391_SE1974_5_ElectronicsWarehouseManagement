@@ -1,4 +1,5 @@
 using Azure.Core;
+using ElectronicsWarehouseManagement.DTOs;
 using ElectronicsWarehouseManagement.Repositories.Entities;
 using ElectronicsWarehouseManagement.WebAPI.DTO;
 using ElectronicsWarehouseManagement.WebAPI.Services;
@@ -146,12 +147,45 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
 
             return BadRequest(result);
         }
+        [HttpPost("create-customer")]
+        public async Task<IActionResult> CreateCustomer([FromBody] CustomerReq customer)
+        {
+            var result = await _managerService.CreateCustomerAsync(customer);
+            if (result.Success)
+            {
+                return Ok(result);
+            }
+            return BadRequest(result);
+        }
 
+        [HttpPut("update-customer/{customerId:int}")]
+        public async Task<IActionResult> UpdateCustomer([FromRoute] int customerId, [FromBody] CustomerReq request)
+        {
+            var result = await _managerService.UpdateCustomerAsync(customerId, request);
+            if (result.Success)
+            {
+                return Ok(result);
+            }
+            return BadRequest(result);
+        }
 
         [HttpGet("get-warehouses")]
         public async Task<IActionResult> GetWarehouseList([FromQuery] PagingRequest request)
         {
             var result = await _managerService.GetWareHouseListAsync(request);
+
+            if (result.Success)
+            {
+                return Ok(result);
+            }
+
+            return BadRequest(result);
+        }
+
+        [HttpGet("get-customers")]
+        public async Task<IActionResult> GetCustomerList([FromQuery] PagingRequest request)
+        {
+            var result = await _managerService.GetCustomerListAsync(request);
 
             if (result.Success)
             {
@@ -195,6 +229,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
             );
         }
 
+
         //[HttpPost("export/inventory")]
         //public async Task<IActionResult> ExportInventoryPdf([FromBody] InventoryExportReq request)
         //{
@@ -236,7 +271,6 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
             return HttpContext.Session.GetString("User");
         }
 
-       
 
         
 
