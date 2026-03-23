@@ -38,7 +38,7 @@ async function loadTransferDetail(id) {
         }
 
         renderTransferInfo(result.data);
-        renderComponents(result.data);
+        await renderComponents(result.data);
     } catch (error) {
         showMessage("Connection error: " + error.message, "danger");
     }
@@ -64,7 +64,10 @@ async function renderTransferInfo(t) {
                             <small class="text-muted text-uppercase fw-bold ls-1">Transfer ID</small>
                             <h3 class="fw-bold mb-0">#${t.id}</h3>
                         </div>
-                        ${getStatusBadge(t.status)}
+                        <div class="d-flex gap-2">
+                             <button class="btn btn-outline-danger btn-sm rounded-pill px-3 shadow-sm" onclick="exportTransfer(${t.id})"><i class="bi bi-file-pdf"></i> PDF</button>
+                             ${getStatusBadge(t.status)}
+                        </div>
                     </div>
                     
                     <div class="mb-4">
@@ -76,6 +79,10 @@ async function renderTransferInfo(t) {
                         <div class="col-6">
                             <label class="small text-muted text-uppercase d-block ls-1">Movement Type</label>
                             <span class="fw-semibold text-primary">${getTypeText(t.type)}</span>
+                        </div>
+                        <div class="col-6">
+                            <label class="small text-muted text-uppercase d-block ls-1">Supplier / Customer</label>
+                            <span class="fw-bold text-success">${t.supplier_customer_name || "Internal"}</span>
                         </div>
                         <div class="col-6">
                             <label class="small text-muted text-uppercase d-block ls-1">Creator</label>
@@ -168,31 +175,92 @@ async function getWarehouseName(id) {
     }
 }
 
-function renderComponents(t) {
+async function renderComponents(t) {
     const container = document.getElementById("componentSection");
-    // This part seemed placeholder in original code, but we can make it a nice card if data exists
+    
     if (t.components && t.components.length > 0) {
+        // Initial state for components section
+        container.innerHTML = `
+            <div class="text-center py-4">
+                <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                <p class="small text-muted mt-2">Loading product specifications...</p>
+            </div>
+        `;
+
+        // Fetch full info for each component using the get-component API
+        const componentFullData = await Promise.all(
+            t.components.map(async (c) => {
+                try {
+                    const result = await apiFetch(`/api/manager/get-component/${c.component_id}?fullInfo=true`);
+                    return result.success ? result.data : null;
+                } catch (e) {
+                    console.error("Failed to fetch component info", e);
+                    return null;
+                }
+            })
+        );
+
         container.innerHTML = `
             <div class="glass-card p-4 mt-4">
-                <h6 class="fw-bold text-uppercase ls-1 text-muted mb-3">Line items</h6>
+                <h6 class="fw-bold text-uppercase ls-1 text-muted mb-4">Transfer Line Items</h6>
                 <div class="table-responsive">
-                    <table class="table table-sm">
-                        <thead>
-                            <tr class="small text-muted">
-                                <th>Component ID</th>
-                                <th>Quantity</th>
-                                <th>Status</th>
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr class="small text-muted text-uppercase ls-1">
+                                <th style="width: 80px">Product</th>
+                                <th>Specification</th>
+                                <th class="text-center">Quantity</th>
+                                <th class="text-end">Unit Price</th>
+                                <th class="text-end">Ext. Price</th>
                             </tr>
                         </thead>
                         <tbody>
-                            ${t.components.map(c => `
+                            ${t.components.map((c, index) => {
+                                const fullInfo = componentFullData[index];
+                                const metadata = fullInfo?.metadata || {};
+                                const name = metadata.name || "Unknown Product";
+                                const manufacturer = metadata.manufacturer || "N/A";
+                                const imageUrl = metadata.image_url;
+                                const unitPrice = c.unit_price || 0;
+                                const totalPrice = unitPrice * c.quantity;
+
+                                const imageHtml = imageUrl 
+                                    ? `<img src="${imageUrl}" alt="${name}" class="img-fluid rounded" style="object-fit: contain; width: 100%; height: 100%;" onerror="this.style.display='none'">`
+                                    : `<div class="d-flex align-items-center justify-content-center h-100 text-muted small bg-light rounded"><i class="bi bi-image"></i></div>`;
+
+                                return `
                                 <tr>
-                                    <td class="fw-semibold">#${c.component_id}</td>
-                                    <td><span class="badge bg-dark rounded-pill px-2">${c.quantity} items</span></td>
-                                    <td><span class="text-success small">Verified</span></td>
+                                    <td>
+                                        <div class="product-img-wrapper shadow-sm rounded bg-white p-1" style="width: 60px; height: 60px; overflow: hidden;">
+                                            ${imageHtml}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="fw-bold text-dark">${name}</div>
+                                        <div class="small text-muted">
+                                            <span class="badge bg-light text-dark border me-1">ID: #${c.component_id}</span>
+                                            <span>MFR: ${manufacturer}</span>
+                                        </div>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge bg-primary-soft text-primary rounded-pill px-3 py-2 fw-bold">
+                                            ${c.quantity} items
+                                        </span>
+                                    </td>
+                                    <td class="text-end fw-medium text-muted">$${unitPrice.toFixed(2)}</td>
+                                    <td class="text-end fw-bold text-primary">$${totalPrice.toFixed(2)}</td>
                                 </tr>
-                            `).join('')}
+                                `;
+                            }).join('')}
                         </tbody>
+                        <tfoot class="table-light border-top-0">
+                            <tr>
+                                <td colspan="4" class="text-end fw-bold text-uppercase small ls-1">Total Estimated Value</td>
+                                <td class="text-end fw-bold fs-5 text-dark">
+                                    $${t.components.reduce((sum, c) => sum + (c.unit_price * c.quantity), 0).toFixed(2)}
+                                </td>
+                            </tr>
+                        </tfoot>
                     </table>
                 </div>
             </div>
@@ -209,4 +277,8 @@ function showMessage(msg, type = "info") {
 
 function goBack() {
     window.history.back();
+}
+
+function exportTransfer(id) {
+    window.open(`/api/manager/export/transfer/${id}`, '_blank');
 }

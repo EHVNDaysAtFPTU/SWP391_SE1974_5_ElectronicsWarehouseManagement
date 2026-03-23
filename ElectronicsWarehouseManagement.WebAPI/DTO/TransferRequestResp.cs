@@ -1,4 +1,4 @@
-﻿using ElectronicsWarehouseManagement.Repositories.Entities;
+using ElectronicsWarehouseManagement.Repositories.Entities;
 using System.Text.Json.Serialization;
 
 namespace ElectronicsWarehouseManagement.WebAPI.DTO
@@ -67,11 +67,18 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
         public CustomerResp? Customer { get; set; }
 
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+<<<<<<< HEAD
 >>>>>>> parent of cada737 (Update TransferRequestResp, implement Export Pdf to transfers.html)
 =======
 >>>>>>> parent of 48be797 (Create Customer Management view)
 =======
 >>>>>>> parent of 250eb3d (Merge remote-tracking branch 'origin/FE666' into stk-test)
+=======
+        [JsonPropertyName("supplier_customer_name")]
+        public string? SupplierCustomerName { get; set; }
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+>>>>>>> parent of 20f94b0 (Revert "Update TransferRequestResp, implement Export Pdf to transfers.html")
         [JsonPropertyName("components")]
         public List<TransferRequestComponentResp>? Components { get; set; }
 
@@ -102,10 +109,13 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
 =======
 
                 if (request.CustomerId is not null && request.Customer != null)
+                {
                     Customer = new CustomerResp(request.Customer);
+                    SupplierCustomerName = request.Customer.CustomerName;
+                }
 
                 Components = request.TransferRequestComponents
-                    .Select(i => new TransferRequestComponentResp(i, false))
+                    .Select(i => new TransferRequestComponentResp(i, true))
                     .ToList();
 >>>>>>> parent of cada737 (Update TransferRequestResp, implement Export Pdf to transfers.html)
 =======
