@@ -55,6 +55,18 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
         public BinResp? BinTo { get; set; }
 
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+<<<<<<< HEAD
+=======
+        [JsonPropertyName("customer_id")]
+
+        public int? CustomerId { get; set; }
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        [JsonPropertyName("customer")]
+        public CustomerResp? Customer { get; set; }
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+>>>>>>> parent of cada737 (Update TransferRequestResp, implement Export Pdf to transfers.html)
         [JsonPropertyName("components")]
         public List<TransferRequestComponentResp>? Components { get; set; }
 
@@ -79,7 +91,17 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
                     BinFrom = new BinResp(request.BinFrom, false);
                 if (request.BinToId is not null)
                     BinTo = new BinResp(request.BinTo, false);
+<<<<<<< HEAD
                 Components = request.TransferRequestComponents.Select(i => new TransferRequestComponentResp(i, false)).ToList();
+=======
+
+                if (request.CustomerId is not null && request.Customer != null)
+                    Customer = new CustomerResp(request.Customer);
+
+                Components = request.TransferRequestComponents
+                    .Select(i => new TransferRequestComponentResp(i, false))
+                    .ToList();
+>>>>>>> parent of cada737 (Update TransferRequestResp, implement Export Pdf to transfers.html)
             }
         }
     }
