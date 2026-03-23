@@ -195,12 +195,11 @@
             const r = await api("/admin/users/create", "POST", {
                 username, email, password, role_id: roleId
             });
+            if (!r.success) return showError(r.msg);
 
-            if (r.success) {
-                alert("Create success");
-                closeModal();
-                loadUsers();
-            } else alert(r.message || "Create failed");
+            alert("Create success");
+            closeModal();
+            loadUsers();
         }
 
         async function deleteUser(id) {
@@ -208,12 +207,10 @@
 
             const r = await api(`/admin/users/${id}/delete`, "DELETE");
 
-            if (r.success) {
-                alert("User deleted successfully!");
-                loadUsers();
-            } else {
-                alert(r.message || "Cannot delete this account!");
-            }
+            if (!r.success) return showError(r.msg);
+
+            alert("User deleted successfully!");
+            loadUsers();
         }
 
         async function searchUsers() {
@@ -232,10 +229,7 @@
         }
         async function viewUser(id) {
             const r = await api(`/admin/users/${id}`);
-            if (!r.success) {
-                alert(r.message || "Cannot load user");
-                return;
-            }
+            if (!r.success) return showError(r.msg);
 
             const u = r.data;
 
@@ -303,20 +297,14 @@
                 role_ids: [roleId]
             });
 
-            if (!roleRes.success) {
-                alert(roleRes.message || "Update role failed");
-                return;
-            }
+            if (!roleRes.success) return showError(roleRes.msg);
 
             // Update Status
             const statusRes = await api(`/admin/users/${id}/status`, "PATCH", {
                 status: status
             });
 
-            if (!statusRes.success) {
-                alert(statusRes.message || "Update status failed");
-                return;
-            }
+            if (!statusRes.success) return showError(statusRes.msg);
 
             alert("Update success");
             closeEditModal();
@@ -340,6 +328,9 @@
         document.addEventListener("click", function () {
             document.getElementById("userMenu").classList.add("hidden");
         });
+        function showError(msg) {
+            alert(msg || "Something went wrong!");
+        }
 
         document.addEventListener("DOMContentLoaded", loadUsers);
     </script>

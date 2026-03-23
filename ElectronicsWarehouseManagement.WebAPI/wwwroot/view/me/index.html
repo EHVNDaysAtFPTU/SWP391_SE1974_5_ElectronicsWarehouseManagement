@@ -85,6 +85,7 @@
 
             <input id="oldPwd" class="form-input" type="password" placeholder="Current password">
             <input id="newPwd" class="form-input" type="password" placeholder="New password">
+            <input id="confirmPwd" class="form-input" type="password" placeholder="Confirm new password">
 
             <div class="modal-actions">
                 <button onclick="changePassword()">Change</button>
@@ -155,13 +156,10 @@
                 email: email
             });
 
-            if (r.success) {
-                alert("Profile updated successfully");
-                loadProfile();
-            } else {
-                alert(r.message || "Update failed");
-                console.log(r);
-            }
+            if (!r.success) return showError(r, "Update failed");
+
+            alert("Profile updated successfully");
+            loadProfile();
         }
 
         function openChangePwd() {
@@ -181,15 +179,18 @@
         async function changePassword() {
             const oldPwd = document.getElementById("oldPwd").value.trim();
             const newPwd = document.getElementById("newPwd").value.trim();
+            const confirmPwd = document.getElementById("confirmPwd").value.trim();
 
-            if (!oldPwd || !newPwd) {
-                alert("Password cannot be empty.");
-                return;
+            if (!oldPwd || !newPwd || !confirmPwd) {
+                return alert("All fields are required.");
             }
 
-            if (newPwd.length > 256) {
-                alert("Password too long.");
-                return;
+            if (newPwd.length < 6) {
+                return alert("New password must be at least 6 characters.");
+            }
+
+            if (newPwd !== confirmPwd) {
+                return alert("Passwords do not match.");
             }
 
             const r = await api("/me/password", "PATCH", {
@@ -197,20 +198,28 @@
                 new_pass: newPwd
             });
 
-            if (r.success) {
-                alert("Password changed successfully. Please login again.");
-                logout();
-            } else {
-                alert(r.message || "Change password failed.");
-                console.log(r);
-            }
+            if (!r.success) return showError(r, "Change password failed");
+
+            alert("Password changed successfully. Please login again.");
+
+            // clear input
+            document.getElementById("oldPwd").value = "";
+            document.getElementById("newPwd").value = "";
+            document.getElementById("confirmPwd").value = "";
+
+            closeChangePwd();
+            logout();
         }
         async function logout() {
-            await fetch(BASE + "/auth/logout", {
+            await fetch("/api/auth/logout", {
                 method: "POST",
                 credentials: "include"
             });
             window.location.href = "/login.html";
+        }
+
+        function showError(r, fallback = "Something went wrong!") {
+            alert(r?.msg || fallback);
         }
         function goBack() {
             window.history.back();
