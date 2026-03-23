@@ -27,17 +27,14 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
 
         public BinResp(Bin bin, bool fullInfo) 
         {
-            if (bin is null)
-                return; // defensive: avoid NullReferenceException if caller passed null
-
             ID = bin.BinId;
             LocationInWarehouse = bin.LocationInWarehouse;
             Status = bin.Status;
             WarehouseId = bin.WarehouseId;
             if (fullInfo)
             {
-                Warehouse = bin.Warehouse is not null ? new WarehouseResp(bin.Warehouse, false) : null;
-                Components = bin.ComponentBins?.Where(cb => cb != null).Select(i => new ComponentBinResp(i, false)).ToList();
+                Warehouse = new WarehouseResp(bin.Warehouse, false);
+                Components = bin.ComponentBins.Select(i => new ComponentBinResp(i, false)).ToList();
             }
         }
     }

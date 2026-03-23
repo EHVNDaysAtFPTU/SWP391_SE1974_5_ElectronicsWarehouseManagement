@@ -55,7 +55,7 @@ namespace ElectronicsWarehouseManagement.WebAPI
                             context.Response.ContentType = "application/json; charset=utf-8";
                             ApiResult payload = new ApiResult(ApiResultCode.Unauthorized);
                             //if (!string.IsNullOrWhiteSpace(context.HttpContext.Session.GetString("User")))
-                            //payload = new ApiResult(ApiResultCode.SessionExpired);
+                                //payload = new ApiResult(ApiResultCode.SessionExpired);
                             await context.Response.WriteAsync(JsonSerializer.Serialize(payload));
                         }
                     };

@@ -4,9 +4,6 @@ namespace ElectronicsWarehouseManagement.Repositories.Entities
 {
     public class CustomerInfo
     {
-        [JsonPropertyName("id")]
-        public int? Id { get; set; }
-
         [JsonPropertyName("name")]
         public string Name { get; set; } = "";
 

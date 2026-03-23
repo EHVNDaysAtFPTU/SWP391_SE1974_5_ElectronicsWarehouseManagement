@@ -1,362 +1,70 @@
 <!DOCTYPE html>
-<html>
+<html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Admin | User Management</title>
+    <title>User Management</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
     <div class="layout">
 
-        <div class="sidebar">
-            <div class="sidebar-top">
-                <h2 class="brand">ECWMS</h2>
+        <aside class="sidebar">
+            <div class="brand">ECWMS</div>
+            <nav>
+                <a href="index.html">Dashboard</a>
+                <a class="active">User Management</a>
+                <a href="system-config.html">System Configuration</a>
+                <a>Logout</a>
+            </nav>
+        </aside>
 
-                <!-- Avatar -->
-                <div class="sidebar-user">
-                    <div class="avatar-wrapper" onclick="toggleUserMenu(event)">
-                        <img src="https://khoanhdep.com/wp-content/uploads/2025/12/meme-soi-co-doc.jpg" class="avatar-large">
+        <main class="main">
+            <header class="topbar">
+                <h1>User Management</h1>
+            </header>
 
-                        <div id="userMenu" class="user-menu hidden">
-                            <div onclick="openProfile()">Profile</div>
-                            <div onclick="logout()">Logout</div>
-                        </div>
+            <section class="content">
+                <div class="box">
+                    <div class="box-header">
+                        <h2>User List</h2>
+                        <button>Add User</button>
                     </div>
+
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Username</th>
+                                <th>Role</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>admin01</td>
+                                <td>Admin</td>
+                                <td>Active</td>
+                                <td>
+                                    <button class="small">Edit</button>
+                                    <button class="small danger">Disable</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>staff01</td>
+                                <td>Staff</td>
+                                <td>Inactive</td>
+                                <td>
+                                    <button class="small">Edit</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
+            </section>
+        </main>
 
-                <!-- Menu -->
-                <div class="menu">
-                    <p>
-                        User Management
-                    </p>
-                </div>
-            </div>
-        </div>
-
-        <div class="content">
-
-            <div class="header">
-                <h2>User Management</h2>
-                <button class="btn-primary" onclick="openModal()">+ Add User</button>
-            </div>
-
-            <div class="search-bar">
-                <input id="searchInput" placeholder="Search username or email">
-                <button class="btn-primary" onclick="searchUsers()">Search</button>
-            </div>
-
-            <table>
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Username</th>
-                        <th>Email</th>
-                        <th>Status</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
-                <tbody id="userTableBody"></tbody>
-            </table>
-
-        </div>
     </div>
-
-    <!-- CREATE MODAL -->
-    <div id="modal" class="modal hidden">
-        <div class="modal-box">
-            <h3>Create User</h3>
-            <input id="newUsername" placeholder="Username">
-            <input id="newEmail" placeholder="Email">
-            <input id="newPassword" type="password" placeholder="Password">
-
-            <select id="newRole">
-                <option value="2">Manager</option>
-                <option value="3">Storekeeper</option>
-            </select>
-
-            <div class="modal-actions">
-                <button class="btn-primary" onclick="createUser()">Create</button>
-                <button onclick="closeModal()">Cancel</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- VIEW MODAL -->
-    <div id="viewModal" class="modal hidden">
-        <div class="modal-box">
-            <h3>User Information</h3>
-            <p><b>Username:</b> <span id="viewUsername"></span></p>
-            <p><b>Display Name:</b> <span id="viewDisplayName"></span></p>
-            <p><b>Email:</b> <span id="viewEmail"></span></p>
-            <p><b>Role:</b> <span id="viewRole"></span></p>
-            <p><b>Status:</b> <span id="viewStatus"></span></p>
-
-            <div class="modal-actions">
-                <button onclick="closeViewModal()">Close</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- EDIT MODAL -->
-    <div id="editModal" class="modal hidden">
-        <div class="modal-box">
-            <h3>Edit User</h3>
-
-            <input type="hidden" id="editUserId">
-
-            <label>Role</label>
-            <select id="editRole">
-                <option value="2">Manager</option>
-                <option value="3">Storekeeper</option>
-            </select>
-
-            <label>Status</label>
-            <select id="editStatus">
-                <option value="1">Active</option>
-                <option value="2">Inactive</option>
-                <option value="3">Suspended</option>
-            </select>
-
-            <div class="modal-actions">
-                <button class="btn-primary" onclick="updateUser()">Save</button>
-                <button onclick="closeEditModal()">Cancel</button>
-            </div>
-        </div>
-    </div>
-
-    <script>
-<<<<<<< HEAD
-
-=======
-        const BASE = "https://localhost:7297/api";
->>>>>>> FE645
-
-        async function api(endpoint, method = "GET", body = null) {
-            const opt = {
-                method,
-                headers: { "Content-Type": "application/json" },
-                credentials: "include"
-            };
-            if (body) opt.body = JSON.stringify(body);
-<<<<<<< HEAD
-            const res = await fetch(`/api${endpoint}`, opt);
-=======
-            const res = await fetch(BASE + endpoint, opt);
->>>>>>> FE645
-            return await res.json();
-        }
-
-        async function loadUsers() {
-            const r = await api("/admin/users");
-            if (r.success) render(r.data);
-        }
-        function render(users) {
-            const tbody = document.getElementById("userTableBody");
-            tbody.innerHTML = "";
-
-            users.forEach(u => {
-
-                let statusText = "";
-                let statusClass = "";
-
-                switch (u.status) {
-                    case 1:
-                        statusText = "Active";
-                        statusClass = "status active";
-                        break;
-                    case 2:
-                        statusText = "Inactive";
-                        statusClass = "status disabled";
-                        break;
-                    case 3:
-                        statusText = "Suspended";
-                        statusClass = "status locked";
-                        break;
-                    case 4:
-                        statusText = "Deleted";
-                        statusClass = "status disabled";
-                        break;
-                }
-
-                tbody.innerHTML += `
-<tr>
-<td>${u.user_id}</td>
-<td>${u.username}</td>
-<td>${u.email}</td>
-<td><span class="${statusClass}">${statusText}</span></td>
-<td>
-<button onclick="viewUser(${u.user_id})">View</button>
-<button onclick="editUser(${u.user_id})">Edit</button>
-<button class="btn-danger" onclick="deleteUser(${u.user_id})">Delete</button>
-</td>
-</tr>`;
-            });
-        }
-
-        async function createUser() {
-            const username = newUsername.value;
-            const email = newEmail.value;
-            const password = newPassword.value;
-            const roleId = parseInt(newRole.value);
-
-<<<<<<< HEAD
-            const r = await api("/admin/users/create", "POST", {
-=======
-            const r = await api("/admin/create-account", "POST", {
->>>>>>> FE645
-                username, email, password, role_id: roleId
-            });
-
-            if (r.success) {
-                alert("Create success");
-                closeModal();
-                loadUsers();
-            } else alert(r.message || "Create failed");
-        }
-
-        async function deleteUser(id) {
-            if (!confirm("Are you sure you want to delete this user?")) return;
-
-            const r = await api(`/admin/users/${id}/delete`, "DELETE");
-
-            if (r.success) {
-                alert("User deleted successfully!");
-                loadUsers();
-            } else {
-                alert(r.message || "Cannot delete this account!");
-            }
-        }
-
-        async function searchUsers() {
-            const q = searchInput.value.trim();
-            if (!q) return loadUsers();
-            const r = await api(`/admin/search-users?query=${q}`);
-            if (r.success) render(r.data);
-        }
-
-        function openModal() {
-            modal.classList.remove("hidden");
-        }
-
-        function closeModal() {
-            modal.classList.add("hidden");
-        }
-        async function viewUser(id) {
-            const r = await api(`/admin/users/${id}`);
-            if (!r.success) {
-                alert(r.message || "Cannot load user");
-                return;
-            }
-
-            const u = r.data;
-
-            let statusText = "Unknown";
-            switch (u.status) {
-                case 1: statusText = "Active"; break;
-                case 2: statusText = "Inactive"; break;
-                case 3: statusText = "Suspended"; break;
-                case 4: statusText = "Deleted"; break;
-            }
-
-            const roleName = u.role && u.role.length > 0
-                ? u.role.map(r => r.role_name).join(", ")
-                : "No Role";
-
-            // Populate view fields. Be tolerant of different JSON naming.
-            viewUsername.innerText = u.username || "-";
-            viewDisplayName.innerText = u.displayName ?? u.display_name ?? u.displayname ?? "-";
-            viewEmail.innerText = u.email || "-";
-            viewRole.innerText = roleName;
-            viewStatus.innerText = statusText;
-
-            viewModal.classList.remove("hidden");
-        }
-
-        function closeViewModal() {
-            viewModal.classList.add("hidden");
-        }
-        async function editUser(id) {
-            const r = await api(`/admin/users/${id}`);
-            if (!r.success) return;
-
-            const u = r.data;
-
-            const roleName = u.role && u.role.length > 0
-                ? u.role[0].role_name
-                : "";
-
-            const roleId = u.role && u.role.length > 0
-                ? u.role[0].role_id
-                : "";
-
-            if (roleName === "Admin") {
-                alert("Cannot edit Admin account");
-                return;
-            }
-
-            editUserId.value = id;
-            editRole.value = roleId;
-            editStatus.value = u.status;
-
-            editModal.classList.remove("hidden");
-        }
-        function closeEditModal() {
-            editModal.classList.add("hidden");
-        }
-
-        async function updateUser() {
-            const id = parseInt(editUserId.value);
-            const roleId = parseInt(editRole.value);
-            const status = parseInt(editStatus.value);
-
-            // Update Role
-            const roleRes = await api("/admin/set-role", "POST", {
-                user_id: id,
-                role_id: roleId
-            });
-
-            if (!roleRes.success) {
-                alert(roleRes.message || "Update role failed");
-                return;
-            }
-
-            // Update Status
-            const statusRes = await api("/admin/set-status", "POST", {
-                user_id: id,
-                status: status
-            });
-
-            if (!statusRes.success) {
-                alert(statusRes.message || "Update status failed");
-                return;
-            }
-
-            alert("Update success");
-            closeEditModal();
-            loadUsers();
-        }
-        async function logout() {
-            await api("/auth/logout", "POST");
-            window.location.href = "/login.html";
-        }
-
-        // navigate to profile page
-        function openProfile() {
-            // If the profile page is at wwwroot/view/me/index.html:
-            window.location.href = "/me/index.html";
-        }
-        function toggleUserMenu(event) {
-            event.stopPropagation();
-            document.getElementById("userMenu").classList.toggle("hidden");
-        }
-
-        document.addEventListener("click", function () {
-            document.getElementById("userMenu").classList.add("hidden");
-        });
-
-        document.addEventListener("DOMContentLoaded", loadUsers);
-    </script>
 
 </body>
 </html>

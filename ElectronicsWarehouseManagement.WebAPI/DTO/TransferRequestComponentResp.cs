@@ -5,7 +5,6 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
 {
     public class TransferRequestComponentResp
     {
- 
         [JsonPropertyName("id")]
         public int ID { get; set; }
 
@@ -36,7 +35,6 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
             ComponentId = trc.ComponentId;
             Quantity = trc.Quantity;
             UnitPrice = trc.UnitPrice;
-        
             if (fullInfo)
             {
                 Component = new ComponentResp(trc.Component, false);

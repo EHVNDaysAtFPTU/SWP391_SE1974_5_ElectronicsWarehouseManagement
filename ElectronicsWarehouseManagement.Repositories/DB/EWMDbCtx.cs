@@ -28,7 +28,6 @@ public partial class EWMDbCtx : DbContext
     public virtual DbSet<TransferRequest> TransferRequests { get; set; }
 
     public virtual DbSet<TransferRequestComponent> TransferRequestComponents { get; set; }
-    public virtual DbSet<Customer> Customers { get; set; }
 
     public virtual DbSet<User> Users { get; set; }
 
@@ -145,12 +144,13 @@ public partial class EWMDbCtx : DbContext
             entity.Property(e => e.CreationTime)
                 .HasColumnType("datetime")
                 .HasColumnName("creation_time");
-            entity.Property(e => e.CustomerId).HasColumnName("customer_id");
             entity.Property(e => e.CreatorId).HasColumnName("creator_id");
             entity.Property(e => e.Description)
                 .IsRequired()
                 .HasColumnName("description");
-            // Legacy JSON column may not exist in newer schema; do not map it to avoid DB errors.
+            entity.Property(e => e.CustomerInfoJson)
+                .IsRequired()
+                .HasColumnName("customer_info_json");
             entity.Property(e => e.ExecutionTime)
                 .HasColumnType("datetime")
                 .HasColumnName("execution_time");
@@ -173,10 +173,6 @@ public partial class EWMDbCtx : DbContext
                 .HasForeignKey(d => d.CreatorId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_TransferRequest_User_Creator");
-            entity.HasOne(d => d.Customer)
-        .WithMany(p => p.TransferRequests)
-        .HasForeignKey(d => d.CustomerId)
-        .HasConstraintName("FK_TransferRequest_Customer");
         });
 
         modelBuilder.Entity<TransferRequestComponent>(entity =>
@@ -199,36 +195,6 @@ public partial class EWMDbCtx : DbContext
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_TransferRequestComponent_TransferRequest");
         });
-        // Trong phương thức OnModelCreating, thêm cấu hình cho Customer
-        modelBuilder.Entity<Customer>(entity =>
-        {
-            entity.ToTable("Customer");
-
-            entity.Property(e => e.CustomerId).HasColumnName("customer_id");
-            entity.Property(e => e.CustomerName)
-                .IsRequired()
-                .HasMaxLength(100)
-                .HasColumnName("customer_name");
-
-            entity.Property(e => e.Phone)
-                .HasMaxLength(20)
-                .IsUnicode(false)
-                .HasColumnName("phone");
-
-            entity.Property(e => e.Email)
-                .HasMaxLength(320)
-                .HasColumnName("email");
-
-            entity.Property(e => e.Address).HasColumnName("address");
-
-            entity.Property(e => e.CreatedAt)
-                .HasDefaultValueSql("(getdate())")
-                .HasColumnType("datetime")
-                .HasColumnName("created_at");
-
-            entity.HasIndex(e => e.Email, "UQ_Customer_Email").IsUnique();
-        });
-
 
         modelBuilder.Entity<User>(entity =>
         {

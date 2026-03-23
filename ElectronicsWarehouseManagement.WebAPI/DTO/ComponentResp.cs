@@ -31,26 +31,13 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
 
         public ComponentResp(Component component, bool fullInfo)
         {
-            if (component is null)
-            {
-                // Defensive: allow null component (avoid NRE when projecting lists)
-                ID = 0;
-                Metadata = null;
-                Unit = string.Empty;
-                UnitPrice = 0;
-                Categories = null;
-                TotalQuantity = null;
-                TotalPrice = null;
-                return;
-            }
-
             ID = component.ComponentId;
             Metadata = component.Metadata;
             Unit = component.Unit;
             UnitPrice = component.UnitPrice;
             if (fullInfo)
             {
-                Categories = component.Categories?.Select(cc => new ComponentCategoryResp(cc)).ToList();
+                Categories = component.Categories.Select(cc => new ComponentCategoryResp(cc)).ToList();
                 TotalQuantity = component.TotalQuantity;
                 TotalPrice = component.TotalPrice;
             }

@@ -1,9 +1,6 @@
 ﻿using ElectronicsWarehouseManagement.Repositories.Entities;
 using ElectronicsWarehouseManagement.WebAPI.DTO;
 using Microsoft.EntityFrameworkCore;
-using System.Linq;
-using System.Text.Json;
-using System.Data.Common;
 
 namespace ElectronicsWarehouseManagement.WebAPI.Services
 {
@@ -45,93 +42,14 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
         Task<ApiResult<int>> GetTransferRequestCountAsync(int creatorId);
     }
 
-
     public class StorekeeperService : IStorekeeperService
     {
         readonly EWMDbCtx _dbCtx;
-        readonly ILogger<StorekeeperService> _logger;
 
-        public StorekeeperService(EWMDbCtx dbCtx, ILogger<StorekeeperService> logger)
+        public StorekeeperService(EWMDbCtx dbCtx)
         {
             _dbCtx = dbCtx;
-            _logger = logger;
         }
-
-        //public async Task<ApiResult<List<Repositories.Entities.CustomerInfo>>> GetCustomersAsync()
-        //{
-        //    var customers = new List<Repositories.Entities.CustomerInfo>();
-
-        //    // First: try to read from explicit Customer table if it exists (best-effort).
-        //    try
-        //    {
-        //        var conn = _dbCtx.Database.GetDbConnection();
-        //        await conn.OpenAsync();
-        //        using (var cmd = conn.CreateCommand())
-        //        {
-        //            // best-effort select: try common column names
-        //            cmd.CommandText = "SELECT TOP 200 * FROM [Customer]";
-        //            using (var reader = await cmd.ExecuteReaderAsync())
-        //            {
-        //                var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        //                while (await reader.ReadAsync())
-        //                {
-        //                    string name = "";
-        //                    string contact = "";
-        //                    string? address = null;
-        //                    int? id = null;
-        //                    for (int i = 0; i < reader.FieldCount; i++)
-        //                    {
-        //                        var col = reader.GetName(i).ToLowerInvariant();
-        //                        if (reader.IsDBNull(i)) continue;
-        //                        var val = reader.GetValue(i)?.ToString() ?? "";
-        //                        if (col.Contains("name") && string.IsNullOrWhiteSpace(name)) name = val;
-        //                        else if ((col.Contains("contact") || col.Contains("phone") || col.Contains("mobile") || col.Contains("tel")) && string.IsNullOrWhiteSpace(contact)) contact = val;
-        //                        else if (col.Contains("address") && string.IsNullOrWhiteSpace(address)) address = val;
-        //                        else if ((col == "customer_id" || col == "id" || col.EndsWith("_id")) && id == null)
-        //                        {
-        //                            if (int.TryParse(val, out var parsed)) id = parsed;
-        //                        }
-        //                    }
-        //                    var key = (name ?? "") + "|" + (contact ?? "");
-        //                    if (string.IsNullOrWhiteSpace(name) && string.IsNullOrWhiteSpace(contact)) continue;
-        //                    var ci = new Repositories.Entities.CustomerInfo { Name = name, Contact = contact, Address = address, Id = id };
-        //                    if (seen.Add(key)) customers.Add(ci);
-        //                }
-        //            }
-        //        }
-        //        try { await conn.CloseAsync(); } catch { }
-        //    }
-        //    catch
-        //    {
-        //        // ignore and fallback to previous behavior
-        //    }
-
-        //    // If found customers in table, return them
-        //    if (customers.Count > 0)
-        //        return new ApiResult<List<Repositories.Entities.CustomerInfo>>(customers);
-
-        //    // Fallback: Prefer extracting customer info from existing TransferRequest.customer_info_json entries.
-        //    var jsons = await _dbCtx.TransferRequests.AsNoTracking()
-        //        //.Where(tr => !string.IsNullOrEmpty(tr.CustomerInfoJson))
-        //        .Select(tr => tr.CustomerInfoJson)
-        //        .ToListAsync();
-
-        //    var seen2 = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        //    foreach (var j in jsons)
-        //    {
-        //        try
-        //        {
-        //            var ci = System.Text.Json.JsonSerializer.Deserialize<Repositories.Entities.CustomerInfo>(j);
-        //            if (ci is null) continue;
-        //            var key = (ci.Name ?? "") + "|" + (ci.Contact ?? "");
-        //            if (seen2.Add(key)) customers.Add(ci);
-        //        }
-        //        catch { /* ignore malformed json */ }
-        //    }
-
-        //    // return any found (may be empty)
-        //    return new ApiResult<List<Repositories.Entities.CustomerInfo>>(customers);
-        //}
 
         public async Task<ApiResult<string>> UploadImageAsync(IFormFile image)
         {
@@ -152,23 +70,8 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
 
         public async Task<ApiResult<List<ComponentResp>>> GetComponentsAsync()
         {
-            // include component bins and categories so totals can be calculated
-            var components = await _dbCtx.Components.AsNoTracking()
-                .Include(c => c.ComponentBins)
-                .Include(c => c.Categories)
-                .ToListAsync();
-            var resp = components.Select(c => new ComponentResp(c, true)).ToList();
-            return new ApiResult<List<ComponentResp>>(resp);
-        }
-
-        public async Task<ApiResult<List<ComponentBinResp>>> GetComponentBinsByBinIdAsync(int binId)
-        {
-            // Ensure Component navigation property is loaded so ComponentResp receives metadata
-            var bins = await _dbCtx.ComponentBins.AsNoTracking()
-                .Where(cb => cb.BinId == binId)
-                .Include(cb => cb.Component)
-                .Select(cb => new ComponentBinResp(cb, true)).ToListAsync();
-            return new ApiResult<List<ComponentBinResp>>(bins);
+            var components = await _dbCtx.Components.AsNoTracking().Select(c => new ComponentResp(c, false)).ToListAsync();
+            return new ApiResult<List<ComponentResp>>(components);
         }
 
         public async Task<ApiResult<ComponentResp>> GetComponentAsync(int componentId)
@@ -347,38 +250,9 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
 
         public async Task<ApiResult<List<TransferRequestResp>>> GetTransferRequestsAsync(int creatorId)
         {
-            // Avoid selecting columns that may not exist (e.g. customer_info_json) by projecting only needed fields
-            var rows = await _dbCtx.TransferRequests.AsNoTracking()
+            var transferReqs = await _dbCtx.TransferRequests.AsNoTracking()
                 .Where(tr => tr.CreatorId == creatorId)
-                .Select(tr => new
-                {
-                    tr.RequestId,
-                    tr.Description,
-                    TypeInt = tr.TypeInt,
-                    tr.CreationTime,
-                    tr.ExecutionTime,
-                    StatusInt = tr.StatusInt,
-                    tr.CreatorId,
-                    tr.ApproverId,
-                    tr.BinFromId,
-                    tr.BinToId
-                })
-                .ToListAsync();
-
-            var transferReqs = rows.Select(r => new TransferRequestResp()
-            {
-                ID = r.RequestId,
-                Description = r.Description,
-                Type = r.TypeInt,
-                CreationDate = r.CreationTime,
-                ExecutionDate = r.ExecutionTime,
-                Status = r.StatusInt,
-                CreatorId = r.CreatorId,
-                ApproverId = r.ApproverId,
-                BinFromId = r.BinFromId,
-                BinToId = r.BinToId
-            }).ToList();
-
+                .Select(tr => new TransferRequestResp(tr, false)).ToListAsync();
             return new ApiResult<List<TransferRequestResp>>(transferReqs);
         }
 
@@ -456,19 +330,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
                 BinFromId = warehouseFrom?.Bins.ElementAt(0).BinId,
                 BinToId = warehouseTo?.Bins.ElementAt(0).BinId,
                 TransferRequestComponents = tComponents,
-                CustomerId = request.CustomerId,
             };
-            // always ensure CustomerInfoJson is non-null (DB column is NOT NULL)
-            try
-            {
-                var ci = request.CustomerInfo ?? new Repositories.Entities.CustomerInfo();
-                //transferRequest.CustomerInfoJson = JsonSerializer.Serialize(ci);
-            }
-            catch
-            {
-                // fallback to empty JSON object if serialization fails
-                //transferRequest.CustomerInfoJson = "{}";
-            }
             _dbCtx.TransferRequests.Add(transferRequest);
             await _dbCtx.SaveChangesAsync();
 

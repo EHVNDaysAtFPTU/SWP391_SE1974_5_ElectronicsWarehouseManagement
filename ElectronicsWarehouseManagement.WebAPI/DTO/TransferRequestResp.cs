@@ -5,8 +5,6 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
 {
     public class TransferRequestResp
     {
-        public TransferRequestResp() { }
-
         [JsonPropertyName("id")]
         public int ID { get; set; }
 
@@ -57,15 +55,6 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
         public BinResp? BinTo { get; set; }
 
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        [JsonPropertyName("customer_id")]
-
-        public int? CustomerId { get; set; }
-
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        [JsonPropertyName("customer")]
-        public CustomerResp? Customer { get; set; }
-
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         [JsonPropertyName("components")]
         public List<TransferRequestComponentResp>? Components { get; set; }
 
@@ -78,30 +67,19 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
             ExecutionDate = request.ExecutionTime;
             Status = (int)request.Status;
             CreatorId = request.CreatorId;
-            CustomerId = request.CustomerId;
             ApproverId = request.ApproverId;
             BinFromId = request.BinFromId;
             BinToId = request.BinToId;
-
             if (fullInfo)
             {
                 Creator = new UserResp(request.Creator, false);
-
                 if (request.ApproverId is not null)
                     Approver = new UserResp(request.Approver, false);
-
                 if (request.BinFromId is not null)
                     BinFrom = new BinResp(request.BinFrom, false);
-
                 if (request.BinToId is not null)
                     BinTo = new BinResp(request.BinTo, false);
-
-                if (request.CustomerId is not null && request.Customer != null)
-                    Customer = new CustomerResp(request.Customer);
-
-                Components = request.TransferRequestComponents
-                    .Select(i => new TransferRequestComponentResp(i, false))
-                    .ToList();
+                Components = request.TransferRequestComponents.Select(i => new TransferRequestComponentResp(i, false)).ToList();
             }
         }
     }

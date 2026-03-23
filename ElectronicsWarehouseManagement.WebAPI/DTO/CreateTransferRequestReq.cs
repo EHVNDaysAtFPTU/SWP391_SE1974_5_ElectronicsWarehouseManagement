@@ -22,14 +22,6 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
         [JsonIgnore]
         internal TransferType Type { get; set; }
 
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        [JsonPropertyName("customer_info_json")]
-        public CustomerInfo? CustomerInfo { get; set; }
-
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        [JsonPropertyName("customer_id")]
-        public int? CustomerId { get; set; }
-
         public bool Verify(out string failedReason)
         {
             if (Components.Count == 0)
@@ -37,28 +29,10 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
                 failedReason = "Component list cannot be empty.";
                 return false;
             }
-            // Validate components. For outbound requests unit price is not required,
-            // so skip unit price validation when this request's Type is Outbound.
             foreach (var component in Components)
             {
-                if (Type == TransferType.Outbound)
-                {
-                    if (component.Quantity <= 0)
-                    {
-                        failedReason = "Quantity must be greater than zero.";
-                        return false;
-                    }
-                    if (component.ComponentId <= 0)
-                    {
-                        failedReason = "Invalid item definition ID.";
-                        return false;
-                    }
-                }
-                else
-                {
-                    if (!component.Verify(out failedReason))
-                        return false;
-                }
+                if (!component.Verify(out failedReason))
+                    return false;
             }
             switch (Type)
             {
