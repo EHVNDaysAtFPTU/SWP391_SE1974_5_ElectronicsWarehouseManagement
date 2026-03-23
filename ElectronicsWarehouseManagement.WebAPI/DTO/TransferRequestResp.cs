@@ -58,15 +58,17 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
 <<<<<<< HEAD
 =======
         [JsonPropertyName("customer_id")]
-
         public int? CustomerId { get; set; }
 
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+<<<<<<< HEAD
         [JsonPropertyName("customer")]
         public CustomerResp? Customer { get; set; }
 
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
 >>>>>>> parent of cada737 (Update TransferRequestResp, implement Export Pdf to transfers.html)
+=======
+>>>>>>> parent of 48be797 (Create Customer Management view)
         [JsonPropertyName("components")]
         public List<TransferRequestComponentResp>? Components { get; set; }
 
@@ -92,6 +94,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
                 if (request.BinToId is not null)
                     BinTo = new BinResp(request.BinTo, false);
 <<<<<<< HEAD
+<<<<<<< HEAD
                 Components = request.TransferRequestComponents.Select(i => new TransferRequestComponentResp(i, false)).ToList();
 =======
 
@@ -102,6 +105,9 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
                     .Select(i => new TransferRequestComponentResp(i, false))
                     .ToList();
 >>>>>>> parent of cada737 (Update TransferRequestResp, implement Export Pdf to transfers.html)
+=======
+                Components = request.TransferRequestComponents.Select(i => new TransferRequestComponentResp(i, false)).ToList();
+>>>>>>> parent of 48be797 (Create Customer Management view)
             }
         }
     }

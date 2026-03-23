@@ -43,17 +43,20 @@ async function apiFetch(url, options = {}) {
             'Content-Type': 'application/json'
         }
     };
-
+    
     const mergedOptions = { ...defaultOptions, ...options };
-
+    
     try {
         const response = await fetch(url, mergedOptions);
-        const data = await response.json();
-        return data;
-
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(errorText || `Status: ${response.status}`);
+        }
+        const result = await response.json();
+        return result;
     } catch (error) {
         console.error("API Fetch Error:", error);
-        throw error; 
+        throw error;
     }
 }
 

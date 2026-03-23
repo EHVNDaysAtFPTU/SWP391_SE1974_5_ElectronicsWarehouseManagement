@@ -1,4 +1,3 @@
-using ElectronicsWarehouseManagement.DTOs;
 using ElectronicsWarehouseManagement.Repositories.Entities;
 using ElectronicsWarehouseManagement.WebAPI.DTO;
 using ElectronicsWarehouseManagement.WebAPI.Helpers;
@@ -31,7 +30,6 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
         Task<ApiResult<PagedResult<BinResp>>> GetBinList(PagingRequest request);
         Task<ApiResult<PagedResult<BinResp>>> GetBinListByWareHouseId(PagingRequest request, int warehouseId, bool fullInfo);
         Task<ApiResult<PagedResult<WarehouseResp>>> GetWareHouseListAsync(PagingRequest request);
-        Task<ApiResult<PagedResult<CustomerResp>>> GetCustomerListAsync(PagingRequest request);
         // Crud 
         Task<ApiResult> PostTransferDecisionAsync(int transferId, TransferDecisionType decision, int? approverId);
         Task<ApiResult<ComponentResp>> CreateComponent(CreateComponentReq request);
@@ -40,8 +38,6 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
         Task<ApiResult<BinResp>> UpdateBin();
         Task<ApiResult<WarehouseResp>> CreateWareHouse();
         Task<ApiResult<WarehouseResp>> UpdateWareHouse();
-        Task<ApiResult> CreateCustomerAsync(CustomerReq customerReq);
-        Task<ApiResult<CustomerResp>> UpdateCustomerAsync(int customerId, CustomerReq customerReq);
 
         // Dashboard
         Task<ApiResult<DashboardSummaryResp>> GetSummaryAsync();
@@ -785,121 +781,6 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
         public Task<ApiResult<WarehouseResp>> UpdateWareHouse()
         {
             throw new NotImplementedException();
-        }
-
-        public async Task<ApiResult> CreateCustomerAsync(CustomerReq customerReq)
-        {
-            if (!customerReq.Verify(out string failedreason))
-            {
-                return new ApiResult(ApiResultCode.InvalidRequest, failedreason);
-            }
-
-            if (await _dbCtx.Customers.AnyAsync(x => x.Email == customerReq.Email))
-            {
-                return new ApiResult(ApiResultCode.InvalidRequest, "Email already exists!");
-            }
-
-            if (await _dbCtx.Customers.AnyAsync(x => x.Phone == customerReq.Phone))
-            {
-                return new ApiResult(ApiResultCode.InvalidRequest, "Phone already exists!");
-            }
-
-            var customer = new Customer
-            {
-                CustomerName = customerReq.CustomerName,
-                Phone = customerReq.Phone,
-                Email = customerReq.Email,
-                Address = customerReq.Address,
-                CreatedAt = DateTime.UtcNow,
-            };
-
-            _dbCtx.Customers.Add(customer);
-            await _dbCtx.SaveChangesAsync();
-
-            return new ApiResult();
-        }
-
-        public async Task<ApiResult<CustomerResp>> UpdateCustomerAsync(int customerId, CustomerReq customerReq)
-        {
-            if (!customerReq.Verify(out string failedreason))
-            {
-                return new ApiResult<CustomerResp>(ApiResultCode.InvalidRequest, failedreason);
-            }
-
-            var customer = await _dbCtx.Customers.FirstOrDefaultAsync(x => x.CustomerId == customerId);
-            if (customer == null)
-            {
-                return new ApiResult<CustomerResp>(ApiResultCode.NotFound, "Customer not found!");
-            }
-
-            if (await _dbCtx.Customers.AnyAsync(x => x.Email == customerReq.Email && x.CustomerId != customerId))
-            {
-                return new ApiResult<CustomerResp>(ApiResultCode.InvalidRequest, "Email already exists!");
-            }
-
-            if (await _dbCtx.Customers.AnyAsync(x => x.Phone == customerReq.Phone && x.CustomerId != customerId))
-            {
-                return new ApiResult<CustomerResp>(ApiResultCode.InvalidRequest, "Phone already exists!");
-            }
-
-            customer.CustomerName = customerReq.CustomerName;
-            customer.Phone = customerReq.Phone;
-            customer.Email = customerReq.Email;
-            customer.Address = customerReq.Address;
-
-            await _dbCtx.SaveChangesAsync();
-
-            return new ApiResult<CustomerResp>(new CustomerResp(customer));
-        }
-
-        public async Task<ApiResult<PagedResult<CustomerResp>>> GetCustomerListAsync(PagingRequest request)
-        {
-            var query = _dbCtx.Customers.AsNoTracking().AsQueryable();
-
-            if (!string.IsNullOrEmpty(request.Search))
-            {
-                query = query.Where(c => c.CustomerName.Contains(request.Search) || c.Email.Contains(request.Search) || c.Phone.Contains(request.Search));
-            }
-
-            if (request.SortBy != null && request.SortDirection != null)
-            {
-                switch (request.SortBy)
-                {
-                    case "customerName":
-                        query = query.ApplySort(request.SortDirection, c => c.CustomerName);
-                        break;
-                    case "createdAt":
-                        query = query.ApplySort(request.SortDirection, c => c.CreatedAt);
-                        break;
-                    default:
-                        query = query.ApplySort(request.SortDirection, c => c.CustomerId);
-                        break;
-                }
-            }
-
-            int totalCount = await query.CountAsync();
-            if (totalCount == 0)
-            {
-                return new ApiResult<PagedResult<CustomerResp>>(new PagedResult<CustomerResp>
-                {
-                    data = new List<CustomerResp>(),
-                    TotalCount = 0,
-                    PageNumber = request.PageNumber,
-                    PageSize = request.PageSize
-                });
-            }
-
-            var data = await query.ApplyPaging(request).Select(i => new CustomerResp(i)).ToListAsync();
-
-            var pagedResult = new PagedResult<CustomerResp>
-            {
-                data = data,
-                TotalCount = totalCount,
-                PageNumber = request.PageNumber,
-                PageSize = request.PageSize
-            };
-
-            return new ApiResult<PagedResult<CustomerResp>>(pagedResult);
         }
     }
 }
