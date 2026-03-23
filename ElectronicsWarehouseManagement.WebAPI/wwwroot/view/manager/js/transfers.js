@@ -84,10 +84,7 @@ function renderTable(data) {
             <td class="align-middle">${getStatusBadge(t.status)}</td>
             <td class="align-middle">${getMonitorBadge(t)}</td>
             <td class="align-middle">
-                <div class="d-flex gap-1">
-                    <button class="btn btn-sm btn-outline-primary rounded-pill px-3" onclick="viewTransfer(${t.id})">Details</button>
-                    <button class="btn btn-sm btn-outline-danger rounded-pill px-3" onclick="exportTransfer(${t.id})">PDF</button>
-                </div>
+                <button class="btn btn-sm btn-outline-secondary rounded-pill px-3" onclick="viewTransfer(${t.id})">Details</button>
             </td>
             <td class="align-middle">
                 ${renderDecisionButtons(t)}
@@ -216,10 +213,6 @@ function showMessage(msg, type = "info") {
 
 function viewTransfer(id) {
     window.location.href = `transfer-detail.html?id=${id}`;
-}
-
-function exportTransfer(id) {
-    window.open(`/api/manager/export/transfer/${id}`, '_blank');
 }
 
 function applyFilter() {

@@ -140,7 +140,6 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
                     .Include(t => t.Creator)
                     .Include(t => t.BinFrom)
                     .Include(t => t.BinTo)
-                    .Include(t => t.Customer)
                     .Include(t => t.TransferRequestComponents)
                         .ThenInclude(c => c.Component);
             }
@@ -531,10 +530,8 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
 
             if (type == TransferType.Inbound)
                 BuildInboundHeader(doc, transfer);
-            else if (type == TransferType.Outbound)
-                BuildOutBoundHeader(doc, transfer);
             else
-                BuildInternalHeader(doc, transfer);
+                BuildOutBoundHeader(doc, transfer);
 
             BuildComponentTable(doc, transfer);
 
@@ -552,8 +549,8 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             doc.Add(new Paragraph($"Request ID: {transfer.RequestId}"));
             doc.Add(new Paragraph($"Date: {transfer.CreationTime:dd/MM/yyyy}"));
 
-            doc.Add(new Paragraph($"Supplier: {transfer.Customer?.CustomerName ?? "Internal/N/A"}"));
-            doc.Add(new Paragraph($"Address: {transfer.Customer?.Address ?? "N/A"}"));
+            doc.Add(new Paragraph($"Supplier: {transfer.Customer.CustomerName ?? ""}"));
+            doc.Add(new Paragraph($"Address: ..."));
 
             doc.Add(new Paragraph("\n"));
 
@@ -562,8 +559,8 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             table.AddCell("Supplier");
             table.AddCell("Receiver");
 
-            table.AddCell(transfer.Customer?.CustomerName ?? "Internal");
-            table.AddCell(transfer.Creator?.DisplayName ?? transfer.Creator?.Username ?? "N/A");
+            table.AddCell(transfer.Customer.CustomerName ?? "");
+            table.AddCell(transfer.Creator?.DisplayName ?? "");
 
             doc.Add(table);
 
@@ -579,7 +576,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             doc.Add(new Paragraph($"Request ID: {transfer.RequestId}"));
             doc.Add(new Paragraph($"Date: {transfer.CreationTime:dd/MM/yyyy}"));
 
-            doc.Add(new Paragraph($"Customer: {transfer.Customer?.CustomerName ?? "Internal/N/A"}"));
+            doc.Add(new Paragraph($"Customer: {transfer.Customer.CustomerName ?? ""}"));
 
             doc.Add(new Paragraph("\n"));
 
@@ -588,37 +585,11 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             table.AddCell("Customer");
             table.AddCell("Invoice Writer");
 
-            table.AddCell(transfer.Customer?.CustomerName ?? "Internal");
-            table.AddCell(transfer.Creator?.DisplayName ?? transfer.Creator?.Username ?? "N/A");
+            table.AddCell(transfer.Customer.CustomerName ?? "");
+            table.AddCell(transfer.Creator?.DisplayName ?? "");
 
             doc.Add(table);
 
-            doc.Add(new Paragraph("\n"));
-        }
-
-        private void BuildInternalHeader(Document doc, TransferRequest transfer)
-        {
-            doc.Add(new Paragraph("INTERNAL MOVEMENT RECORD")
-                .SetTextAlignment(TextAlignment.CENTER)
-                .SetBold()
-                .SetFontSize(18));
-
-            doc.Add(new Paragraph($"Request ID: {transfer.RequestId}"));
-            doc.Add(new Paragraph($"Date: {transfer.CreationTime:dd/MM/yyyy}"));
-
-            doc.Add(new Paragraph("\n"));
-
-            var table = new Table(2).UseAllAvailableWidth();
-
-            table.AddCell("Origin Bin");
-            table.AddCell("Destination Bin");
-
-            table.AddCell(transfer.BinFrom?.LocationInWarehouse ?? "N/A");
-            table.AddCell(transfer.BinTo?.LocationInWarehouse ?? "N/A");
-
-            doc.Add(table);
-
-            doc.Add(new Paragraph($"Operator: {transfer.Creator?.DisplayName ?? transfer.Creator?.Username ?? "System"}"));
             doc.Add(new Paragraph("\n"));
         }
         private void BuildComponentTable(Document doc, TransferRequest transfer)

@@ -1,4 +1,4 @@
-using ElectronicsWarehouseManagement.Repositories.Entities;
+﻿using ElectronicsWarehouseManagement.Repositories.Entities;
 using System.Text.Json.Serialization;
 
 namespace ElectronicsWarehouseManagement.WebAPI.DTO
@@ -66,10 +66,6 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
         public CustomerResp? Customer { get; set; }
 
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        [JsonPropertyName("supplier_customer_name")]
-        public string? SupplierCustomerName { get; set; }
-
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         [JsonPropertyName("components")]
         public List<TransferRequestComponentResp>? Components { get; set; }
 
@@ -101,13 +97,10 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
                     BinTo = new BinResp(request.BinTo, false);
 
                 if (request.CustomerId is not null && request.Customer != null)
-                {
                     Customer = new CustomerResp(request.Customer);
-                    SupplierCustomerName = request.Customer.CustomerName;
-                }
 
                 Components = request.TransferRequestComponents
-                    .Select(i => new TransferRequestComponentResp(i, true))
+                    .Select(i => new TransferRequestComponentResp(i, false))
                     .ToList();
             }
         }
