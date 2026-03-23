@@ -56,6 +56,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
 
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
         [JsonPropertyName("customer_id")]
         public int? CustomerId { get; set; }
@@ -69,6 +70,8 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
 >>>>>>> parent of cada737 (Update TransferRequestResp, implement Export Pdf to transfers.html)
 =======
 >>>>>>> parent of 48be797 (Create Customer Management view)
+=======
+>>>>>>> parent of 250eb3d (Merge remote-tracking branch 'origin/FE666' into stk-test)
         [JsonPropertyName("components")]
         public List<TransferRequestComponentResp>? Components { get; set; }
 
