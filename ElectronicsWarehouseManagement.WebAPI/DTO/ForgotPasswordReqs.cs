@@ -1,7 +1,10 @@
+using System.Text.Json.Serialization;
+
 namespace ElectronicsWarehouseManagement.WebAPI.DTO;
 
 public class ForgotPasswordReq : IVerifiableRequest
 {
+    [JsonPropertyName("email")]
     public string Email { get; set; } = "";
 
     public bool Verify(out string failedReason)
@@ -23,8 +26,13 @@ public class ForgotPasswordReq : IVerifiableRequest
 
 public class ResetPasswordReq : IVerifiableRequest
 {
+    [JsonPropertyName("token")]
     public string Token { get; set; } = "";
+
+    [JsonPropertyName("new_password")]
     public string NewPassword { get; set; } = "";
+
+    [JsonPropertyName("confirm_password")]
     public string ConfirmPassword { get; set; } = "";
 
     public bool Verify(out string failedReason)
