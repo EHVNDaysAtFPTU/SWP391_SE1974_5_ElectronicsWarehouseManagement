@@ -53,7 +53,7 @@ async function apiFetch(url, options = {}) {
 
     } catch (error) {
         console.error("API Fetch Error:", error);
-        throw error; 
+        throw error;
     }
 }
 
