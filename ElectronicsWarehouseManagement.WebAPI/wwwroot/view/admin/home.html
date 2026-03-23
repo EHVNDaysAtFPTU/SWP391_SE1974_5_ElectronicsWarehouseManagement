@@ -219,7 +219,7 @@
         async function searchUsers() {
             const q = searchInput.value.trim();
             if (!q) return loadUsers();
-            const r = await api(`/admin/search-users?query=${q}`);
+            const r = await api(`/admin/users/search?query=${q}`);
             if (r.success) render(r.data);
         }
 
@@ -299,9 +299,8 @@
             const status = parseInt(editStatus.value);
 
             // Update Role
-            const roleRes = await api("/admin/set-role", "POST", {
-                user_id: id,
-                role_id: roleId
+            const roleRes = await api(`/admin/users/${id}/role`, "PATCH", {
+                role_ids: [roleId]
             });
 
             if (!roleRes.success) {
@@ -310,8 +309,7 @@
             }
 
             // Update Status
-            const statusRes = await api("/admin/set-status", "POST", {
-                user_id: id,
+            const statusRes = await api(`/admin/users/${id}/status`, "PATCH", {
                 status: status
             });
 
