@@ -2,17 +2,41 @@
  * Warehouse List JS
  */
 
+let currentPage = 1;
+let pageSize = 10;
+let totalPages = 1;
+let search = "";
+let sortBy = "";
+let sortDirection = "asc";
+
 document.addEventListener("DOMContentLoaded", function () {
-    loadWarehouses();
+    const pageSizeSelect = document.getElementById("pageSize");
+    if (pageSizeSelect) {
+        pageSizeSelect.addEventListener("change", function() {
+            pageSize = parseInt(this.value);
+            loadWarehouses(1);
+        });
+    }
+    loadWarehouses(1);
 });
 
-async function loadWarehouses() {
+async function loadWarehouses(page = 1) {
+    currentPage = page;
     const tbody = document.getElementById("warehouseTable");
     // Loading state
     tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4"><div class="spinner-border text-primary" role="status"></div></td></tr>';
 
     try {
-        const result = await apiFetch(`/api/manager/get-warehouses?pageNumber=1&pageSize=100`);
+        let url = `/api/manager/get-warehouses?pageNumber=${page}&pageSize=${pageSize}`;
+        if (search) {
+            url += `&search=${encodeURIComponent(search)}`;
+        }
+        if (sortBy) {
+            url += `&sortBy=${encodeURIComponent(sortBy)}`;
+            url += `&sortDirection=${sortDirection}`;
+        }
+
+        const result = await apiFetch(url);
 
         if (!result.success) {
             alert(result.msg || "Load warehouse failed");
@@ -20,6 +44,7 @@ async function loadWarehouses() {
         }
 
         renderWarehouseTable(result.data.data);
+        renderPagination(result.data.totalPages);
     } catch (error) {
         alert("Load failed: " + error.message);
     }
@@ -117,4 +142,47 @@ function toggleWarehouseDetail(w, button) {
 
     detailRow.appendChild(detailCell);
     mainRow.parentNode.insertBefore(detailRow, mainRow.nextSibling);
+}
+
+function renderPagination(pages) {
+    totalPages = pages;
+    const container = document.getElementById("pagination");
+    if (!container) return;
+    
+    container.innerHTML = "";
+    if (totalPages <= 1) return;
+
+    const ul = document.createElement("ul");
+    ul.className = "pagination justify-content-center mb-0";
+
+    const prevLi = document.createElement("li");
+    prevLi.className = `page-item ${currentPage === 1 ? 'disabled' : ''}`;
+    prevLi.innerHTML = `<a class="page-link" href="#" onclick="loadWarehouses(${currentPage - 1}); return false;">Prev</a>`;
+    ul.appendChild(prevLi);
+
+    for (let i = 1; i <= totalPages; i++) {
+        const li = document.createElement("li");
+        li.className = `page-item ${i === currentPage ? 'active' : ''}`;
+        li.innerHTML = `<a class="page-link" href="#" onclick="loadWarehouses(${i}); return false;">${i}</a>`;
+        ul.appendChild(li);
+    }
+
+    const nextLi = document.createElement("li");
+    nextLi.className = `page-item ${currentPage === totalPages ? 'disabled' : ''}`;
+    nextLi.innerHTML = `<a class="page-link" href="#" onclick="loadWarehouses(${currentPage + 1}); return false;">Next</a>`;
+    ul.appendChild(nextLi);
+
+    container.appendChild(ul);
+}
+
+function applyFilter() {
+    const searchValue = document.getElementById("searchInput").value.trim();
+    const sortByValue = document.getElementById("sortBy").value;
+    const sortDirectionValue = document.getElementById("sortDirection").value;
+
+    search = searchValue.length > 0 ? searchValue : null;
+    sortBy = sortByValue || null;
+    sortDirection = sortDirectionValue || "asc";
+
+    loadWarehouses(1);
 }

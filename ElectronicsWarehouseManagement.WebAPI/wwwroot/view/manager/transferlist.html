@@ -1,0 +1,336 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Transfer List - Electronic Components Warehouse</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- Bootstrap 5 CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+
+        .sidebar {
+            min-height: 100vh;
+        }
+
+        .bin-detail {
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container-fluid">
+    <div class="row">
+
+        <!-- Sidebar -->
+        <nav class="col-md-3 col-lg-2 d-md-block bg-dark sidebar collapse">
+            <div class="position-sticky pt-3 text-white p-3">
+                <h5 class="text-center mb-4">Manager Panel</h5>
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link text-white" href="home.html">Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-white active" href="itemlist.html">View Items</a>
+                    </li>
+                    <li class="nav-item"><a class="nav-link text-white" href="#">Transfer Requests</a></li>
+                    <li class="nav-item"><a class="nav-link text-white" href="#">Receipts</a></li>
+                    <li class="nav-item"><a class="nav-link text-white" href="#">Approve GR</a></li>
+                    <li class="nav-item"><a class="nav-link text-white" href="#">Reports</a></li>
+                    <li class="nav-item"><a class="nav-link text-white" href="#">Export Report</a></li>
+                </ul>
+            </div>
+        </nav>
+
+        <!-- Main content -->
+        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 py-4">
+
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="fw-bold">Transfer List</h2>
+                <button class="btn btn-danger" onclick="logout()">Logout</button>
+            </div>
+
+            <div id="messageContainer"></div>
+
+            <!-- Controls -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-body d-flex align-items-center gap-3 flex-wrap">
+                    <label class="fw-semibold">Transfer per page:</label>
+                    <select id="pageSize" class="form-select w-auto" onchange="changePageSize()">
+                        <option value="5">5</option>
+                        <option value="10" selected>10</option>
+                        <option value="20">20</option>
+                        <option value="50">50</option>
+                    </select>
+                    <div id="infoText" class="text-muted ms-auto"></div>
+                </div>
+            </div>
+
+            <!-- Table -->
+            <div class="card shadow-sm">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Transfer ID</th>
+                                <th>Description</th>
+                                <th>Type</th>
+                                <th>Creation Date</th>
+                                <th>Execution Date</th>
+                                <th>Status</th>
+                                <th>Creator ID</th>
+                                <th>Approver ID</th>
+                                <th>From</th>
+                                <th>To</th>
+                                <th>Decision</th>
+                                <th>Transfer Monitor</th>
+                            </tr>
+                        </thead>
+                        <tbody id="itemsBody">
+                            <tr>
+                                <td colspan="8" class="text-center py-4">
+                                    <div class="spinner-border text-primary"></div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Pagination -->
+            <nav class="mt-4">
+                <ul class="pagination justify-content-center" id="paginationContainer"></ul>
+            </nav>
+
+            <footer class="text-center text-muted mt-5">
+                © 2026 Electronic Components Warehouse Management System
+            </footer>
+
+        </main>
+    </div>
+</div>
+
+<script>
+let currentPage = 1;
+let pageSize = 10;
+let totalPages = 1;
+
+document.addEventListener('DOMContentLoaded', function () {
+    loadTransfers(1);
+});
+
+async function loadTransfers(page) {
+    try {
+        currentPage = page;
+
+        const response = await fetch(
+            `/api/manager/get-transfers?pageNumber=${page}&pageSize=${pageSize}`,
+            {
+                method: 'GET',
+                credentials: 'include'
+            }
+        );
+
+        const result = await response.json();
+
+        if (result.success) {
+            displayTransfers(result.data);
+            totalPages = result.data.totalPages;
+            updatePagination();
+        } else {
+            showMessage(result.message || 'Failed to load transfers', 'danger');
+        }
+
+    } catch (error) {
+        showMessage(error.message, 'danger');
+    }
+}
+
+function displayTransfers(data) {
+    const tbody = document.getElementById('itemsBody');
+    const infoText = document.getElementById('infoText');
+
+    if (!data.data || data.data.length === 0) {
+        tbody.innerHTML = `
+            <td>
+    <span class="badge ${getStatusClass(t.status)}">
+        ${getStatusText(t.status)}
+    </span>
+</td>`;
+        return;
+    }
+
+    infoText.textContent =
+        `Showing ${(currentPage - 1) * pageSize + 1}
+         to ${Math.min(currentPage * pageSize, data.totalCount)}
+         of ${data.totalCount} transfers`;
+
+    tbody.innerHTML = data.data.map(t => `
+        <tr>
+            <td>${t.transfer_id}</td>
+            <td>${t.description ?? ''}</td>
+            <td><span class="badge bg-info">${t.type ?? '-'}</span></td>
+            <td>${formatDate(t.creation_date)}</td>
+            <td>${t.execution_date ? formatDate(t.execution_date) : '-'}</td>
+            <td>
+                <span class="badge ${getStatusClass(t.status)}">
+                    ${getStatusText(t.status)}
+                </span>
+            </td>
+            <td>${t.creator_id ?? '-'}</td>
+            <td>${t.approver_id ?? '-'}</td>
+            <td>${t.from_warehouse ?? '-'}</td>
+            <td>${t.to_warehouse ?? '-'}</td>
+
+            <td>
+                ${renderDecisionButtons(t)}
+            </td>
+
+            <td>
+                ${transferMonitorStatus(t)}
+            </td>
+        </tr>
+    `).join('');
+    }
+
+    function transferMonitorStatus(t) {
+        let result = checkStatus(t);
+        switch (result) {
+            case 0:
+                return'<button class="btn btn-sm">Not Yet</button>'
+                break;
+            case 1:
+                if (t.execution_date && t.execution_date.trim() !== "") {
+                    return '<button class="btn btn-sm">Done</button>'
+                }
+                return '<button class="btn btn-sm">Processing</button>'
+                break;
+            case 2:
+                return '<button class="btn btn-sm">Canceled</button>'
+                break;
+            default:
+                return '<button class="btn btn-sm">Unknown</button>'
+                break;
+        }
+    }
+    function checkStatus(t) {
+        if (t.status == 0) {
+            return 0;
+        }
+        if (t.status == 1) { 
+            return 1;
+        }
+        if (t.status == 2) {
+            return 2;
+        }
+        else {
+            return -1;
+        }
+    }
+function renderDecisionButtons(t) {
+
+    // chỉ hiện khi pending (0)
+    if (t.status !== 0)
+        return "-";
+
+    return `
+        <button class="btn btn-sm btn-success me-1"
+            onclick="updateTransferStatus(${t.transfer_id}, 1)">
+            Approve
+        </button>
+        <button class="btn btn-sm btn-danger"
+            onclick="updateTransferStatus(${t.transfer_id}, 2)">
+            Reject
+        </button>
+    `;
+}
+async function updateTransferStatus(transferId, decisionValue) {
+    try {
+        const response = await fetch(
+            `/api/manager/transfer-requests/${transferId}/decisions`,
+            {
+                method: 'POST',
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    transferId: transferId,
+                    decision: decisionValue
+                })
+            }
+        );
+
+        const result = await response.json();
+
+        if (response.ok && result.success) {
+            showMessage("Transfer updated successfully", "success");
+            loadTransfers(currentPage);
+        } else {
+            showMessage(result.message || "Update failed", "danger");
+        }
+
+    } catch (error) {
+        showMessage(error.message, "danger");
+    }
+}
+
+function getStatusText(statusInt) {
+    switch (statusInt) {
+        case 0: return "Pending";
+        case 1: return "Approved";
+        case 2: return "Rejected";
+        default: return "Unknown";
+    }
+}
+
+function getStatusClass(statusInt) {
+    switch (statusInt) {
+        case 0: return "bg-warning text-dark";
+        case 1: return "bg-success";
+        case 2: return "bg-danger";
+        default: return "bg-secondary";
+    }
+}
+
+function updatePagination() {
+    const container = document.getElementById('paginationContainer');
+    container.innerHTML = '';
+
+    for (let i = 1; i <= totalPages; i++) {
+        container.innerHTML += `
+            <li class="page-item ${i === currentPage ? 'active' : ''}">
+                <a class="page-link" href="#" onclick="loadTransfers(${i})">${i}</a>
+            </li>
+        `;
+    }
+}
+
+function formatDate(dateString) {
+    if (!dateString) return '-';
+    return new Date(dateString).toLocaleDateString('en-US');
+}
+
+function showMessage(message, type) {
+    document.getElementById('messageContainer').innerHTML =
+        `<div class="alert alert-${type}">${message}</div>`;
+}
+
+function changePageSize() {
+    pageSize = parseInt(document.getElementById('pageSize').value);
+    loadTransfers(1);
+}
+
+function logout() {
+    window.location.href = '/login';
+}
+</script>
+
+</body>
+</html>

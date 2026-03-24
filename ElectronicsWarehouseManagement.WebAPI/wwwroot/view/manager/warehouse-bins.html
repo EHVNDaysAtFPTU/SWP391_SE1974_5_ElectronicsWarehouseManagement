@@ -23,7 +23,8 @@
             <a class="nav-link" href="component-inventory.html">Components</a>
             <a class="nav-link" href="transfers.html">Transfers</a>
             <a class="nav-link" href="warehouses.html">Warehouses</a>
-            <a class="nav-link active" href="bins.html">Bins</a>
+            <a class="nav-link active" href="bin.html">Bins</a>
+            <a class="nav-link" href="customer.html">Customers</a>
         </nav>
     </div>
 
@@ -60,10 +61,49 @@
                 <h4 class="fw-bold mb-0">Storage Bin List</h4>
             </div>
 
+            <!-- Filters Card -->
+            <div class="card shadow-sm p-3 mb-4">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-4">
+                        <label class="form-label small">Search Location</label>
+                        <input type="text" id="searchInput" class="form-control" placeholder="Search location...">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small">Sort By</label>
+                        <select id="sortBy" class="form-select">
+                            <option value="location">Default (Location)</option>
+                            <option value="status">Status</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small">Order</label>
+                        <select id="sortDirection" class="form-select">
+                            <option value="asc">Ascending</option>
+                            <option value="desc">Descending</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <button class="btn btn-primary w-100" onclick="applyFilter()">Search</button>
+                    </div>
+                </div>
+            </div>
+
             <!-- Content Card -->
             <div class="card shadow-sm overflow-hidden">
                 <div id="binList">
                     <!-- JS content -->
+                </div>
+                <!-- Pagination -->
+                <div class="p-4 border-top bg-white">
+                    <div id="pagination"></div>
+                    <div class="text-center mt-3">
+                        <label class="small me-2">Items per page:</label>
+                        <select id="pageSize" class="form-select d-inline-block w-auto form-select-sm">
+                            <option value="5">5</option>
+                            <option value="10" selected>10</option>
+                            <option value="20">20</option>
+                        </select>
+                    </div>
                 </div>
             </div>
             

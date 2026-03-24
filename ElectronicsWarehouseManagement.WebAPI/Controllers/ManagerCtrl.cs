@@ -1,19 +1,16 @@
-using Azure.Core;
 using ElectronicsWarehouseManagement.Repositories.Entities;
 using ElectronicsWarehouseManagement.WebAPI.DTO;
 using ElectronicsWarehouseManagement.WebAPI.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
-using static iText.StyledXmlParser.Jsoup.Select.Evaluator;
 
 
 namespace ElectronicsWarehouseManagement.WebAPI.Controllers
 {
     [ApiController]
     [Route("api/manager")]
-    [Authorize(Roles ="2")]
-    public class ManagerCtrl:ControllerBase
+    [Authorize(Roles = "2")]
+    public class ManagerCtrl : ControllerBase
     {
         readonly IManagerService _managerService;
         private readonly ILogger<ManagerCtrl> _logger;
@@ -23,7 +20,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
             _logger = logger;
         }
         [HttpGet("get-component/{componentId:int}")]
-        public async Task<IActionResult> GetComponent([FromRoute]int componentId, [FromQuery] bool fullInfo)
+        public async Task<IActionResult> GetComponent([FromRoute] int componentId, [FromQuery] bool fullInfo)
         {
             var result = await _managerService.GetComponentAsync(componentId, fullInfo);
 
@@ -50,7 +47,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
         [HttpGet("get-transfer/{transferId:int}")]
         public async Task<IActionResult> GetTransfer([FromRoute] int transferId, [FromQuery] bool fullInfo)
         {
-            var result = await _managerService.GetTransferAsync(transferId,fullInfo);
+            var result = await _managerService.GetTransferAsync(transferId, fullInfo);
 
             if (result.Success)
             {
@@ -62,7 +59,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
         [HttpGet("get-transfers")]
         public async Task<IActionResult> GetTransferReqList([FromQuery] PagingRequest request)
         {
-            var result = await _managerService.GetTransferReqListAsync(request); 
+            var result = await _managerService.GetTransferReqListAsync(request);
             if (result.Success)
             {
                 return Ok(result);
@@ -73,7 +70,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
         [HttpPost("transfer-requests/{transferId:int}/decisions")]
         public async Task<IActionResult> PostTransferReq([FromRoute] int transferId, [FromBody] TransferDecisionRequest request)
         {
-            string? userIdString = HttpContext.Session.GetString("UserId");
+            string? userIdString = GetCurrentUserId();
             int? approverId = null;
 
             if (!string.IsNullOrEmpty(userIdString) && int.TryParse(userIdString, out int parsedId))
@@ -109,9 +106,9 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
         }
 
         [HttpGet("get-warehouse-bins/{warehouseId:int}")]
-        public async Task<IActionResult> GetBinListByWareHouseId([FromRoute] int warehouseId, [FromQuery] PagingRequest request, [FromQuery]bool fullInfo)
+        public async Task<IActionResult> GetBinListByWareHouseId([FromRoute] int warehouseId, [FromQuery] PagingRequest request, [FromQuery] bool fullInfo)
         {
-            var result = await _managerService.GetBinListByWareHouseId(request,warehouseId, fullInfo);
+            var result = await _managerService.GetBinListByWareHouseId(request, warehouseId, fullInfo);
 
             if (result.Success)
             {
@@ -121,7 +118,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
             return BadRequest(result);
         }
         [HttpGet("get-bins")]
-        public async Task<IActionResult> GetBinList([FromQuery]PagingRequest request)
+        public async Task<IActionResult> GetBinList([FromQuery] PagingRequest request)
         {
             var result = await _managerService.GetBinListAsync(request);
 
@@ -137,7 +134,41 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
         [HttpGet("get-warehouse/{warehouseId:int}")]
         public async Task<IActionResult> GetWarehouseList(int warehouseId, [FromQuery] bool fullInfo)
         {
-            var result = await _managerService.GetWareHouseAsync(warehouseId,fullInfo);
+            var result = await _managerService.GetWareHouseAsync(warehouseId, fullInfo);
+
+            if (result.Success)
+            {
+                return Ok(result);
+            }
+
+            return BadRequest(result);
+        }
+        [HttpPost("create-customer")]
+        public async Task<IActionResult> CreateCustomer([FromBody] CustomerReq customer)
+        {
+            var result = await _managerService.CreateCustomerAsync(customer);
+            if (result.Success)
+            {
+                return Ok(result);
+            }
+            return BadRequest(result);
+        }
+
+        [HttpPut("update-customer/{customerId:int}")]
+        public async Task<IActionResult> UpdateCustomer([FromRoute] int customerId, [FromBody] CustomerReq request)
+        {
+            var result = await _managerService.UpdateCustomerAsync(customerId, request);
+            if (result.Success)
+            {
+                return Ok(result);
+            }
+            return BadRequest(result);
+        }
+
+        [HttpGet("get-warehouses")]
+        public async Task<IActionResult> GetWarehouseList([FromQuery] PagingRequest request)
+        {
+            var result = await _managerService.GetWareHouseListAsync(request);
 
             if (result.Success)
             {
@@ -147,11 +178,10 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
             return BadRequest(result);
         }
 
-
-        [HttpGet("get-warehouses")]
-        public async Task<IActionResult> GetWarehouseList([FromQuery] PagingRequest request)
+        [HttpGet("get-customers")]
+        public async Task<IActionResult> GetCustomerList([FromQuery] PagingRequest request)
         {
-            var result = await _managerService.GetWareHouseListAsync(request);
+            var result = await _managerService.GetCustomerListAsync(request);
 
             if (result.Success)
             {
@@ -183,5 +213,26 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
             return BadRequest(result);
 
         }
+
+
+        private String? GetCurrentUserId()
+        {
+            string? result = HttpContext.Session.GetString("UserId");
+            if (result == null)
+            {
+                return null;
+            }
+            return result;
+        }
+
+
+        private String? GetCurrentUsername()
+        {
+            return HttpContext.Session.GetString("User");
+        }
+
+
+
+
     }
 }

@@ -84,7 +84,9 @@ function renderTable(data) {
             <td class="align-middle">${getStatusBadge(t.status)}</td>
             <td class="align-middle">${getMonitorBadge(t)}</td>
             <td class="align-middle">
-                <button class="btn btn-sm btn-outline-secondary rounded-pill px-3" onclick="viewTransfer(${t.id})">Details</button>
+                <div class="d-flex gap-1">
+                    <button class="btn btn-sm btn-outline-primary rounded-pill px-3" onclick="viewTransfer(${t.id})">Details</button>
+                </div>
             </td>
             <td class="align-middle">
                 ${renderDecisionButtons(t)}
@@ -214,6 +216,7 @@ function showMessage(msg, type = "info") {
 function viewTransfer(id) {
     window.location.href = `transfer-detail.html?id=${id}`;
 }
+
 
 function applyFilter() {
     const searchValue = document.getElementById("searchInput").value.trim();

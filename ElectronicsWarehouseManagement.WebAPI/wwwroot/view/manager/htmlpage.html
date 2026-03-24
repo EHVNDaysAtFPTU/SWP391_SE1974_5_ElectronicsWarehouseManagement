@@ -1,0 +1,90 @@
+﻿<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Item List</title>
+    <style>
+        body {
+            font-family: Arial;
+            padding: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            border: 1px solid #ccc;
+            padding: 8px;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+
+        .info {
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>Danh sách Item</h2>
+
+    <div class="info">
+        Tổng record: <span id="totalRecord">0</span>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>ItemId</th>
+                <th>Unit</th>
+                <th>Categories</th>
+                <th>UnitPrice</th>
+            </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+    </table>
+
+    <script>
+async function loadItems() {
+    try {
+        const response = await fetch('/api/manager/itemlist');
+        const result = await response.json();
+
+        if (!result.success) {
+            alert("Lỗi: " + result.message);
+            return;
+        }
+
+        const items = result.data.item;
+        document.getElementById("totalRecord").textContent = result.data.totalRecord;
+
+        const tableBody = document.getElementById("tableBody");
+        tableBody.innerHTML = "";
+
+        items.forEach(item => {
+            const row = `
+                <tr>
+                    <td>${item.itemId}</td>
+                    <td>${item.unit}</td>
+                    <td>${item.categories}</td>
+                    <td>${item.unitPrice}</td>
+                </tr>
+            `;
+            tableBody.innerHTML += row;
+        });
+
+    } catch (error) {
+        console.error("Lỗi khi gọi API:", error);
+    }
+}
+
+loadItems();
+    </script>
+
+</body>
+</html>

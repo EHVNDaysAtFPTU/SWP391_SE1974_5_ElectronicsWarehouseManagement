@@ -3,6 +3,12 @@
  */
 
 let warehouseId = null;
+let currentPage = 1;
+let pageSize = 10;
+let totalPages = 1;
+let search = "";
+let sortBy = "";
+let sortDirection = "asc";
 
 document.addEventListener("DOMContentLoaded", function () {
     const params = new URLSearchParams(window.location.search);
@@ -13,14 +19,23 @@ document.addEventListener("DOMContentLoaded", function () {
         return;
     }
 
-    loadBins();
+    const pageSizeSelect = document.getElementById("pageSize");
+    if (pageSizeSelect) {
+        pageSizeSelect.addEventListener("change", function () {
+            pageSize = parseInt(this.value);
+            loadBins(1);
+        });
+    }
+
+    loadBins(1);
 });
 
 function goBack() {
     window.location.href = "warehouses.html";
 }
 
-async function loadBins() {
+async function loadBins(page = 1) {
+    currentPage = page;
     const container = document.getElementById("binList");
     // Skeleton-like loading
     container.innerHTML = `
@@ -31,7 +46,16 @@ async function loadBins() {
     `;
 
     try {
-        const result = await apiFetch(`/api/manager/get-warehouse-bins/${warehouseId}?pageNumber=1&pageSize=100&fullInfo=true`);
+        let url = `/api/manager/get-warehouse-bins/${warehouseId}?pageNumber=${page}&pageSize=${pageSize}&fullInfo=true`;
+        if (search) {
+            url += `&search=${encodeURIComponent(search)}`;
+        }
+        if (sortBy) {
+            url += `&sortBy=${encodeURIComponent(sortBy)}`;
+            url += `&sortDirection=${sortDirection}`;
+        }
+
+        const result = await apiFetch(url);
 
         if (!result.success) {
             showMessage(result.msg || "Load bins failed", "danger");
@@ -39,6 +63,7 @@ async function loadBins() {
         }
 
         renderBins(result.data.data);
+        renderPagination(result.data.totalPages);
     } catch (error) {
         showMessage("Error loading bins: " + error.message, "danger");
     }
@@ -121,4 +146,47 @@ function showMessage(msg, type = "info") {
             <p class="mb-0">${msg}</p>
         </div>
     `;
+}
+
+function renderPagination(pages) {
+    totalPages = pages;
+    const container = document.getElementById("pagination");
+    if (!container) return;
+    
+    container.innerHTML = "";
+    if (totalPages <= 1) return;
+
+    const ul = document.createElement("ul");
+    ul.className = "pagination justify-content-center mb-0";
+
+    const prevLi = document.createElement("li");
+    prevLi.className = `page-item ${currentPage === 1 ? 'disabled' : ''}`;
+    prevLi.innerHTML = `<a class="page-link" href="#" onclick="loadBins(${currentPage - 1}); return false;">Prev</a>`;
+    ul.appendChild(prevLi);
+
+    for (let i = 1; i <= totalPages; i++) {
+        const li = document.createElement("li");
+        li.className = `page-item ${i === currentPage ? 'active' : ''}`;
+        li.innerHTML = `<a class="page-link" href="#" onclick="loadBins(${i}); return false;">${i}</a>`;
+        ul.appendChild(li);
+    }
+
+    const nextLi = document.createElement("li");
+    nextLi.className = `page-item ${currentPage === totalPages ? 'disabled' : ''}`;
+    nextLi.innerHTML = `<a class="page-link" href="#" onclick="loadBins(${currentPage + 1}); return false;">Next</a>`;
+    ul.appendChild(nextLi);
+
+    container.appendChild(ul);
+}
+
+function applyFilter() {
+    const searchValue = document.getElementById("searchInput").value.trim();
+    const sortByValue = document.getElementById("sortBy").value;
+    const sortDirectionValue = document.getElementById("sortDirection").value;
+
+    search = searchValue.length > 0 ? searchValue : null;
+    sortBy = sortByValue || null;
+    sortDirection = sortDirectionValue || "asc";
+
+    loadBins(1);
 }

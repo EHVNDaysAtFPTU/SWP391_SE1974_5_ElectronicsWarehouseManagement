@@ -1,18 +1,16 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Transfers | Manager</title>
+    <title>Customers | Manager</title>
 
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Custom Manager Styles -->
     <link rel="stylesheet" href="css/manager-basic.css">
 </head>
-
 <body>
-
     <!-- Sidebar -->
     <div class="sidebar d-flex flex-column">
         <div class="p-3">
@@ -21,18 +19,18 @@
         <nav class="nav flex-column mt-3">
             <a class="nav-link" href="home.html">Dashboard</a>
             <a class="nav-link" href="component-inventory.html">Components</a>
-            <a class="nav-link active" href="transfers.html">Transfers</a>
+            <a class="nav-link" href="transfers.html">Transfers</a>
             <a class="nav-link" href="warehouses.html">Warehouses</a>
             <a class="nav-link" href="bin.html">Bins</a>
-            <a class="nav-link" href="customer.html">Customers</a>
+            <a class="nav-link active" href="customer.html">Customers</a>
         </nav>
     </div>
 
     <!-- Header -->
     <header class="header d-flex justify-content-between align-items-center">
         <div>
-            <h5 class="mb-0">Transfer Requests</h5>
-            <small class="text-muted">Manage stock movements and approvals</small>
+            <h5 class="mb-0">Customer List</h5>
+            <small class="text-muted">Add, update customer in this list</small>
         </div>
 
         <div class="profile-container position-relative">
@@ -53,14 +51,14 @@
     <!-- Main Content -->
     <main class="main-content">
         <div class="container-fluid">
-            
+
             <div id="messageContainer"></div>
 
             <!-- Page Controls -->
             <div class="card shadow-sm p-3 mb-4">
                 <div class="row g-3 align-items-end">
                     <div class="col-md-4">
-                        <label class="form-label small">Search Description</label>
+                        <label class="form-label small">Search Customer Name</label>
                         <input type="text" id="searchInput" class="form-control" placeholder="Search keywords...">
                     </div>
                     <div class="col-md-3">
@@ -68,8 +66,7 @@
                         <select id="sortBy" class="form-select">
                             <option value="">Default (ID)</option>
                             <option value="creationTime">Creation Time</option>
-                            <option value="type">Type</option>
-                            <option value="status">Status</option>
+                            <option value="customerName">Name</option>
                         </select>
                     </div>
                     <div class="col-md-2">
@@ -94,31 +91,34 @@
                         <span class="small text-muted ms-2">items per page</span>
                     </div>
                     <div class="col-md-6 text-end">
-                        <button class="btn btn-outline-secondary" onclick="loadTransfers(1)">Refresh List</button>
+                        <button class="btn btn-outline-secondary" onclick="loadCustomers(1)">Refresh List</button>
                     </div>
                 </div>
             </div>
 
             <!-- Content Card -->
             <div class="card shadow-sm">
-                <div class="card-header bg-white py-3">
+                <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
                     <span id="infoText" class="small fw-bold text-muted">Loading transfers...</span>
+                    <button type="button" class="btn btn-primary ms-auto" onclick="openCreate()">
+                        Điền thông tin
+                    </button>
                 </div>
-                
+
                 <div class="table-responsive">
                     <table class="table table-hover align-middle mb-0" id="transferTable">
                         <thead class="table-light">
                             <tr>
                                 <th>ID</th>
-                                <th>Description</th>
-                                <th>Type</th>
-                                <th>Created</th>
-                                <th>Executed</th>
-                                <th>Status</th>
-                                <th>Actions</th>
+                                <th>Customer Name</th>
+                                <th>Phone</th>
+                                <th>Email</th>
+                                <th>Address</th>
+                                <th>Created Date</th>
+                                <th>Action</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody id="itemsTable">
                             <!-- JS content -->
                         </tbody>
                     </table>
@@ -128,13 +128,58 @@
                     <div id="pagination"></div>
                 </div>
             </div>
-            
+
         </div>
     </main>
+    <!-- Customer Form Modal -->
+    <div class="modal fade" id="formModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
 
+                <div class="modal-header">
+                    <h5 class="modal-title">Customer Information</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body">
+                    <form id="customerForm">
+
+                        <input type="hidden" id="customerId">
+
+                        <div class="mb-3">
+                            <label class="form-label">Customer Name</label>
+                            <input type="text" id="customerName" class="form-control">
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Phone</label>
+                            <input type="text" id="phone" class="form-control">
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Email</label>
+                            <input type="email" id="email" class="form-control">
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Address</label>
+                            <input type="text" id="address" class="form-control">
+                        </div>
+
+                    </form>
+                </div>
+
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button class="btn btn-primary" onclick="saveCustomer()">Save</button>
+                </div>
+
+            </div>
+        </div>
+    </div>
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="js/shared.js"></script>
-    <script src="js/transfers.js"></script>
+    <script src="js/customers.js"></script>
 </body>
 </html>
