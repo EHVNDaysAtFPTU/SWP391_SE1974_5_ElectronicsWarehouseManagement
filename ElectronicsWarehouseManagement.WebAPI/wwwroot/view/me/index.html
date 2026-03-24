@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Admin | My Profile</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <div class="layout">
+
+        <!-- SIDEBAR -->
+        <div class="sidebar">
+            <div class="sidebar-top">
+                <h2 class="brand">ECWMS</h2>
+
+                <!-- Avatar -->
+                <div class="sidebar-user">
+                    <div class="avatar-wrapper" onclick="toggleUserMenu(event)">
+                        <img id="sidebarAvatar"
+                             src="https://khoanhdep.com/wp-content/uploads/2025/12/meme-soi-co-doc.jpg"
+                             class="avatar-large">
+
+                        <div id="userMenu" class="user-menu hidden">
+                            <div onclick="openProfile()">Profile</div>
+                            <div onclick="logout()">Logout</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Menu -->
+                <div class="menu">
+                    <p onclick="goBack()">← Back</p>
+                </div>
+            </div>
+        </div>
+        <!-- MAIN -->
+        <div class="main">
+            <div class="profile-container">
+                <h2>My Profile</h2>
+
+                <div class="profile-row">
+                    <div class="profile-label">Username</div>
+                    <div class="profile-value" id="username">-</div>
+                </div>
+
+                <div class="profile-row">
+                    <div class="profile-label">Display Name</div>
+                    <div class="profile-value">
+                        <input id="displayName" class="form-input">
+                    </div>
+                </div>
+
+                <div class="profile-row">
+                    <div class="profile-label">Email</div>
+                    <div class="profile-value">
+                        <input id="email" class="form-input">
+                    </div>
+                </div>
+
+                <div class="profile-row">
+                    <div class="profile-label">Role(s)</div>
+                    <div class="profile-value" id="roles">-</div>
+                </div>
+
+                <div class="profile-row">
+                    <div class="profile-label">Status</div>
+                    <div class="profile-value" id="status">-</div>
+                </div>
+
+                <div class="actions">
+                    <button onclick="saveProfile()">Save</button>
+                    <button onclick="openChangePwd()">Change password</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ===== CHANGE PASSWORD MODAL ===== -->
+    <div id="changePwdModal" class="modal hidden" onclick="outsideClick(event)">
+        <div class="modal-box">
+            <h3>Change Password</h3>
+
+            <input id="oldPwd" class="form-input" type="password" placeholder="Current password">
+            <input id="newPwd" class="form-input" type="password" placeholder="New password">
+            <input id="confirmPwd" class="form-input" type="password" placeholder="Confirm new password">
+
+            <div class="modal-actions">
+                <button onclick="changePassword()">Change</button>
+                <button onclick="closeChangePwd()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+       
+
+        function go(url) {
+            window.location.href = url;
+        }
+
+        async function api(endpoint, method = "GET", body = null) {
+            const opt = {
+                method,
+                headers: { "Content-Type": "application/json" },
+                credentials: "include"
+            };
+
+            if (body) opt.body = JSON.stringify(body);
+
+            const res = await fetch(`/api${endpoint}`, opt);;
+            if (!res.ok) return { success: false };
+            return await res.json();
+        }
+
+        async function loadProfile() {
+            const r = await api("/me/info");
+
+            if (!r.success) {
+                alert("Please login again.");
+                return;
+            }
+
+            const u = r.data;
+
+            document.getElementById("username").innerText = u.username ?? "-";
+            document.getElementById("displayName").value = u.display_name ?? "";
+            document.getElementById("email").value = u.email ?? "";
+
+            const roles = (u.role || []).map(x => x.role_name).join(", ");
+            document.getElementById("roles").innerText = roles || "No Role";
+
+            const statusMap = {
+                1: "Active",
+                2: "Inactive",
+                3: "Suspended",
+                4: "Deleted"
+            };
+
+            document.getElementById("status").innerText = statusMap[u.status] ?? "-";
+        }
+
+        async function saveProfile() {
+            const displayName = document.getElementById("displayName").value.trim();
+            const email = document.getElementById("email").value.trim();
+
+            if (displayName.length < 3) {
+                alert("Display name must be at least 3 characters.");
+                return;
+            }
+
+            const r = await api("/me/info", "PATCH", {
+                display_name: displayName,
+                email: email
+            });
+
+            if (!r.success) return showError(r, "Update failed");
+
+            alert("Profile updated successfully");
+            loadProfile();
+        }
+
+        function openChangePwd() {
+            document.getElementById("changePwdModal").classList.remove("hidden");
+        }
+
+        function closeChangePwd() {
+            document.getElementById("changePwdModal").classList.add("hidden");
+        }
+
+        function outsideClick(event) {
+            if (event.target.id === "changePwdModal") {
+                closeChangePwd();
+            }
+        }
+
+        async function changePassword() {
+            const oldPwd = document.getElementById("oldPwd").value.trim();
+            const newPwd = document.getElementById("newPwd").value.trim();
+            const confirmPwd = document.getElementById("confirmPwd").value.trim();
+
+            if (!oldPwd || !newPwd || !confirmPwd) {
+                return alert("All fields are required.");
+            }
+
+            if (newPwd.length < 6) {
+                return alert("New password must be at least 6 characters.");
+            }
+
+            if (newPwd !== confirmPwd) {
+                return alert("Passwords do not match.");
+            }
+
+            const r = await api("/me/password", "PATCH", {
+                old_pass: oldPwd,
+                new_pass: newPwd
+            });
+
+            if (!r.success) return showError(r, "Change password failed");
+
+            alert("Password changed successfully. Please login again.");
+
+            // clear input
+            document.getElementById("oldPwd").value = "";
+            document.getElementById("newPwd").value = "";
+            document.getElementById("confirmPwd").value = "";
+
+            closeChangePwd();
+            logout();
+        }
+        async function logout() {
+            await fetch("/api/auth/logout", {
+                method: "POST",
+                credentials: "include"
+            });
+            window.location.href = "/login.html";
+        }
+
+        function showError(r, fallback = "Something went wrong!") {
+            alert(r?.msg || fallback);
+        }
+        function goBack() {
+            window.history.back();
+        }
+
+        function toggleUserMenu(event) {
+            event.stopPropagation();
+            document.getElementById("userMenu").classList.toggle("hidden");
+        }
+
+        document.addEventListener("click", function () {
+            document.getElementById("userMenu").classList.add("hidden");
+        });
+        document.addEventListener("DOMContentLoaded", loadProfile);
+    </script>
+
+</body>
+</html>

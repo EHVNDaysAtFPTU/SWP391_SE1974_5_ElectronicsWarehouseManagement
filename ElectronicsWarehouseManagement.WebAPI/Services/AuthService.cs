@@ -67,7 +67,7 @@ internal class AuthService : IAuthService
 
     public async Task<ApiResult> LogoutAsync(int userId)
     {
-        if (!loggedInUsers.Contains(userId))
+         if (!loggedInUsers.Contains(userId))
             return new ApiResult(ApiResultCode.InvalidRequest, "User is not logged in.");
         loggedInUsers.Remove(userId);
         return new ApiResult();
