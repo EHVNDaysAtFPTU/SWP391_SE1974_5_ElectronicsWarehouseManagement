@@ -182,7 +182,9 @@ function getBinStatusBadge(status) {
         default: return `<span class="badge bg-light text-dark rounded-pill px-3">Status ${status}</span>`;
     }
 }
-
+function goBackToBins() {
+        window.history.back();
+}
 function showMessage(msg, type = "info") {
     const info = document.getElementById("binInfo");
     info.innerHTML = `<div class="alert alert-${type} shadow-sm m-0" role="alert"><h5 class="alert-heading">Notice</h5><p class="mb-0">${msg}</p></div>`;
