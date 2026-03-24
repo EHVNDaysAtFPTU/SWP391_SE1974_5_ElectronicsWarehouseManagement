@@ -3,52 +3,168 @@
 <head>
     <meta charset="UTF-8">
     <title>System Configuration</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="system-config.css">
 </head>
 <body>
 
     <div class="layout">
 
+        <!-- Sidebar -->
         <aside class="sidebar">
             <div class="brand">ECWMS</div>
             <nav>
-                <a href="index.html">Dashboard</a>
-                <a href="user-management.html">User Management</a>
                 <a class="active">System Configuration</a>
-                <a>Logout</a>
             </nav>
         </aside>
 
+        <!-- Main -->
         <main class="main">
+
+            <!-- Topbar -->
             <header class="topbar">
-                <h1>System Configuration</h1>
+                <h1>System Maintenance</h1>
+                <span id="statusBadge" class="status live">LIVE</span>
             </header>
 
+            <!-- Content -->
             <section class="content">
                 <div class="box">
+
                     <div class="box-header">
-                        <h2>Configuration Settings</h2>
-                        <button>Save</button>
+                        <h2>Maintenance Settings</h2>
+                        <div>
+                            <button id="resetBtn" class="btn-danger">Reset</button>
+                            <button id="saveBtn" class="btn-primary">Save</button>
+                        </div>
                     </div>
 
                     <div class="form">
-                        <label>Warehouse Rule</label>
-                        <input type="text" placeholder="FIFO / LIFO">
 
-                        <label>Approval Policy</label>
-                        <select>
-                            <option>Auto Approve</option>
-                            <option>Manager Approval</option>
-                        </select>
+                        <div class="row">
+                            <span>Enable Maintenance Mode</span>
+                            <label class="switch">
+                                <input type="checkbox" id="maintenance">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
 
-                        <label>Max Items per Order</label>
-                        <input type="number" value="100">
+                        <label>Maintenance Message</label>
+                        <input type="text" id="maintenanceMessage">
+
+                        <div class="time-row">
+                            <div>
+                                <label>Start Time</label>
+                                <input type="datetime-local" id="maintenanceStart">
+                            </div>
+
+                            <div>
+                                <label>End Time</label>
+                                <input type="datetime-local" id="maintenanceEnd">
+                            </div>
+                        </div>
+
                     </div>
+
                 </div>
             </section>
         </main>
 
     </div>
+
+    <script>
+        const saveBtn = document.getElementById("saveBtn");
+        const resetBtn = document.getElementById("resetBtn");
+        const statusBadge = document.getElementById("statusBadge");
+
+        async function loadConfig() {
+            const res = await fetch('/api/admin/config');
+            const result = await res.json();
+
+            if (!result.success) return;
+
+            const cfg = result.data;
+
+            document.getElementById("maintenance").checked = cfg.maintenanceMode;
+            document.getElementById("maintenanceMessage").value = cfg.maintenanceMessage || "";
+
+            if (cfg.maintenanceStartTime)
+                document.getElementById("maintenanceStart").value = cfg.maintenanceStartTime.slice(0, 16);
+
+            if (cfg.maintenanceEndTime)
+                document.getElementById("maintenanceEnd").value = cfg.maintenanceEndTime.slice(0, 16);
+
+            updateStatus(cfg);
+        }
+
+        function updateStatus(cfg) {
+            const now = new Date();
+
+            let isMaintenance = cfg.maintenanceMode;
+
+            if (!isMaintenance && cfg.maintenanceStartTime && cfg.maintenanceEndTime) {
+                const start = new Date(cfg.maintenanceStartTime);
+                const end = new Date(cfg.maintenanceEndTime);
+
+                if (now >= start && now <= end) {
+                    isMaintenance = true;
+                }
+            }
+
+            if (isMaintenance) {
+                statusBadge.innerText = "MAINTENANCE";
+                statusBadge.className = "status maintenance";
+            } else {
+                statusBadge.innerText = "LIVE";
+                statusBadge.className = "status live";
+            }
+        }
+
+        async function saveConfig() {
+            const cfg = {
+                maintenanceMode: document.getElementById("maintenance").checked,
+                maintenanceMessage: document.getElementById("maintenanceMessage").value,
+                maintenanceStartTime: document.getElementById("maintenanceStart").value || null,
+                maintenanceEndTime: document.getElementById("maintenanceEnd").value || null
+            };
+
+            const res = await fetch('/api/admin/config/save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(cfg)
+            });
+
+            const result = await res.json();
+
+            if (result.success) {
+                alert("Saved!");
+                loadConfig();
+            } else {
+                alert(result.msg);
+            }
+        }
+
+        async function resetConfig() {
+            if (!confirm("Reset về mặc định?")) return;
+
+            const res = await fetch('/api/admin/config/reset', {
+                method: 'POST'
+            });
+
+            const result = await res.json();
+
+            if (result.success) {
+                alert("Reset thành công!");
+                loadConfig();
+            } else {
+                alert(result.msg);
+            }
+        }
+
+        saveBtn.addEventListener("click", saveConfig);
+        resetBtn.addEventListener("click", resetConfig);
+
+        window.onload = loadConfig;
+    </script>
 
 </body>
 </html>

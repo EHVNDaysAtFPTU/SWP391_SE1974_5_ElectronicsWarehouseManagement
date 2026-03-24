@@ -2,6 +2,7 @@
 using ElectronicsWarehouseManagement.WebAPI.DTO;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 
 namespace ElectronicsWarehouseManagement.WebAPI.Services
 {
@@ -16,6 +17,10 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
         Task<ApiResult<List<UserResp>>> SearchUsersAsync(string query);
         Task<ApiResult> SetStatusAsync(int userId, SetStatusReq setStatusReq);
         Task<ApiResult<int>> GetUserCountAsync();
+        Task<ApiResult<SystemConfigDto>> GetSystemConfigAsync();
+        Task<ApiResult> SaveSystemConfigAsync(SystemConfigDto config);
+        Task<ApiResult> ResetSystemConfigAsync();
+        Task<bool> IsUnderMaintenanceAsync();
     }
 
     public class AdminService : IAdminService
@@ -149,6 +154,111 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             int count = await _dbCtx.Users.CountAsync(u => u.StatusInt != (int)UserStatus.Deleted);
 #pragma warning restore CS0618 // Type or member is obsolete
             return new ApiResult<int>(count);
+        }
+
+        public async Task<ApiResult<SystemConfigDto>> GetSystemConfigAsync()
+        {
+            try
+            {
+                if (!File.Exists("systemconfig.json"))
+                {
+                    var defaultConfig = new SystemConfigDto
+                    {
+                        MaintenanceMode = false,
+                        MaintenanceMessage = "",
+                        MaintenanceStartTime = null,
+                        MaintenanceEndTime = null
+                    };
+
+                    var json = JsonSerializer.Serialize(defaultConfig, new JsonSerializerOptions
+                    {
+                        WriteIndented = true
+                    });
+
+                    await File.WriteAllTextAsync("systemconfig.json", json);
+                    return new ApiResult<SystemConfigDto>(defaultConfig);
+                }
+
+                var content = await File.ReadAllTextAsync("systemconfig.json");
+                var config = JsonSerializer.Deserialize<SystemConfigDto>(content);
+
+                return new ApiResult<SystemConfigDto>(config!);
+            }
+            catch (Exception ex)
+            {
+                return new ApiResult<SystemConfigDto>(ApiResultCode.ServerError, ex.Message);
+            }
+        }
+
+        public async Task<ApiResult> SaveSystemConfigAsync(SystemConfigDto config)
+        {
+            try
+            {
+                // validate trước
+                if (config.MaintenanceStartTime.HasValue && config.MaintenanceEndTime.HasValue)
+                {
+                    if (config.MaintenanceStartTime > config.MaintenanceEndTime)
+                        return new ApiResult(ApiResultCode.InvalidRequest, "Start must be before End");
+                }
+
+                var json = JsonSerializer.Serialize(config, new JsonSerializerOptions
+                {
+                    WriteIndented = true
+                });
+
+                await File.WriteAllTextAsync("systemconfig.json", json);
+
+                return new ApiResult(); 
+            }
+            catch (Exception ex)
+            {
+                return new ApiResult(ApiResultCode.ServerError, ex.Message);
+            }
+        }
+
+        public async Task<ApiResult> ResetSystemConfigAsync()
+        {
+            try
+            {
+                var defaultConfig = new SystemConfigDto
+                {
+                    MaintenanceMode = false,
+                    MaintenanceMessage = "",
+                    MaintenanceStartTime = null,
+                    MaintenanceEndTime = null
+                };
+
+                var json = JsonSerializer.Serialize(defaultConfig, new JsonSerializerOptions
+                {
+                    WriteIndented = true
+                });
+
+                await File.WriteAllTextAsync("systemconfig.json", json);
+
+                return new ApiResult();
+            }
+            catch (Exception ex)
+            {
+                return new ApiResult(ApiResultCode.ServerError, ex.Message);
+            }
+        }
+        public async Task<bool> IsUnderMaintenanceAsync()
+        {
+            var result = await GetSystemConfigAsync();
+            if (!result.Success) return false;
+
+            var cfg = result.Data;
+            var now = DateTime.Now;
+
+            if (cfg.MaintenanceMode)
+                return true;
+
+            if (cfg.MaintenanceStartTime.HasValue && cfg.MaintenanceEndTime.HasValue)
+            {
+                return now >= cfg.MaintenanceStartTime && now <= cfg.MaintenanceEndTime;
+            }
+
+            return false;
         }
     }
 }

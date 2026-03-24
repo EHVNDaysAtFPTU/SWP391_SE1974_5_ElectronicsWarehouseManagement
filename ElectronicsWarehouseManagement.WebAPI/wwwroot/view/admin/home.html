@@ -27,9 +27,8 @@
 
                 <!-- Menu -->
                 <div class="menu">
-                    <p>
-                        User Management
-                    </p>
+                    <p onclick="goUser()">User Management</p>
+                    <p onclick="goConfig()">System Config</p>
                 </div>
             </div>
         </div>
@@ -330,6 +329,13 @@
         });
         function showError(msg) {
             alert(msg || "Something went wrong!");
+        }
+        function goUser() {
+            window.location.href = "/home.html";
+        }
+
+        function goConfig() {
+            window.location.href = "/system.html";
         }
 
         document.addEventListener("DOMContentLoaded", loadUsers);
