@@ -12,12 +12,16 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
         public string Description { get; set; } = "";
 
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        [JsonPropertyName("bin_from_id")]
-        public int? BinFromId { get; set; }
+        [JsonPropertyName("warehouse_from_id")]
+        public int? WarehouseFromId { get; set; }
 
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        [JsonPropertyName("bin_to_id")]
-        public int? BinToId { get; set; }
+        [JsonPropertyName("warehouse_to_id")]
+        public int? WarehouseToId { get; set; }
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        [JsonPropertyName("customer_id")]
+        public int? CustomerId { get; set; }
 
         [JsonIgnore]
         internal TransferType Type { get; set; }
@@ -37,26 +41,26 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
             switch (Type)
             {
                 case TransferType.InternalTransfer:
-                    if (BinFromId is null || BinToId is null)
+                    if (WarehouseFromId is null || WarehouseToId is null)
                     {
                         failedReason = "Missing source or destination warehouse for internal transfer.";
                         return false;
                     }
-                    if (BinFromId == BinToId)
+                    if (WarehouseFromId == WarehouseToId)
                     {
                         failedReason = "Source and destination warehouses cannot be the same.";
                         return false;
                     }
                     break;
                 case TransferType.Inbound:
-                    if (BinToId is null)
+                    if (WarehouseToId is null)
                     {
                         failedReason = "Destination warehouse must be specified.";
                         return false;
                     }
                     break;
                 case TransferType.Outbound:
-                    if (BinFromId is null)
+                    if (WarehouseFromId is null)
                     {
                         failedReason = "Source warehouse must be specified.";
                         return false;

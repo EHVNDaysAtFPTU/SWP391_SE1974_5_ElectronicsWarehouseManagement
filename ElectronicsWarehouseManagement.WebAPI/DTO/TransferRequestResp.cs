@@ -39,6 +39,10 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
         public int? BinToId { get; set; }
 
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        [JsonPropertyName("customer_id")]
+        public int? CustomerId { get; set; }
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         [JsonPropertyName("approver")]
         public UserResp? Approver { get; set; }
 
@@ -58,6 +62,10 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
         [JsonPropertyName("components")]
         public List<TransferRequestComponentResp>? Components { get; set; }
 
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        [JsonPropertyName("customer")]
+        public CustomerResp? Customer { get; set; }
+
         public TransferRequestResp(TransferRequest request, bool fullInfo)
         {
             ID = request.RequestId;
@@ -70,6 +78,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
             ApproverId = request.ApproverId;
             BinFromId = request.BinFromId;
             BinToId = request.BinToId;
+            CustomerId = request.CustomerId;
             if (fullInfo)
             {
                 Creator = new UserResp(request.Creator, false);
@@ -79,6 +88,8 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
                     BinFrom = new BinResp(request.BinFrom, false);
                 if (request.BinToId is not null)
                     BinTo = new BinResp(request.BinTo, false);
+                if (request.CustomerId is not null)
+                    Customer = new CustomerResp(request.Customer, false);
                 Components = request.TransferRequestComponents.Select(i => new TransferRequestComponentResp(i, false)).ToList();
             }
         }

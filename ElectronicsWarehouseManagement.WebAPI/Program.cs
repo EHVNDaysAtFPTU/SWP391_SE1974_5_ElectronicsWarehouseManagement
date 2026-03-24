@@ -65,7 +65,7 @@ namespace ElectronicsWarehouseManagement.WebAPI
 
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
-
+            
             builder.Services.AddDIService();
 
             builder.Services.AddRateLimiter(options =>
@@ -97,6 +97,19 @@ namespace ElectronicsWarehouseManagement.WebAPI
                                 AutoReplenishment = true
                             });
                     }
+                    // check forgot password url
+                    if (httpContext.Request.Path.StartsWithSegments("/api/auth/forgot-password", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return RateLimitPartition.GetFixedWindowLimiter(
+                            partitionKey: key,
+                            factory: _ => new FixedWindowRateLimiterOptions
+                            {
+                                PermitLimit = 3,
+                                Window = TimeSpan.FromMinutes(10),
+                                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                                QueueLimit = 0
+                            });
+                    }
 
                     return RateLimitPartition.GetFixedWindowLimiter(
                         partitionKey: key,
@@ -122,6 +135,20 @@ namespace ElectronicsWarehouseManagement.WebAPI
                     {
                         adminRole = new Role { RoleName = "Admin", Description = "Administrator" };
                         dbCtx.Roles.Add(adminRole);
+                        await dbCtx.SaveChangesAsync();
+                    }
+                    var managerRole = await dbCtx.Roles.FirstOrDefaultAsync(r => r.RoleId == 2);
+                    if (managerRole is null)
+                    {
+                        managerRole = new Role { RoleName = "Manager", Description = "Warehouse Manager" };
+                        dbCtx.Roles.Add(managerRole);
+                        await dbCtx.SaveChangesAsync();
+                    }
+                    var storekeeperRole = await dbCtx.Roles.FirstOrDefaultAsync(r => r.RoleId == 3);
+                    if (storekeeperRole is null)
+                    {
+                        storekeeperRole = new Role { RoleName = "Storekeeper", Description = "Warehouse Storekeeper" };
+                        dbCtx.Roles.Add(storekeeperRole);
                         await dbCtx.SaveChangesAsync();
                     }
 

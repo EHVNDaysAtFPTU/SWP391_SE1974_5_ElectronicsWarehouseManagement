@@ -9,6 +9,7 @@ public static class Ext
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IAdminService, AdminService>();
         services.AddScoped<IStorekeeperService, StorekeeperService>();
+        services.AddScoped<IEmailService, EmailService>();
         return services;
     }
 }

@@ -34,10 +34,16 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
         Task<ApiResult<TransferRequestResp>> CreateTransferRequestAsync(CreateTransferRequestReq request, TransferType type, int creatorId);
         Task<ApiResult<TransferRequestResp>> ConfirmTransferRequestAsync(ConfirmTransferRequestReq request, int approverId);
    
+        Task<ApiResult<List<ComponentResp>>> GetComponentsInWarehouseAsync(int warehouseId);
+
         Task<ApiResult<int>> GetWarehouseCountAsync();
         Task<ApiResult<int>> GetBinCountAsync();
         Task<ApiResult<int>> GetComponentInBinCountAsync();
         Task<ApiResult<int>> GetTransferRequestCountAsync(int creatorId);
+
+        Task<ApiResult<List<CustomerResp>>> GetCustomersAsync();
+        Task<ApiResult<int>> GetCustomerCountAsync();
+        Task<ApiResult<CustomerResp>> GetCustomerAsync(int customerId);
     }
 
     public class StorekeeperService : IStorekeeperService
@@ -240,8 +246,8 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
                 return new ApiResult<BinResp>(ApiResultCode.InvalidRequest, $"Bin with ID '{binId}' cannot be set to empty because it contains components.");
             bin.Status = status;
             await _dbCtx.SaveChangesAsync();
-            //await _dbCtx.Entry(bin).Reference(b => b.Warehouse).LoadAsync();
-            //await _dbCtx.Entry(bin).Collection(b => b.ComponentBins).LoadAsync();
+            await _dbCtx.Entry(bin).Reference(b => b.Warehouse).LoadAsync();
+            await _dbCtx.Entry(bin).Collection(b => b.ComponentBins).LoadAsync();
             return new ApiResult<BinResp>(new BinResp(bin, true));
         }
 
@@ -269,35 +275,27 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             request.Type = type;
             if (!request.Verify(out string failedReason))
                 return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, failedReason);
-            Bin? binFrom = null;
-            Bin? binTo = null;
-            if (request.BinFromId.HasValue)
-                binFrom = await _dbCtx.Bins.FindAsync(request.BinFromId.Value);
-            if (request.BinToId.HasValue)
-                binTo = await _dbCtx.Bins.FindAsync(request.BinToId.Value);
+            Warehouse? warehouseFrom = null;
+            Warehouse? warehouseTo = null;
+            if (request.WarehouseFromId.HasValue)
+                warehouseFrom = await _dbCtx.Warehouses.Include(w => w.Bins).ThenInclude(b => b.ComponentBins).FirstOrDefaultAsync(w => w.WarehouseId == request.WarehouseFromId.Value);
+            if (request.WarehouseToId.HasValue)
+                warehouseTo = await _dbCtx.Warehouses.Include(w => w.Bins).ThenInclude(b => b.ComponentBins).FirstOrDefaultAsync(w => w.WarehouseId == request.WarehouseToId.Value);
             switch (type)
             {
                 case TransferType.Inbound:
-                    if (binTo is null)
-                        return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Bin with ID '{request.BinToId}' does not exist.");
-                    if (binTo.Status == BinStatus.Locked)
-                        return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Bin with ID '{request.BinToId}' is full.");
+                    if (warehouseTo is null)
+                        return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Warehouse with ID '{request.WarehouseToId}' does not exist.");
                     break;
                 case TransferType.Outbound:
-                    if (binFrom is null)
-                        return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Bin with ID '{request.BinFromId}' does not exist.");
-                    if (binFrom.Status == BinStatus.Locked)
-                        return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Bin with ID '{request.BinFromId}' is full.");
+                    if (warehouseFrom is null)
+                        return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Warehouse with ID '{request.WarehouseFromId}' does not exist.");
                     break;
                 case TransferType.InternalTransfer:
-                    if (binFrom is null)
-                        return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Bin with ID '{request.BinFromId}' does not exist.");
-                    if (binTo is null)
-                        return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Bin with ID '{request.BinToId}' does not exist.");
-                    if (binFrom.Status == BinStatus.Locked)
-                        return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Bin with ID '{request.BinFromId}' is full.");
-                    if (binTo.Status == BinStatus.Locked)
-                        return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Bin with ID '{request.BinToId}' is full.");
+                    if (warehouseFrom is null)
+                        return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Warehouse with ID '{request.WarehouseFromId}' does not exist.");
+                    if (warehouseTo is null)
+                        return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Warehouse with ID '{request.WarehouseToId}' does not exist.");
                     break;
             }
             List<TransferRequestComponent> tComponents = [];
@@ -305,9 +303,14 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             {
                 var component = await _dbCtx.Components.FindAsync(componentReq.ComponentId);
                 if (component is null)
-                    return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Component with ID '{componentReq.ComponentId}' does not exist.");
-                if (type == TransferType.Outbound && componentReq.Quantity > component.TotalQuantity)
-                    return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Requested quantity for component with ID '{componentReq.ComponentId}' exceeds available quantity.");
+                    return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Component with ID '{componentReq.ComponentId}' does not exist in the warehouse.");
+                if (type == TransferType.Outbound || type == TransferType.InternalTransfer)
+                {
+                    double componentsInWarehouseQuantity = warehouseFrom!.Bins.SelectMany(b => b.ComponentBins).Where(cb => cb.ComponentId == componentReq.ComponentId).Sum(cb => cb.Quantity);
+                    if (componentReq.Quantity > componentsInWarehouseQuantity)
+                        return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Requested quantity for component with ID '{componentReq.ComponentId}' exceeds available quantity in the warehouse.");
+                }
+
                 TransferRequestComponent item = new TransferRequestComponent()
                 {
                     ComponentId = componentReq.ComponentId,
@@ -328,9 +331,10 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
                 Status = TransferStatus.Pending,
                 CreationTime = DateTime.UtcNow,
                 CreatorId = creatorId,
-                BinFromId = request.BinFromId,
-                BinToId = request.BinToId,
+                BinFromId = warehouseFrom?.Bins.ElementAt(0).BinId,
+                BinToId = warehouseTo?.Bins.ElementAt(0).BinId,
                 TransferRequestComponents = tComponents,
+                CustomerId = request.CustomerId
             };
             _dbCtx.TransferRequests.Add(transferRequest);
             await _dbCtx.SaveChangesAsync();
@@ -480,6 +484,27 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             return new ApiResult<TransferRequestResp>(new TransferRequestResp(transferRequest, true));
         }
 
+        public async Task<ApiResult<List<ComponentResp>>> GetComponentsInWarehouseAsync(int warehouseId)
+        {
+            Warehouse? warehouse = await _dbCtx.Warehouses.AsNoTracking().Include(w => w.Bins).ThenInclude(b => b.ComponentBins).ThenInclude(cb => cb.Component).FirstOrDefaultAsync(w => w.WarehouseId == warehouseId);
+            if (warehouse is null)
+                return new ApiResult<List<ComponentResp>>(ApiResultCode.NotFound, $"Warehouse with ID '{warehouseId}' does not exist.");
+            List<ComponentResp> result = [];
+            foreach (var bins in warehouse.Bins)
+            {
+                foreach (var componentBin in bins.ComponentBins)
+                {
+                    var componentInResult = result.FirstOrDefault(c => c.ID == componentBin.ComponentId);
+                    if (componentInResult is null)
+                        result.Add(new ComponentResp(componentBin.Component, false) { TotalQuantity = componentBin.Quantity });
+                    else
+                        componentInResult.TotalQuantity = (componentInResult.TotalQuantity ?? 0) + componentBin.Quantity;
+                }
+            }
+            foreach (var component in result)
+                component.TotalPrice = (component.TotalQuantity ?? 0) * component.UnitPrice;
+            return new ApiResult<List<ComponentResp>>(result);
+        }
 
         public async Task<ApiResult<int>> GetWarehouseCountAsync()
         {
@@ -503,6 +528,19 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
         {
             int result = await _dbCtx.TransferRequests.Where(tr => tr.CreatorId == creatorId).CountAsync();
             return new ApiResult<int>(result);
+        }
+
+
+        public async Task<ApiResult<List<CustomerResp>>> GetCustomersAsync() => new ApiResult<List<CustomerResp>>((List<CustomerResp>?)await _dbCtx.Customers.AsNoTracking().Select(c => new CustomerResp(c, false)).ToListAsync());
+
+        public async Task<ApiResult<int>> GetCustomerCountAsync() => new ApiResult<int>(await _dbCtx.Customers.CountAsync());
+
+        public async Task<ApiResult<CustomerResp>> GetCustomerAsync(int customerId)
+        {
+            Customer? customer = await _dbCtx.Customers.AsNoTracking().Where(c => c.CustomerId == customerId).FirstOrDefaultAsync();
+            if (customer is null)
+                return new ApiResult<CustomerResp>(ApiResultCode.NotFound, $"Customer with ID '{customerId}' does not exist.");
+            return new ApiResult<CustomerResp>(new CustomerResp(customer, true));
         }
     }
 }
