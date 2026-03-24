@@ -91,21 +91,75 @@
             return await res.json();
         }
 
+        // helpers to robustly extract component id/name from various API shapes
+        function extractComponentIdFromRecord(rec) {
+            if (!rec) return null;
+            // common direct fields
+            if (rec.component_id != null) return rec.component_id;
+            if (rec.ComponentId != null) return rec.ComponentId;
+            if (rec.componentId != null) return rec.componentId;
+            // if nested component object exists
+            const comp = rec.component ?? rec.Component ?? null;
+            if (comp) {
+                if (comp.id != null) return comp.id;
+                if (comp.ID != null) return comp.ID;
+                if (comp.componentId != null) return comp.componentId;
+            }
+            // fallback: search any key that looks like component id
+            for (const k of Object.keys(rec)) {
+                if (/component.*id/i.test(k) && rec[k] != null) return rec[k];
+            }
+            return null;
+        }
+
+        function extractComponentNameFromRecord(rec) {
+            if (!rec) return null;
+            const comp = rec.component ?? rec.Component ?? null;
+            if (comp) {
+                if (comp.metadata && (comp.metadata.name || comp.metadata.Name)) return comp.metadata.name ?? comp.metadata.Name;
+                if (comp.name) return comp.name;
+                if (comp.Name) return comp.Name;
+                // metadata might be serialized
+                const meta = comp.metadataJson ?? comp.MetadataJson ?? comp.metadatajson ?? null;
+                if (meta) {
+                    try {
+                        const m = typeof meta === 'string' ? JSON.parse(meta) : meta;
+                        if (m && (m.name || m.Name)) return m.name ?? m.Name;
+                    } catch (e) { /* ignore */ }
+                }
+            }
+            // also check top-level name fields
+            if (rec.name) return rec.name;
+            if (rec.Name) return rec.Name;
+            return null;
+        }
+
         /* ================= LOAD ================= */
         async function loadInventory() {
             try {
-                // fetch components (components response includes aggregated quantity when available)
-                const compRes = await api("/storekeeper/components");
-                if (!compRes.success) {
-                    alert(compRes.msg || compRes.message || 'Failed to load components');
-                    return;
-                }
+                // fetch components list and component-bin entries, aggregate stock from bins
+                const [compRes, cbAllRes] = await Promise.all([
+                    api('/storekeeper/components'),
+                    api('/storekeeper/bins/components')
+                ]);
+                if (!compRes.success) { alert(compRes.msg || 'Failed to load components'); return; }
                 const components = compRes.data || [];
+                const cbAll = (cbAllRes && cbAllRes.success && Array.isArray(cbAllRes.data)) ? cbAllRes.data : [];
 
-                // attach normalized stock using quantity field returned by components API
+                // aggregate quantities per component from component-bin records
+                const qtyMap = {};
+                cbAll.forEach(cb => {
+                    const cid = cb.component_id ?? cb.ComponentId ?? cb.componentId ?? cb.componentId;
+                    const q = Number(cb.quantity ?? cb.Quantity ?? 0) || 0;
+                    if (!cid) return;
+                    qtyMap[cid] = (qtyMap[cid] || 0) + q;
+                });
+
+                // attach normalized stock using aggregated quantities where available
                 fullData = components.map(c => {
                     const id = c.id ?? c.ID ?? c.componentId ?? c.ComponentId;
-                    const qty = Number(c.quantity ?? c.Quantity ?? c.TotalQuantity ?? 0) || 0;
+                    const agg = qtyMap[id] ?? 0;
+                    const qty = agg || Number(c.quantity ?? c.Quantity ?? c.TotalQuantity ?? 0) || 0;
                     return Object.assign({}, c, { _stock: qty });
                 });
 
@@ -140,34 +194,68 @@
                     const whRes = await api('/storekeeper/warehouses/' + wid);
                     if (!whRes.success || !whRes.data) { document.getElementById('wh-' + wid).innerText = 'Cannot load bins'; continue; }
                     const bins = whRes.data.bins ?? whRes.data;
+                    // fetch all component-bin entries once (avoid missing debug endpoint)
+                    const cbAllRes = await api('/storekeeper/bins/components');
+                    const cbAll = (cbAllRes && cbAllRes.success && Array.isArray(cbAllRes.data)) ? cbAllRes.data : [];
+                    // fetch components list to map id -> name when component object isn't included in cb entries
+                    const compsRes = await api('/storekeeper/components');
+                    let compList = [];
+                    if (compsRes) compList = compsRes.data ?? compsRes;
+                    const compNameMap = {};
+                    if (Array.isArray(compList)) {
+                        for (const cc of compList) {
+                            const cid = cc.id ?? cc.ID ?? cc.componentId ?? cc.ComponentId;
+                            const cname = cc.metadata?.name ?? cc.metadata?.Name ?? cc.Name ?? cc.name ?? '';
+                            if (cid != null) compNameMap[cid] = cname || ('#' + cid);
+                        }
+                    }
+
+                    // also fill names from component-bin entries in case component objects are embedded there
+                    if (Array.isArray(cbAll)) {
+                        for (const x of cbAll) {
+                            try {
+                                const compObj = x.component ?? x.Component ?? null;
+                                const cid = compObj?.id ?? compObj?.ID ?? x.component_id ?? x.componentId ?? x.ComponentId ?? compObj?.componentId ?? null;
+                                if (!cid) continue;
+                                if (compNameMap[cid]) continue; // already known
+                                // try several places for name
+                                let name = compObj?.metadata?.name ?? compObj?.metadata?.Name ?? compObj?.Name ?? compObj?.name;
+                                if (!name) {
+                                    // maybe metadata stored as JSON string
+                                    const metaJson = compObj?.metadataJson ?? compObj?.MetadataJson ?? x.component_metadata_json ?? x.metadataJson ?? null;
+                                    if (metaJson) {
+                                        try {
+                                            const m = typeof metaJson === 'string' ? JSON.parse(metaJson) : metaJson;
+                                            name = m?.name ?? m?.Name ?? m?.fullName ?? m?.FullName;
+                                        } catch (e) { /* ignore */ }
+                                    }
+                                }
+                                if (!name) name = '#'+cid;
+                                compNameMap[cid] = name;
+                            } catch (e) { /* ignore */ }
+                        }
+                    }
                     // build HTML table per warehouse
                     let html = '<table style="width:100%;border-collapse:collapse"><thead><tr><th style="width:90px">Bin</th><th style="width:90px">ID</th><th>Name</th><th style="width:120px">Stock</th></tr></thead><tbody>';
                     for (const b of bins) {
                         const bid = b.id ?? b.ID ?? b.binId;
                         const bname = b.location_in_warehouse ?? b.locationInWarehouse ?? b.binCode ?? ('Bin ' + bid);
-                        // get components in that bin
-                        const cbRes = await api('/storekeeper/debug/bin/' + bid);
+                        // get components in that bin from the pre-fetched component-bin list
                         let rowsForBin = '';
-                        if (cbRes.success && Array.isArray(cbRes.data) && cbRes.data.length > 0) {
-                            // Ensure we only use component-bins that belong to this bin (defensive)
-                            const items = cbRes.data.filter(x => {
-                                const binIdFromResp = x.bin?.id ?? x.BinId ?? x.bin_id ?? x.binId ?? x.bin?.ID;
-                                return Number(binIdFromResp) === Number(bid);
-                            });
-                            const useItems = items.length > 0 ? items : cbRes.data;
-
-                            // render one table row per component in the bin
+                        const useItems = cbAll.filter(x => {
+                            const binIdFromResp = x.bin?.id ?? x.BinId ?? x.bin_id ?? x.binId ?? x.bin?.ID;
+                            return Number(binIdFromResp) === Number(bid);
+                        });
+                        if (useItems.length > 0) {
                             for (let i = 0; i < useItems.length; i++) {
                                 const x = useItems[i];
-                                const comp = x.component ?? x.Component ?? {};
-                                const compId = comp.id ?? comp.ID ?? comp.componentId ?? '';
-                                const name = comp.metadata?.name ?? comp.metadata?.Name ?? comp.name ?? comp.Name ?? (compId ? ('#' + compId) : 'Unknown');
-                                const qty = x.quantity ?? x.Quantity ?? 0;
+                                const compId = extractComponentIdFromRecord(x) ?? '';
+                                let name = extractComponentNameFromRecord(x);
+                                if (!name) name = compNameMap[compId] ?? (compId ? ('#' + compId) : 'Unknown');
+                                const qty = x.quantity ?? x.Quantity ?? x.Quantity ?? x.amount ?? 0;
                                 if (i === 0) {
-                                    // first component row shows bin name and id
                                     rowsForBin += `<tr><td>${bname}</td><td>${bid}</td><td style="min-width:240px">${name}</td><td>${qty}</td></tr>`;
                                 } else {
-                                    // subsequent rows leave bin/id empty to group components
                                     rowsForBin += `<tr><td></td><td></td><td style="min-width:240px">${name}</td><td>${qty}</td></tr>`;
                                 }
                             }
@@ -245,6 +333,26 @@
         /* ================= INIT ================= */
         document.addEventListener("DOMContentLoaded", loadInventory);
 
+
+        // Storekeeper inventory view: show full names without backend changes
+        (function(){
+            const tbody = document.querySelector('#storekeeperInventory tbody');
+            async function load(){
+                try{
+                    const res = await fetch('/api/inventory/bybin');
+                    if(!res.ok) return;
+                    const items = await res.json();
+                    tbody.innerHTML = '';
+                    items.forEach(it =>{
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `\n                    <td>${escapeHtml(it.bin || '')}</td>\n                    <td>${it.id ?? ''}</td>\n                    <td>${escapeHtml(it.name || it.Name || it.fullName || '')}</td>\n                    <td>${it.stock ?? ''}</td>\n                `;
+                        tbody.appendChild(tr);
+                    });
+                }catch(e){console.error(e);}    
+            }
+            function escapeHtml(s){if(!s) return '';return String(s).replace(/[&<>\"']/g,function(ch){return ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":"&#39;"})[ch]||ch;});}
+            document.addEventListener('DOMContentLoaded', load);
+        })();
     </script>
 
 </body>

@@ -1,5 +1,6 @@
 using ElectronicsWarehouseManagement.Repositories.Entities;
 using System.Text.Json.Serialization;
+using System.Linq;
 
 namespace ElectronicsWarehouseManagement.WebAPI.DTO
 {
@@ -59,77 +60,40 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
         public BinResp? BinTo { get; set; }
 
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-
-        [JsonPropertyName("customer_id")]
-        public int? CustomerId { get; set; }
-
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-
         [JsonPropertyName("customer")]
         public CustomerResp? Customer { get; set; }
-
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-
-
-
 
         [JsonPropertyName("supplier_customer_name")]
         public string? SupplierCustomerName { get; set; }
 
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-(Revert "Update TransferRequestResp, implement Export Pdf to transfers.html")
         [JsonPropertyName("components")]
         public List<TransferRequestComponentResp>? Components { get; set; }
-
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        [JsonPropertyName("customer")]
-        public CustomerResp? Customer { get; set; }
 
         public TransferRequestResp(TransferRequest request, bool fullInfo)
         {
             ID = request.RequestId;
             Description = request.Description;
-            Type = (int)request.Type;
+            // Use underlying int fields from the entity model
+            Type = request.TypeInt;
             CreationDate = request.CreationTime;
             ExecutionDate = request.ExecutionTime;
-            Status = (int)request.Status;
+            Status = request.StatusInt;
             CreatorId = request.CreatorId;
             ApproverId = request.ApproverId;
             BinFromId = request.BinFromId;
             BinToId = request.BinToId;
             CustomerId = request.CustomerId;
+
             if (fullInfo)
             {
-                Creator = new UserResp(request.Creator, false);
-                if (request.ApproverId is not null)
-                    Approver = new UserResp(request.Approver, false);
-                if (request.BinFromId is not null)
-                    BinFrom = new BinResp(request.BinFrom, false);
-                if (request.BinToId is not null)
-                    BinTo = new BinResp(request.BinTo, false);
-
-
-
-
-                if (request.CustomerId is not null)
-                    Customer = new CustomerResp(request.Customer, false);
-
-                Components = request.TransferRequestComponents.Select(i => new TransferRequestComponentResp(i, false)).ToList();
-
-
-                if (request.CustomerId is not null && request.Customer != null)
-                {
-                    Customer = new CustomerResp(request.Customer);
-                    SupplierCustomerName = request.Customer.CustomerName;
-                }
-
-                Components = request.TransferRequestComponents
-                    .Select(i => new TransferRequestComponentResp(i, true))
-                    .ToList();
- of cada737 (Update TransferRequestResp, implement Export Pdf to transfers.html)
-
-                Components = request.TransferRequestComponents.Select(i => new TransferRequestComponentResp(i, false)).ToList();
-
+                Creator = request.Creator is not null ? new UserResp(request.Creator, false) : null;
+                Approver = request.Approver is not null ? new UserResp(request.Approver, false) : null;
+                BinFrom = request.BinFrom is not null ? new BinResp(request.BinFrom, false) : null;
+                BinTo = request.BinTo is not null ? new BinResp(request.BinTo, false) : null;
+                Customer = request.Customer is not null ? new CustomerResp(request.Customer, false) : null;
+                SupplierCustomerName = request.Customer?.CustomerName;
+                Components = request.TransferRequestComponents?.Select(i => new TransferRequestComponentResp(i, true)).ToList();
             }
         }
     }

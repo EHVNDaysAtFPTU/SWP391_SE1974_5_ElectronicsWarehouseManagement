@@ -84,7 +84,7 @@ function renderTable(data) {
                     ? `<img src="${component.metadata.image_url}" class="thumbnail-img shadow-sm">` 
                     : '<div class="thumbnail-img bg-light d-flex align-items-center justify-content-center text-muted"><small>No image</small></div>'}
             </td>
-            <td class="align-middle fw-semibold">${component.metadata?.name || "N/A"}</td>
+            <td class="align-middle fw-semibold">${component.metadata?.name || component.metadata?.fullName || component.Name || "N/A"}</td>
             <td class="align-middle text-truncate" style="max-width: 200px;">${component.metadata?.desc || ""}</td>
             <td class="align-middle">${component.unit || ""}</td>
             <td class="align-middle fw-bold text-primary">${formatCurrency(component.unit_price || 0)}</td>
@@ -191,7 +191,7 @@ async function toggleDetail(id, button) {
                     </div>
                     <div class="col-md-9">
                         <div class="d-flex justify-content-between align-items-start mb-2">
-                            <h5 class="mb-0 fw-bold">${component.metadata?.name || "Product Name"}</h5>
+                            <h5 class="mb-0 fw-bold">${component.metadata?.name || component.metadata?.fullName || component.Name || "Product Name"}</h5>
                              <span class="badge bg-primary rounded-pill px-3">ID: ${component.id}</span>
                         </div>
                         <p class="text-muted mb-3">${component.metadata?.desc || "No description provided."}</p>
@@ -238,3 +238,75 @@ function applyFilter() {
 
     loadItems(1);
 }
+
+// component-inventory.js
+(function(){
+    const tableBody = document.querySelector('#inventoryTable tbody');
+    const searchInput = document.getElementById('searchName');
+    if (!tableBody) return; // nothing to do
+
+    let components = [];
+
+    function renderRow(c){
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${c.id ?? ''}</td>
+            <td>${escapeHtml(c.name ?? '')}</td>
+            <td>${escapeHtml(c.unit ?? '')}</td>
+            <td class="text-center">${c.stock ?? 0}</td>
+            <td class="text-end">${formatCurrency(c.price ?? 0)}</td>
+        `;
+        return tr;
+    }
+
+    function render(){
+        tableBody.innerHTML = '';
+        const q = (searchInput && searchInput.value || '').trim().toLowerCase();
+        const filtered = components.filter(c => (c.name || '').toLowerCase().includes(q));
+        if (filtered.length === 0) {
+            const tr = document.createElement('tr');
+            tr.innerHTML = '<td colspan="5" class="text-center text-muted py-3">No items found</td>';
+            tableBody.appendChild(tr);
+            return;
+        }
+        filtered.forEach(c => tableBody.appendChild(renderRow(c)));
+    }
+
+    function escapeHtml(text){
+        if(!text) return '';
+        return text.replace(/[&<>\"']/g, function(ch){
+            return ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":"&#39;"})[ch] || ch;
+        });
+    }
+
+    async function load(){
+        try{
+            // Try manager paged endpoint first and normalize response
+            const res = await fetch('/api/manager/get-components?pageNumber=1&pageSize=1000', { credentials: 'include' });
+            if (!res.ok) throw new Error('Failed to load components');
+            const json = await res.json();
+
+            // normalize component array from possible shapes
+            let raw = json?.data ?? json;
+            // if paged result, it might be { data: [...], totalCount }
+            if (raw && raw.data) raw = raw.data;
+            if (!Array.isArray(raw)) raw = [];
+
+            components = raw.map(c => ({
+                id: c.id ?? c.ID ?? c.componentId ?? c.ComponentId,
+                name: c.metadata?.name ?? c.metadata?.Name ?? c.Name ?? c.name ?? '',
+                unit: c.unit ?? c.Unit ?? '',
+                stock: Number(c.totalQuantity ?? c.TotalQuantity ?? c.quantity ?? c.Quantity ?? c._stock ?? 0) || 0,
+                price: Number(c.unit_price ?? c.unitPrice ?? c.UnitPrice ?? c.price ?? c.Price ?? 0) || 0
+            }));
+
+            render();
+        }catch(e){
+            console.error('load inventory failed', e);
+            tableBody.innerHTML = '<tr><td colspan="5" class="text-center text-danger py-3">Failed to load inventory</td></tr>';
+        }
+    }
+
+    if (searchInput) searchInput.addEventListener('input', render);
+    document.addEventListener('DOMContentLoaded', load);
+})();

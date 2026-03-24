@@ -6,7 +6,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
     public class CreateTransferRequestReq : IVerifiableRequest
     {
         [JsonPropertyName("components")]
-        public List<TransferRequestComponentReq> Components { get; set; } = [];
+        public List<TransferRequestComponentReq> Components { get; set; } = new List<TransferRequestComponentReq>();
 
         [JsonPropertyName("desc")]
         public string Description { get; set; } = "";

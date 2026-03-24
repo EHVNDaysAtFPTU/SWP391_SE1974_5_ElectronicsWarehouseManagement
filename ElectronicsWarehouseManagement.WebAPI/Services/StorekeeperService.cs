@@ -254,20 +254,28 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
 
         public async Task<ApiResult<List<TransferRequestResp>>> GetTransferRequestsAsync(int creatorId)
         {
-            var transferReqs = await _dbCtx.TransferRequests.AsNoTracking()
+            // materialize entities first to avoid EF trying to translate DTO constructor into SQL
+            var entities = await _dbCtx.TransferRequests.AsNoTracking()
                 .Where(tr => tr.CreatorId == creatorId)
-                .Select(tr => new TransferRequestResp(tr, false)).ToListAsync();
+                .ToListAsync();
+
+            var transferReqs = entities.Select(tr => new TransferRequestResp(tr, false)).ToList();
             return new ApiResult<List<TransferRequestResp>>(transferReqs);
         }
 
         public async Task<ApiResult<TransferRequestResp>> GetTransferRequestAsync(int requestId, int creatorId)
         {
-            return new ApiResult<TransferRequestResp>(await _dbCtx.TransferRequests.AsNoTracking()
+            var entity = await _dbCtx.TransferRequests.AsNoTracking()
                 .Include(tr => tr.Creator).Include(tr => tr.Approver)
                 .Include(tr => tr.BinFrom).Include(tr => tr.BinTo)
-                .Include(tr => tr.TransferRequestComponents)
+                .Include(tr => tr.TransferRequestComponents).ThenInclude(c => c.Component)
                 .Where(tr => tr.RequestId == requestId && tr.CreatorId == creatorId)
-                .Select(tr => new TransferRequestResp(tr, true)).FirstOrDefaultAsync());
+                .FirstOrDefaultAsync();
+
+            if (entity is null)
+                return new ApiResult<TransferRequestResp>(ApiResultCode.NotFound);
+
+            return new ApiResult<TransferRequestResp>(new TransferRequestResp(entity, true));
         }
 
         public async Task<ApiResult<TransferRequestResp>> CreateTransferRequestAsync(CreateTransferRequestReq request, TransferType type, int creatorId)
@@ -298,7 +306,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
                         return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Warehouse with ID '{request.WarehouseToId}' does not exist.");
                     break;
             }
-            List<TransferRequestComponent> tComponents = [];
+            List<TransferRequestComponent> tComponents = new List<TransferRequestComponent>();
             foreach (var componentReq in request.Components)
             {
                 var component = await _dbCtx.Components.FindAsync(componentReq.ComponentId);
@@ -326,7 +334,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             }
             var transferRequest = new TransferRequest
             {
-                Description = request.Description,
+                Description = request.Description, 
                 Type = type,
                 Status = TransferStatus.Pending,
                 CreationTime = DateTime.UtcNow,
@@ -424,14 +432,16 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             // add/remove/update components in bins
             foreach (ConfirmTransferBinReq binFrom in request.BinsFrom ?? [])
             {
-                Bin bin = await _dbCtx.Bins.Include(b => b.ComponentBins).FirstAsync(b => b.BinId == binFrom.BinId);
+                Bin? bin = await _dbCtx.Bins.Include(b => b.ComponentBins).FirstOrDefaultAsync(b => b.BinId == binFrom.BinId);
+                if (bin is null)
+                    return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Bin with ID '{binFrom.BinId}' does not exist.");
                 foreach (ConfirmTransferRequestComponentReq componentTakeFromBin in binFrom.Components)
                 {
                     ComponentBin? componentBin = bin.ComponentBins.FirstOrDefault(cb => cb.ComponentId == componentTakeFromBin.ComponentId);
                     if (componentBin is null)
-                        throw new InvalidOperationException($"Component with ID '{componentTakeFromBin.ComponentId}' is not in bin with ID '{bin.BinId}'.");
+                        return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Component with ID '{componentTakeFromBin.ComponentId}' is not in bin with ID '{bin.BinId}'.");
                     if (componentBin.Quantity < componentTakeFromBin.Quantity)
-                        throw new InvalidOperationException($"Not enough quantity of component with ID '{componentTakeFromBin.ComponentId}' in bin with ID '{bin.BinId}' to take from.");
+                        return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Not enough quantity of component with ID '{componentTakeFromBin.ComponentId}' in bin with ID '{bin.BinId}' to take from.");
                     componentBin.Quantity -= componentTakeFromBin.Quantity;
                     if (componentBin.Quantity == 0)
                         _dbCtx.ComponentBins.Remove(componentBin);
@@ -489,7 +499,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             Warehouse? warehouse = await _dbCtx.Warehouses.AsNoTracking().Include(w => w.Bins).ThenInclude(b => b.ComponentBins).ThenInclude(cb => cb.Component).FirstOrDefaultAsync(w => w.WarehouseId == warehouseId);
             if (warehouse is null)
                 return new ApiResult<List<ComponentResp>>(ApiResultCode.NotFound, $"Warehouse with ID '{warehouseId}' does not exist.");
-            List<ComponentResp> result = [];
+            List<ComponentResp> result = new List<ComponentResp>();
             foreach (var bins in warehouse.Bins)
             {
                 foreach (var componentBin in bins.ComponentBins)

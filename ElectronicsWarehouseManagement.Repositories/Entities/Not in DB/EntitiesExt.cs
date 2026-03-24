@@ -1,55 +1,60 @@
 ﻿#pragma warning disable CS0618 // Type or member is obsolete
 using System.Text.Json;
+using System.Linq;
 
 namespace ElectronicsWarehouseManagement.Repositories.Entities
 {
     public static class EntitiesExt
     {
-        extension(Component component)
+        // Component helpers
+        public static ComponentMetadata? GetMetadata(this Component component)
         {
-            public ComponentMetadata? Metadata
-            {
-                get => JsonSerializer.Deserialize<ComponentMetadata>(component.MetadataJson);
-                set => component.MetadataJson = JsonSerializer.Serialize(value);
-            }
-
-            public double TotalQuantity => component.ComponentBins.Sum(cb => cb.Quantity);
-
-            public double TotalPrice => component.TotalQuantity * component.UnitPrice;
+            if (component == null) return null;
+            if (string.IsNullOrWhiteSpace(component.MetadataJson)) return null;
+            try { return JsonSerializer.Deserialize<ComponentMetadata>(component.MetadataJson); } catch { return null; }
         }
 
-        extension(User user)
+        public static void SetMetadata(this Component component, ComponentMetadata? metadata)
         {
-            public UserStatus Status
-            {
-                get => (UserStatus)user.StatusInt;
-                set => user.StatusInt = (int)value;
-            }
+            component.MetadataJson = metadata is null ? null : JsonSerializer.Serialize(metadata);
         }
 
-        extension(TransferRequest transferRequest)
+        public static double GetTotalQuantity(this Component component)
         {
-            public TransferStatus Status
-            {
-                get => (TransferStatus)transferRequest.StatusInt;
-                set => transferRequest.StatusInt = (int)value;
-            }
-
-            public TransferType Type
-            {
-                get => (TransferType)transferRequest.TypeInt;
-                set => transferRequest.TypeInt = (int)value;
-            }
+            return component?.ComponentBins?.Sum(cb => cb.Quantity) ?? 0.0;
         }
 
-        extension(Bin bin)
+        public static double GetTotalPrice(this Component component)
         {
-            public BinStatus Status
-            {
-                get => (BinStatus)bin.StatusInt;
-                set => bin.StatusInt = (int)value;
-            }
+            return component.GetTotalQuantity() * component.UnitPrice;
         }
+
+        // User helpers
+        public static UserStatus GetStatus(this User user)
+            => (UserStatus)user.StatusInt;
+
+        public static void SetStatus(this User user, UserStatus status)
+            => user.StatusInt = (int)status;
+
+        // TransferRequest helpers
+        public static TransferStatus GetStatus(this TransferRequest tr)
+            => (TransferStatus)tr.StatusInt;
+
+        public static void SetStatus(this TransferRequest tr, TransferStatus status)
+            => tr.StatusInt = (int)status;
+
+        public static TransferType GetType(this TransferRequest tr)
+            => (TransferType)tr.TypeInt;
+
+        public static void SetType(this TransferRequest tr, TransferType type)
+            => tr.TypeInt = (int)type;
+
+        // Bin helpers
+        public static BinStatus GetStatus(this Bin bin)
+            => (BinStatus)bin.StatusInt;
+
+        public static void SetStatus(this Bin bin, BinStatus status)
+            => bin.StatusInt = (int)status;
     }
 }
 #pragma warning restore CS0618 // Type or member is obsolete

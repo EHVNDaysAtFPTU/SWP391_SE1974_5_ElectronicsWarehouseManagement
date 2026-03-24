@@ -1,5 +1,6 @@
 ﻿using ElectronicsWarehouseManagement.Repositories.Entities;
 using System.Text.Json.Serialization;
+using System.Linq;
 
 namespace ElectronicsWarehouseManagement.WebAPI.DTO
 {
@@ -29,17 +30,29 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
         [JsonPropertyName("price")]
         public double? TotalPrice { get; set; }
 
-        public ComponentResp(Component component, bool fullInfo)
+        public ComponentResp(Component? component, bool fullInfo)
         {
+            if (component is null)
+            {
+                ID = 0;
+                Metadata = null;
+                Unit = string.Empty;
+                UnitPrice = 0;
+                Categories = null;
+                TotalQuantity = null;
+                TotalPrice = null;
+                return;
+            }
+
             ID = component.ComponentId;
-            Metadata = component.Metadata;
-            Unit = component.Unit;
+            Metadata = component.GetMetadata();
+            Unit = component.Unit ?? string.Empty;
             UnitPrice = component.UnitPrice;
             if (fullInfo)
             {
-                Categories = component.Categories.Select(cc => new ComponentCategoryResp(cc)).ToList();
-                TotalQuantity = component.TotalQuantity;
-                TotalPrice = component.TotalPrice;
+                Categories = component.Categories?.Select(cc => new ComponentCategoryResp(cc)).ToList();
+                TotalQuantity = component.GetTotalQuantity();
+                TotalPrice = component.GetTotalPrice();
             }
         }
     }
