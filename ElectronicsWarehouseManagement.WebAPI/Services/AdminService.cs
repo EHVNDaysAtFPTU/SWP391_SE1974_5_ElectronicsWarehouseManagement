@@ -94,6 +94,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
                     return new ApiResult(ApiResultCode.InvalidRequest, "Role does not exist.");
                 if (user.UserId == currentUserId && role.RoleId != 1)
                     return new ApiResult(ApiResultCode.InvalidRequest, "Cannot change own role.");
+                roles.Add(role);
             }
             user.Roles = roles;
             await _dbCtx.SaveChangesAsync();

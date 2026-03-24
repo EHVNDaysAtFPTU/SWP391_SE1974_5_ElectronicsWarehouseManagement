@@ -1,17 +1,15 @@
 using ElectronicsWarehouseManagement.Repositories.Entities;
 using ElectronicsWarehouseManagement.WebAPI.DTO;
 using ElectronicsWarehouseManagement.WebAPI.Helpers;
-using iText.Kernel.Colors;
-using iText.Kernel.Pdf;
-using iText.Layout;
-using iText.Layout.Element;
-using iText.Layout.Properties;
 using Microsoft.EntityFrameworkCore;
+<<<<<<< HEAD
 using Microsoft.IdentityModel.Tokens;
 using System.Linq;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+=======
+>>>>>>> main
 
 namespace ElectronicsWarehouseManagement.WebAPI.Services
 
@@ -22,14 +20,15 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
         // Get element
         Task<ApiResult<ComponentResp>> GetComponentAsync(int componentId, bool fullInfo);
         Task<ApiResult<TransferRequestResp>> GetTransferAsync(int transferId, bool fullInfo);
-        Task<ApiResult<BinResp>> GetBin(int binId, bool fullInfo);
+        Task<ApiResult<BinResp>> GetBinAsync(int binId, bool fullInfo);
         Task<ApiResult<WarehouseResp>> GetWareHouseAsync(int warehouseId, bool fullInfo);
         // Get list element
         Task<ApiResult<PagedResult<ComponentResp>>> GetComponentListAsync(PagingRequest request);
         Task<ApiResult<PagedResult<TransferRequestResp>>> GetTransferReqListAsync(PagingRequest request);
-        Task<ApiResult<PagedResult<BinResp>>> GetBinList(PagingRequest request);
+        Task<ApiResult<PagedResult<BinResp>>> GetBinListAsync(PagingRequest request);
         Task<ApiResult<PagedResult<BinResp>>> GetBinListByWareHouseId(PagingRequest request, int warehouseId, bool fullInfo);
         Task<ApiResult<PagedResult<WarehouseResp>>> GetWareHouseListAsync(PagingRequest request);
+        Task<ApiResult<PagedResult<CustomerResp>>> GetCustomerListAsync(PagingRequest request);
         // Crud 
         Task<ApiResult> PostTransferDecisionAsync(int transferId, TransferDecisionType decision, int? approverId);
         Task<ApiResult<ComponentResp>> CreateComponent(CreateComponentReq request);
@@ -38,13 +37,22 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
         Task<ApiResult<BinResp>> UpdateBin();
         Task<ApiResult<WarehouseResp>> CreateWareHouse();
         Task<ApiResult<WarehouseResp>> UpdateWareHouse();
+<<<<<<< HEAD
+=======
+        Task<ApiResult> CreateCustomerAsync(CustomerReq customerReq);
+        Task<ApiResult<CustomerResp>> UpdateCustomerAsync(int customerId, CustomerReq customerReq);
+>>>>>>> main
 
         // Dashboard
         Task<ApiResult<DashboardSummaryResp>> GetSummaryAsync();
         Task<ApiResult<DashboardChartResp>> GetChartDataAsync(int days);
+<<<<<<< HEAD
         Task<byte[]> ExportTransferPdfAsync(int transferId);
         Task<byte[]> ExportInventoryPdfAsync();
         Task<byte[]> ExportStatisticsPdfAsync(int days);
+=======
+        //Task<byte[]> ExportStatisticsPdfAsync(int days);
+>>>>>>> main
 
     }
 
@@ -61,8 +69,13 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
         {
             var component = await _dbCtx.Components
                .AsNoTracking()
+<<<<<<< HEAD
                .Include(i=> i.Categories)
                .Include(i=> i.ComponentBins)
+=======
+               .Include(i => i.Categories)
+               .Include(i => i.ComponentBins)
+>>>>>>> main
                .Where(i => i.ComponentId == componentId)
                .Select(i => new ComponentResp(i, fullInfo))
                .FirstOrDefaultAsync();
@@ -98,13 +111,18 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
                 }
             }
 
+<<<<<<< HEAD
                 int totalCount = await query.CountAsync();
+=======
+            int totalCount = await query.CountAsync();
+>>>>>>> main
             if (totalCount == 0)
             {
                 return new ApiResult<PagedResult<ComponentResp>>(new PagedResult<ComponentResp>
                 {
                     data = new List<ComponentResp>(),
                     TotalCount = 0,
+<<<<<<< HEAD
                     PageNumber = request.PageNumber,
                     PageSize = request.PageSize
                 });
@@ -116,13 +134,26 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
                 {
                     data = data,
                     TotalCount = totalCount,
+=======
+>>>>>>> main
                     PageNumber = request.PageNumber,
                     PageSize = request.PageSize
-                };
-
-                return new ApiResult<PagedResult<ComponentResp>>(pagedResult);
+                });
             }
-        
+
+            var data = await query.ApplyPaging(request).Select(i => new ComponentResp(i, false)).ToListAsync();
+
+            var pagedResult = new PagedResult<ComponentResp>
+            {
+                data = data,
+                TotalCount = totalCount,
+                PageNumber = request.PageNumber,
+                PageSize = request.PageSize
+            };
+
+            return new ApiResult<PagedResult<ComponentResp>>(pagedResult);
+        }
+
 
 
         public async Task<ApiResult<TransferRequestResp>> GetTransferAsync(int requestId, bool fullInfo)
@@ -159,7 +190,11 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
                 .Include(i => i.Creator)
                 .Include(i => i.BinFrom)
                 .Include(i => i.BinTo);
+<<<<<<< HEAD
     
+=======
+
+>>>>>>> main
             if (!string.IsNullOrEmpty(request.Search))
             {
                 query = query.Where(t => t.Description.Contains(request.Search));
@@ -214,7 +249,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
         {
             return decision switch
             {
-                TransferDecisionType.ApprovedAndWaitForConfirm  => TransferStatus.ApprovedAndWaitForConfirm,
+                TransferDecisionType.ApprovedAndWaitForConfirm => TransferStatus.ApprovedAndWaitForConfirm,
                 TransferDecisionType.Rejected => TransferStatus.Rejected,
             };
         }
@@ -227,11 +262,11 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             {
                 return new ApiResult(ApiResultCode.NotFound);
             }
-            var approver = await _dbCtx.Users.FirstOrDefaultAsync(u => u.UserId == approverId); 
-            if (approver == null) 
-            { 
-                return new ApiResult(ApiResultCode.NotFound, "Approver not found"); 
-            } 
+            var approver = await _dbCtx.Users.FirstOrDefaultAsync(u => u.UserId == approverId);
+            if (approver == null)
+            {
+                return new ApiResult(ApiResultCode.NotFound, "Approver not found");
+            }
             string approverUsername = approver.Username;
             switch (decision)
             {
@@ -251,7 +286,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             return new ApiResult();
         }
 
-        public async Task<ApiResult<BinResp>> GetBin(int binId, bool fullInfo)
+        public async Task<ApiResult<BinResp>> GetBinAsync(int binId, bool fullInfo)
         {
             var bin = await _dbCtx.Bins.AsNoTracking()
                 .Include(b => b.Warehouse)
@@ -371,7 +406,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             return new ApiResult<WarehouseResp>(warehouse);
         }
 
-        public async Task<ApiResult<PagedResult<BinResp>>> GetBinList(PagingRequest request)
+        public async Task<ApiResult<PagedResult<BinResp>>> GetBinListAsync(PagingRequest request)
         {
             var query = _dbCtx.Bins
                 .Include(b => b.Warehouse)
@@ -483,13 +518,16 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             return new ApiResult<DashboardChartResp>(
                 new DashboardChartResp
                 {
-                     transferChart = data
+                    transferChart = data
                 });
         }
 
 
-        private byte[] GeneratePdf(Action<Document> buildContent)
+
+
+        public Task<ApiResult<ComponentResp>> CreateComponent(CreateComponentReq request)
         {
+<<<<<<< HEAD
             if (buildContent == null) throw new ArgumentNullException(nameof(buildContent));
             using var stream = new MemoryStream();
 
@@ -501,9 +539,14 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
 
             doc.Close();
             return stream.ToArray();
+=======
+            throw new NotImplementedException();
+>>>>>>> main
         }
-        public async Task<byte[]> ExportTransferPdfAsync(int transferId)
+
+        public Task<ApiResult<ComponentResp>> UpdateComponent()
         {
+<<<<<<< HEAD
             var transfer = await _dbCtx.TransferRequests
                 .Include(x => x.Creator)
                 .Include(x => x.Approver)
@@ -537,9 +580,14 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             doc.Close();
 
             return stream.ToArray();
+=======
+            throw new NotImplementedException();
+>>>>>>> main
         }
-        private void BuildInboundHeader(Document doc, TransferRequest transfer)
+
+        public Task<ApiResult<BinResp>> CreateBin()
         {
+<<<<<<< HEAD
             doc.Add(new Paragraph("IMPORT RECEIPT")
                 .SetTextAlignment(TextAlignment.CENTER)
                 .SetBold()
@@ -564,9 +612,14 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             doc.Add(table);
 
             doc.Add(new Paragraph("\n"));
+=======
+            throw new NotImplementedException();
+>>>>>>> main
         }
-        private void BuildOutBoundHeader(Document doc, TransferRequest transfer)
+
+        public Task<ApiResult<BinResp>> UpdateBin()
         {
+<<<<<<< HEAD
             doc.Add(new Paragraph("EXPORT RECEIPT")
                 .SetTextAlignment(TextAlignment.CENTER)
                 .SetBold()
@@ -618,42 +671,53 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             doc.Add(new Paragraph("\n"));
         }
         private void BuildComponentTable(Document doc, TransferRequest transfer)
+=======
+            throw new NotImplementedException();
+        }
+
+        public Task<ApiResult<WarehouseResp>> CreateWareHouse()
+>>>>>>> main
         {
-            float[] widths = { 1, 4, 2, 2, 2, 2 };
+            throw new NotImplementedException();
+        }
 
-            var table = new Table(UnitValue.CreatePercentArray(widths))
-                .UseAllAvailableWidth();
+        public Task<ApiResult<WarehouseResp>> UpdateWareHouse()
+        {
+            throw new NotImplementedException();
+        }
 
-            table.AddHeaderCell("No");
-            table.AddHeaderCell("Component");
-            table.AddHeaderCell("Unit");
-            table.AddHeaderCell("Quantity");
-            table.AddHeaderCell("Unit Price");
-            table.AddHeaderCell("Total");
-
-            int index = 1;
-            double total = 0;
-
-            foreach (var item in transfer.TransferRequestComponents)
+        public async Task<ApiResult> CreateCustomerAsync(CustomerReq customerReq)
+        {
+            if (!customerReq.Verify(out string failedreason))
             {
-                double rowTotal = item.Quantity * item.UnitPrice;
-                total += rowTotal;
-
-                table.AddCell(index.ToString());
-                table.AddCell(item.Component?.Metadata?.Name ?? "");
-                table.AddCell(item.Component?.Unit ?? "");
-                table.AddCell(item.Quantity.ToString());
-                table.AddCell(item.UnitPrice.ToString("0.00"));
-                table.AddCell(rowTotal.ToString("0.00"));
-
-                index++;
+                return new ApiResult(ApiResultCode.InvalidRequest, failedreason);
             }
 
-            table.AddCell(new Cell(1, 5).Add(new Paragraph("TOTAL")).SetBold());
-            table.AddCell(total.ToString("0.00"));
+            if (await _dbCtx.Customers.AnyAsync(x => x.Email == customerReq.Email))
+            {
+                return new ApiResult(ApiResultCode.InvalidRequest, "Email already exists!");
+            }
 
-            doc.Add(table);
+            if (await _dbCtx.Customers.AnyAsync(x => x.Phone == customerReq.Phone))
+            {
+                return new ApiResult(ApiResultCode.InvalidRequest, "Phone already exists!");
+            }
+
+            var customer = new Customer
+            {
+                CustomerName = customerReq.CustomerName,
+                Phone = customerReq.Phone,
+                Email = customerReq.Email,
+                Address = customerReq.Address,
+                CreatedAt = DateTime.UtcNow,
+            };
+
+            _dbCtx.Customers.Add(customer);
+            await _dbCtx.SaveChangesAsync();
+
+            return new ApiResult();
         }
+<<<<<<< HEAD
         private void BuildSummarySection(Document doc, DashboardSummaryResp summary)
         {
             doc.Add(new Paragraph("Inventory Summary")
@@ -810,6 +874,90 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
         public Task<ApiResult<WarehouseResp>> UpdateWareHouse()
         {
             throw new NotImplementedException();
+=======
+
+        public async Task<ApiResult<CustomerResp>> UpdateCustomerAsync(int customerId, CustomerReq customerReq)
+        {
+            if (!customerReq.Verify(out string failedreason))
+            {
+                return new ApiResult<CustomerResp>(ApiResultCode.InvalidRequest, failedreason);
+            }
+
+            var customer = await _dbCtx.Customers.FirstOrDefaultAsync(x => x.CustomerId == customerId);
+            if (customer == null)
+            {
+                return new ApiResult<CustomerResp>(ApiResultCode.NotFound, "Customer not found!");
+            }
+
+            if (await _dbCtx.Customers.AnyAsync(x => x.Email == customerReq.Email && x.CustomerId != customerId))
+            {
+                return new ApiResult<CustomerResp>(ApiResultCode.InvalidRequest, "Email already exists!");
+            }
+
+            if (await _dbCtx.Customers.AnyAsync(x => x.Phone == customerReq.Phone && x.CustomerId != customerId))
+            {
+                return new ApiResult<CustomerResp>(ApiResultCode.InvalidRequest, "Phone already exists!");
+            }
+
+            customer.CustomerName = customerReq.CustomerName;
+            customer.Phone = customerReq.Phone;
+            customer.Email = customerReq.Email;
+            customer.Address = customerReq.Address;
+
+            await _dbCtx.SaveChangesAsync();
+
+            return new ApiResult<CustomerResp>(new CustomerResp(customer, true));
+        }
+
+        public async Task<ApiResult<PagedResult<CustomerResp>>> GetCustomerListAsync(PagingRequest request)
+        {
+            var query = _dbCtx.Customers.AsNoTracking().AsQueryable();
+
+            if (!string.IsNullOrEmpty(request.Search))
+            {
+                query = query.Where(c => c.CustomerName.Contains(request.Search) || c.Email.Contains(request.Search) || c.Phone.Contains(request.Search));
+            }
+
+            if (request.SortBy != null && request.SortDirection != null)
+            {
+                switch (request.SortBy)
+                {
+                    case "customerName":
+                        query = query.ApplySort(request.SortDirection, c => c.CustomerName);
+                        break;
+                    case "createdAt":
+                        query = query.ApplySort(request.SortDirection, c => c.CreatedAt);
+                        break;
+                    default:
+                        query = query.ApplySort(request.SortDirection, c => c.CustomerId);
+                        break;
+                }
+            }
+
+            int totalCount = await query.CountAsync();
+            if (totalCount == 0)
+            {
+                return new ApiResult<PagedResult<CustomerResp>>(new PagedResult<CustomerResp>
+                {
+                    data = new List<CustomerResp>(),
+                    TotalCount = 0,
+                    PageNumber = request.PageNumber,
+                    PageSize = request.PageSize
+                });
+            }
+
+            var data = await query.ApplyPaging(request).Select(i => new CustomerResp(i, false)).ToListAsync();
+
+            var pagedResult = new PagedResult<CustomerResp>
+            {
+                data = data,
+                TotalCount = totalCount,
+                PageNumber = request.PageNumber,
+                PageSize = request.PageSize
+            };
+
+            return new ApiResult<PagedResult<CustomerResp>>(pagedResult);
+>>>>>>> main
         }
     }
 }

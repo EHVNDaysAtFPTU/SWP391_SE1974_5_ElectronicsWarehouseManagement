@@ -86,7 +86,10 @@ function renderTable(data) {
             <td class="align-middle">
                 <div class="d-flex gap-1">
                     <button class="btn btn-sm btn-outline-primary rounded-pill px-3" onclick="viewTransfer(${t.id})">Details</button>
+<<<<<<< HEAD
                     <button class="btn btn-sm btn-outline-danger rounded-pill px-3" onclick="exportTransfer(${t.id})">PDF</button>
+=======
+>>>>>>> main
                 </div>
             </td>
             <td class="align-middle">
@@ -218,9 +221,12 @@ function viewTransfer(id) {
     window.location.href = `transfer-detail.html?id=${id}`;
 }
 
+<<<<<<< HEAD
 function exportTransfer(id) {
     window.open(`/api/manager/export/transfer/${id}`, '_blank');
 }
+=======
+>>>>>>> main
 
 function applyFilter() {
     const searchValue = document.getElementById("searchInput").value.trim();

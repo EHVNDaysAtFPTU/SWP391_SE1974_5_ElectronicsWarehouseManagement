@@ -65,7 +65,10 @@ async function renderTransferInfo(t) {
                             <h3 class="fw-bold mb-0">#${t.id}</h3>
                         </div>
                         <div class="d-flex gap-2">
+<<<<<<< HEAD
                              <button class="btn btn-outline-danger btn-sm rounded-pill px-3 shadow-sm" onclick="exportTransfer(${t.id})"><i class="bi bi-file-pdf"></i> PDF</button>
+=======
+>>>>>>> main
                              ${getStatusBadge(t.status)}
                         </div>
                     </div>
@@ -82,7 +85,11 @@ async function renderTransferInfo(t) {
                         </div>
                         <div class="col-6">
                             <label class="small text-muted text-uppercase d-block ls-1">Supplier / Customer</label>
+<<<<<<< HEAD
                             <span class="fw-bold text-success">${t.supplier_customer_name || "Internal"}</span>
+=======
+                            <span class="fw-bold text-success">${t.name || "Internal"}</span>
+>>>>>>> main
                         </div>
                         <div class="col-6">
                             <label class="small text-muted text-uppercase d-block ls-1">Creator</label>
@@ -279,6 +286,9 @@ function goBack() {
     window.history.back();
 }
 
+<<<<<<< HEAD
 function exportTransfer(id) {
     window.open(`/api/manager/export/transfer/${id}`, '_blank');
 }
+=======
+>>>>>>> main
