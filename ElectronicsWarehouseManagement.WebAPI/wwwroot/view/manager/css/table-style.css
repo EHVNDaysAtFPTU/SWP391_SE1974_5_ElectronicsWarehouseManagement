@@ -1,0 +1,113 @@
+﻿/* ===== PAGE TITLE ===== */
+.content h2 {
+    margin-bottom: 20px;
+    font-size: 24px;
+}
+
+/* ===== SELECT BOX ===== */
+select {
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    margin-left: 5px;
+}
+
+/* ===== INFO TEXT ===== */
+#infoText {
+    font-size: 14px;
+    color: #555;
+}
+
+/* ===== TABLE STYLE ===== */
+table {
+    border-collapse: collapse;
+    width: 100%;
+    background: #ffffff;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+    table thead {
+        background: #1e88a8;
+        color: white;
+    }
+
+    table th {
+        padding: 12px;
+        text-align: left;
+        font-weight: 600;
+        font-size: 14px;
+    }
+
+    table td {
+        padding: 10px 12px;
+        border-bottom: 1px solid #eee;
+        font-size: 14px;
+    }
+
+    /* Zebra row */
+    table tbody tr:nth-child(even) {
+        background: #f9fbfc;
+    }
+
+    /* Hover effect */
+    table tbody tr:hover {
+        background: #eef6f9;
+        transition: 0.2s ease;
+    }
+
+/* ===== BUTTON STYLE ===== */
+button {
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    transition: 0.2s ease;
+}
+
+/* View button */
+button {
+    background-color: #1e88a8;
+    color: white;
+}
+
+    button:hover {
+        opacity: 0.85;
+    }
+
+    /* Approve button */
+    button[onclick*=", 2"] {
+        background-color: #2e7d32;
+        margin-right: 5px;
+    }
+
+    /* Reject button */
+    button[onclick*=", 3"] {
+        background-color: #c62828;
+    }
+
+/* ===== PAGINATION ===== */
+#pagination {
+    margin-top: 15px;
+}
+
+    #pagination button {
+        margin-right: 6px;
+        background: #e0e0e0;
+        color: #333;
+    }
+
+        #pagination button:disabled {
+            background: #1e88a8;
+            color: white;
+        }
+
+/* ===== MESSAGE BOX ===== */
+#message {
+    margin-top: 10px;
+    font-weight: 500;
+    color: #1e88a8;
+}

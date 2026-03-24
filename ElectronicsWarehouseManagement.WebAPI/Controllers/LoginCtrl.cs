@@ -1,5 +1,4 @@
 using ElectronicsWarehouseManagement.WebAPI.DTO;
-using ElectronicsWarehouseManagement.WebAPI.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
@@ -13,13 +12,11 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
     public class LoginCtrl : ControllerBase
     {
         readonly IAuthService _authService;
-        readonly IAdminService _adminService;
         private readonly ILogger<LoginCtrl> _logger;
 
-        public LoginCtrl(IAuthService authService, IAdminService adminService, ILogger<LoginCtrl> logger)
+        public LoginCtrl(IAuthService authService, ILogger<LoginCtrl> logger)
         {
             _authService = authService;
-            _adminService = adminService;
             _logger = logger;
         }
 
@@ -28,37 +25,27 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
         {
             if (HttpContext.Session.GetString("User") != null)
                 return BadRequest(new ApiResult(ApiResultCode.AlreadyLoggedIn));
-
-            // ❌ KHÔNG check maintenance ở đây nữa
-
             var result = await _authService.LoginAsync(request);
-
             if (result.resp.Success && result.user != null)
             {
                 var claims = new List<Claim>
-        {
-            new(ClaimTypes.Name, result.user.Username),
-            new(ClaimTypes.Email, result.user.Email)
-        };
-
+                {
+                    new(ClaimTypes.Name, result.user.Username),
+                    new(ClaimTypes.Email, result.user.Email)
+                };
                 foreach (var role in result.user.Roles.OrderBy(r => r.RoleId))
                 {
                     claims.Add(new Claim(ClaimTypes.Role, $"{role.RoleId}"));
                     claims.Add(new Claim(ClaimTypes.NameIdentifier, role.RoleName));
                 }
-
                 var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
                 await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(identity));
-
                 HttpContext.Session.SetString("User", result.user.Username);
                 HttpContext.Session.SetString("UserId", result.user.UserId.ToString());
-
                 return Ok(result.resp);
             }
-
             if (result.user is null && result.resp.ResultCode == ApiResultCode.NotFound)
                 return NotFound(result.resp);
-
             return BadRequest(result.resp);
         }
 
