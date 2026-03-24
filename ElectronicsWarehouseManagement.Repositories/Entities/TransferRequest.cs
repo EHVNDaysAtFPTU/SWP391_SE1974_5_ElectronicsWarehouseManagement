@@ -18,7 +18,7 @@ public partial class TransferRequest
 
     public DateTime? ExecutionTime { get; set; }
 
-    //[Obsolete("Use Status instead.")]
+    [Obsolete("Use Status instead.")]
     public int StatusInt { get; set; }
 
     public int CreatorId { get; set; }
