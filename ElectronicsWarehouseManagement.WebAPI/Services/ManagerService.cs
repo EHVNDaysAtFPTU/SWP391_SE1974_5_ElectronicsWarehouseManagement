@@ -1,0 +1,629 @@
+using ElectronicsWarehouseManagement.Repositories.Entities;
+using ElectronicsWarehouseManagement.WebAPI.DTO;
+using ElectronicsWarehouseManagement.WebAPI.Helpers;
+using Microsoft.EntityFrameworkCore;
+
+namespace ElectronicsWarehouseManagement.WebAPI.Services
+
+{
+
+    public interface IManagerService
+    {
+        // Get element
+        Task<ApiResult<ComponentResp>> GetComponentAsync(int componentId, bool fullInfo);
+        Task<ApiResult<TransferRequestResp>> GetTransferAsync(int transferId, bool fullInfo);
+        Task<ApiResult<BinResp>> GetBinAsync(int binId, bool fullInfo);
+        Task<ApiResult<WarehouseResp>> GetWareHouseAsync(int warehouseId, bool fullInfo);
+        // Get list element
+        Task<ApiResult<PagedResult<ComponentResp>>> GetComponentListAsync(PagingRequest request);
+        Task<ApiResult<PagedResult<TransferRequestResp>>> GetTransferReqListAsync(PagingRequest request);
+        Task<ApiResult<PagedResult<BinResp>>> GetBinListAsync(PagingRequest request);
+        Task<ApiResult<PagedResult<BinResp>>> GetBinListByWareHouseId(PagingRequest request, int warehouseId, bool fullInfo);
+        Task<ApiResult<PagedResult<WarehouseResp>>> GetWareHouseListAsync(PagingRequest request);
+        Task<ApiResult<PagedResult<CustomerResp>>> GetCustomerListAsync(PagingRequest request);
+        // Crud 
+        Task<ApiResult> PostTransferDecisionAsync(int transferId, TransferDecisionType decision, int? approverId);
+        Task<ApiResult<ComponentResp>> CreateComponent(CreateComponentReq request);
+        Task<ApiResult<ComponentResp>> UpdateComponent();
+        Task<ApiResult<BinResp>> CreateBin();
+        Task<ApiResult<BinResp>> UpdateBin();
+        Task<ApiResult<WarehouseResp>> CreateWareHouse();
+        Task<ApiResult<WarehouseResp>> UpdateWareHouse();
+        Task<ApiResult> CreateCustomerAsync(CustomerReq customerReq);
+        Task<ApiResult<CustomerResp>> UpdateCustomerAsync(int customerId, CustomerReq customerReq);
+
+        // Dashboard
+        Task<ApiResult<DashboardSummaryResp>> GetSummaryAsync();
+        Task<ApiResult<DashboardChartResp>> GetChartDataAsync(int days);
+        //Task<byte[]> ExportStatisticsPdfAsync(int days);
+
+    }
+
+    public class ManagerService : IManagerService
+    {
+        private readonly EWMDbCtx _dbCtx;
+
+        public ManagerService(EWMDbCtx dbCtx)
+        {
+            _dbCtx = dbCtx;
+        }
+
+        public async Task<ApiResult<ComponentResp>> GetComponentAsync(int componentId, bool fullInfo)
+        {
+            var component = await _dbCtx.Components
+               .AsNoTracking()
+               .Include(i => i.Categories)
+               .Include(i => i.ComponentBins)
+               .Where(i => i.ComponentId == componentId)
+               .Select(i => new ComponentResp(i, fullInfo))
+               .FirstOrDefaultAsync();
+
+            if (component == null)
+                return new ApiResult<ComponentResp>(ApiResultCode.NotFound, "Component not found");
+
+            return new ApiResult<ComponentResp>(component);
+        }
+
+
+        public async Task<ApiResult<PagedResult<ComponentResp>>> GetComponentListAsync(PagingRequest request)
+        {
+            var query = _dbCtx.Components
+                .Include(i => i.Categories)
+                .AsNoTracking()
+                .AsQueryable();
+
+            if (!string.IsNullOrEmpty(request.Search))
+            {
+                query = query.Where(c => c.MetadataJson.Contains(request.Search));
+            }
+            if (request.SortBy != null && request.SortDirection != null)
+            {
+                switch (request.SortBy)
+                {
+                    case "unitPrice":
+                        query = query.ApplySort(request.SortDirection, c => c.UnitPrice);
+                        break;
+                    default:
+                        query = query.ApplySort(request.SortDirection, c => c.ComponentId);
+                        break;
+                }
+            }
+
+            int totalCount = await query.CountAsync();
+            if (totalCount == 0)
+            {
+                return new ApiResult<PagedResult<ComponentResp>>(new PagedResult<ComponentResp>
+                {
+                    data = new List<ComponentResp>(),
+                    TotalCount = 0,
+                    PageNumber = request.PageNumber,
+                    PageSize = request.PageSize
+                });
+            }
+
+            var data = await query.ApplyPaging(request).Select(i => new ComponentResp(i, false)).ToListAsync();
+
+            var pagedResult = new PagedResult<ComponentResp>
+            {
+                data = data,
+                TotalCount = totalCount,
+                PageNumber = request.PageNumber,
+                PageSize = request.PageSize
+            };
+
+            return new ApiResult<PagedResult<ComponentResp>>(pagedResult);
+        }
+
+
+
+        public async Task<ApiResult<TransferRequestResp>> GetTransferAsync(int requestId, bool fullInfo)
+        {
+            var query = _dbCtx.TransferRequests.AsNoTracking();
+
+            if (fullInfo)
+            {
+                query = query
+                    .Include(t => t.Approver)
+                    .Include(t => t.Creator)
+                    .Include(t => t.BinFrom)
+                    .Include(t => t.BinTo)
+                    .Include(t => t.Customer)
+                    .Include(t => t.TransferRequestComponents)
+                        .ThenInclude(c => c.Component);
+            }
+
+            var transfer = await query
+                .Where(t => t.RequestId == requestId)
+                .Select(t => new TransferRequestResp(t, fullInfo))
+                .FirstOrDefaultAsync();
+
+            if (transfer == null)
+                return new ApiResult<TransferRequestResp>(ApiResultCode.NotFound, "Transfer request not found");
+
+            return new ApiResult<TransferRequestResp>(transfer);
+        }
+
+        public async Task<ApiResult<PagedResult<TransferRequestResp>>> GetTransferReqListAsync(PagingRequest request)
+        {
+            IQueryable<TransferRequest> query = _dbCtx.TransferRequests.AsNoTracking().AsQueryable()
+                .Include(i => i.Approver)
+                .Include(i => i.Creator)
+                .Include(i => i.BinFrom)
+                .Include(i => i.BinTo);
+
+            if (!string.IsNullOrEmpty(request.Search))
+            {
+                query = query.Where(t => t.Description.Contains(request.Search));
+            }
+            if (request.SortBy != null && request.SortDirection != null)
+            {
+                switch (request.SortBy)
+                {
+                    case "creationTime":
+                        query = query.ApplySort(request.SortDirection, c => c.CreationTime);
+                        break;
+                    case "type":
+                        query = query.ApplySort(request.SortDirection, c => c.TypeInt);
+                        break;
+                    case "status":
+                        query = query.ApplySort(request.SortDirection, c => c.StatusInt);
+                        break;
+                    default:
+                        query = query.ApplySort(request.SortDirection, c => c.RequestId);
+                        break;
+                }
+            }
+            int totalCount = await query.CountAsync();
+            if (totalCount == 0)
+            {
+                return new ApiResult<PagedResult<TransferRequestResp>>(new PagedResult<TransferRequestResp>
+                {
+                    data = new List<TransferRequestResp>(),
+                    TotalCount = 0,
+                    PageNumber = request.PageNumber,
+                    PageSize = request.PageSize
+                });
+            }
+            var data = await query
+                .ApplyPaging(request)
+                .Select(t => new TransferRequestResp(t, false))
+                .ToListAsync();
+
+            var pagedResult = new PagedResult<TransferRequestResp>
+            {
+                data = data,
+                TotalCount = totalCount,
+                PageNumber = request.PageNumber,
+                PageSize = request.PageSize
+            };
+
+            return new ApiResult<PagedResult<TransferRequestResp>>(pagedResult);
+        }
+
+
+        private TransferStatus MapDecisionToStatus(TransferDecisionType decision)
+        {
+            return decision switch
+            {
+                TransferDecisionType.ApprovedAndWaitForConfirm => TransferStatus.ApprovedAndWaitForConfirm,
+                TransferDecisionType.Rejected => TransferStatus.Rejected,
+            };
+        }
+        public async Task<ApiResult> PostTransferDecisionAsync(int transferId, TransferDecisionType decision, int? approverId)
+        {
+
+            var transferReq = await _dbCtx.TransferRequests.Include(i => i.Approver).FirstOrDefaultAsync(i => i.RequestId == transferId);
+
+            if (transferReq == null)
+            {
+                return new ApiResult(ApiResultCode.NotFound);
+            }
+            var approver = await _dbCtx.Users.FirstOrDefaultAsync(u => u.UserId == approverId);
+            if (approver == null)
+            {
+                return new ApiResult(ApiResultCode.NotFound, "Approver not found");
+            }
+            string approverUsername = approver.Username;
+            switch (decision)
+            {
+                case TransferDecisionType.ApprovedAndWaitForConfirm:
+                    transferReq.StatusInt = (int)MapDecisionToStatus(decision);
+                    transferReq.ApproverId = approverId;
+                    break;
+                case TransferDecisionType.Rejected:
+                    transferReq.StatusInt = (int)MapDecisionToStatus(decision);
+                    transferReq.ApproverId = approverId;
+                    break;
+                default:
+                    return new ApiResult(ApiResultCode.InvalidRequest);
+            }
+            await _dbCtx.SaveChangesAsync();
+
+            return new ApiResult();
+        }
+
+        public async Task<ApiResult<BinResp>> GetBinAsync(int binId, bool fullInfo)
+        {
+            var bin = await _dbCtx.Bins.AsNoTracking()
+                .Include(b => b.Warehouse)
+                .Include(b => b.ComponentBins)
+                    .ThenInclude(cb => cb.Component)
+                .FirstOrDefaultAsync(b => b.BinId == binId);
+
+            if (bin == null)
+                return new ApiResult<BinResp>(ApiResultCode.NotFound, "Bin not found");
+
+            return new ApiResult<BinResp>(new BinResp(bin, fullInfo));
+        }
+
+        public async Task<ApiResult<PagedResult<BinResp>>> GetBinListByWareHouseId(PagingRequest request, int warehouseId, bool fullInfo)
+        {
+            var query = _dbCtx.Bins
+                .Where(b => b.WarehouseId == warehouseId)
+                .Include(b => b.Warehouse)
+                .Include(b => b.ComponentBins).ThenInclude(c => c.Component).AsNoTracking().AsQueryable();
+
+            if (!string.IsNullOrEmpty(request.Search))
+            {
+                query = query.Where(c => c.LocationInWarehouse.Contains(request.Search));
+            }
+            if (request.SortBy != null && request.SortDirection != null)
+            {
+                switch (request.SortBy)
+                {
+                    case "status":
+                        query = query.ApplySort(request.SortDirection, c => c.StatusInt);
+                        break;
+                    default:
+                        query = query.ApplySort(request.SortDirection, c => c.Warehouse.WarehouseName);
+                        break;
+                }
+            }
+            int totalCount = await query.CountAsync();
+            if (totalCount == 0)
+            {
+                return new ApiResult<PagedResult<BinResp>>(ApiResultCode.NotFound);
+            }
+
+            var data = await query
+                .ApplyPaging(request)
+                .Select(b => new BinResp(b, fullInfo))
+                .ToListAsync();
+
+            var pagedResult = new PagedResult<BinResp>
+            {
+                data = data,
+                TotalCount = totalCount,
+                PageNumber = request.PageNumber,
+                PageSize = request.PageSize
+            };
+
+            return new ApiResult<PagedResult<BinResp>>(pagedResult);
+        }
+
+        public async Task<ApiResult<PagedResult<WarehouseResp>>> GetWareHouseListAsync(PagingRequest request)
+        {
+            var query = _dbCtx.Warehouses.AsNoTracking();
+            if (!string.IsNullOrEmpty(request.Search))
+            {
+                query = query.Where(c => c.WarehouseName.Contains(request.Search));
+            }
+            if (request.SortBy != null && request.SortDirection != null)
+            {
+                switch (request.SortBy)
+                {
+                    case "warehouseName":
+                        query = query.ApplySort(request.SortDirection, c => c.WarehouseName);
+                        break;
+                    default:
+                        query = query.ApplySort(request.SortDirection, c => c.WarehouseId);
+                        break;
+                }
+            }
+
+            var totalCount = await query.CountAsync();
+            if (totalCount == 0)
+            {
+                return new ApiResult<PagedResult<WarehouseResp>>(new PagedResult<WarehouseResp>
+                {
+                    data = new List<WarehouseResp>(),
+                    TotalCount = 0,
+                    PageNumber = request.PageNumber,
+                    PageSize = request.PageSize
+                });
+            }
+
+            var data = await query
+                .Skip((request.PageNumber - 1) * request.PageSize)
+                .Take(request.PageSize).ToListAsync();
+
+            var warehouseList = data.Select(i => new WarehouseResp(i, false)).ToList();
+            var pagedResult = new PagedResult<WarehouseResp>
+            {
+                data = warehouseList,
+                TotalCount = totalCount,
+                PageNumber = request.PageNumber,
+                PageSize = request.PageSize
+            };
+            return new ApiResult<PagedResult<WarehouseResp>>(pagedResult);
+
+        }
+
+        public async Task<ApiResult<WarehouseResp>> GetWareHouseAsync(int warehouseId, bool fullInfo)
+        {
+            var warehouse = await _dbCtx.Warehouses.AsNoTracking()
+                .Where(i => i.WarehouseId == warehouseId)
+                .Select(i => new WarehouseResp(i, fullInfo))
+                .FirstOrDefaultAsync();
+            if (warehouse == null)
+            {
+                return new ApiResult<WarehouseResp>(ApiResultCode.NotFound);
+            }
+            return new ApiResult<WarehouseResp>(warehouse);
+        }
+
+        public async Task<ApiResult<PagedResult<BinResp>>> GetBinListAsync(PagingRequest request)
+        {
+            var query = _dbCtx.Bins
+                .Include(b => b.Warehouse)
+                .Include(b => b.ComponentBins).ThenInclude(c => c.Component).AsNoTracking().AsQueryable();
+
+            if (!string.IsNullOrEmpty(request.Search))
+            {
+                query = query.Where(c => c.LocationInWarehouse.Contains(request.Search));
+            }
+            if (request.SortBy != null && request.SortDirection != null)
+            {
+                switch (request.SortBy)
+                {
+                    case "status":
+                        query = query.ApplySort(request.SortDirection, c => c.StatusInt);
+                        break;
+                    default:
+                        query = query.ApplySort(request.SortDirection, c => c.LocationInWarehouse);
+                        break;
+                }
+            }
+            int totalCount = await query.CountAsync();
+            if (totalCount == 0)
+            {
+                return new ApiResult<PagedResult<BinResp>>(ApiResultCode.NotFound);
+            }
+
+            var data = await query
+                .ApplyPaging(request)
+                .Select(b => new BinResp(b, false))
+                .ToListAsync();
+
+            var pagedResult = new PagedResult<BinResp>
+            {
+                data = data,
+                TotalCount = totalCount,
+                PageNumber = request.PageNumber,
+                PageSize = request.PageSize
+            };
+
+            return new ApiResult<PagedResult<BinResp>>(pagedResult);
+        }
+
+        public async Task<ApiResult<DashboardSummaryResp>> GetSummaryAsync()
+        {
+            var start = DateTime.Today;
+            var end = start.AddDays(1);
+
+            var resp = new DashboardSummaryResp
+            {
+                TotalComponents = await _dbCtx.Components.CountAsync(),
+
+                TotalWarehouses = await _dbCtx.Warehouses.CountAsync(),
+
+                CurrentStock = await _dbCtx.ComponentBins.SumAsync(cb => cb.Quantity),
+
+                LowStockItems = await _dbCtx.ComponentBins
+                    .Where(cb => cb.Quantity < 10)
+                    .CountAsync(),
+
+                OutOfStockItems = await _dbCtx.ComponentBins
+                    .Where(cb => cb.Quantity == 0)
+                    .CountAsync(),
+
+                InboundToday = await _dbCtx.TransferRequests
+                    .Where(tr => tr.TypeInt == (int)TransferType.Inbound
+                        && tr.CreationTime >= start
+                        && tr.CreationTime < end)
+                    .SelectMany(tr => tr.TransferRequestComponents)
+                    .SumAsync(c => c.Quantity),
+
+                OutboundToday = await _dbCtx.TransferRequests
+                    .Where(tr => tr.TypeInt == (int)TransferType.Outbound
+                        && tr.CreationTime >= start
+                        && tr.CreationTime < end)
+                    .SelectMany(tr => tr.TransferRequestComponents)
+                    .SumAsync(c => c.Quantity)
+            };
+
+            return new ApiResult<DashboardSummaryResp>(resp);
+        }
+
+        public async Task<ApiResult<DashboardChartResp>> GetChartDataAsync(int days)
+        {
+            var start = DateTime.Today.AddDays(-days);
+
+            var data = await _dbCtx.TransferRequests
+                .Where(tr => tr.CreationTime >= start)
+                .SelectMany(tr => tr.TransferRequestComponents,
+                    (tr, c) => new
+                    {
+                        Date = tr.CreationTime.Date,
+                        Type = tr.TypeInt,
+                        Quantity = c.Quantity
+                    })
+                .GroupBy(x => x.Date)
+                .Select(g => new ImportExportChart
+                {
+                    Date = g.Key,
+                    Import = g.Where(x => x.Type == (int)TransferType.Inbound)
+                              .Sum(x => x.Quantity),
+
+                    Export = g.Where(x => x.Type == (int)TransferType.Outbound)
+                              .Sum(x => x.Quantity)
+                })
+                .OrderBy(x => x.Date)
+                .ToListAsync();
+
+            return new ApiResult<DashboardChartResp>(
+                new DashboardChartResp
+                {
+                    transferChart = data
+                });
+        }
+
+
+
+
+        public Task<ApiResult<ComponentResp>> CreateComponent(CreateComponentReq request)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<ApiResult<ComponentResp>> UpdateComponent()
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<ApiResult<BinResp>> CreateBin()
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<ApiResult<BinResp>> UpdateBin()
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<ApiResult<WarehouseResp>> CreateWareHouse()
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<ApiResult<WarehouseResp>> UpdateWareHouse()
+        {
+            throw new NotImplementedException();
+        }
+
+        public async Task<ApiResult> CreateCustomerAsync(CustomerReq customerReq)
+        {
+            if (!customerReq.Verify(out string failedreason))
+            {
+                return new ApiResult(ApiResultCode.InvalidRequest, failedreason);
+            }
+
+            if (await _dbCtx.Customers.AnyAsync(x => x.Email == customerReq.Email))
+            {
+                return new ApiResult(ApiResultCode.InvalidRequest, "Email already exists!");
+            }
+
+            if (await _dbCtx.Customers.AnyAsync(x => x.Phone == customerReq.Phone))
+            {
+                return new ApiResult(ApiResultCode.InvalidRequest, "Phone already exists!");
+            }
+
+            var customer = new Customer
+            {
+                CustomerName = customerReq.CustomerName,
+                Phone = customerReq.Phone,
+                Email = customerReq.Email,
+                Address = customerReq.Address,
+                CreatedAt = DateTime.UtcNow,
+            };
+
+            _dbCtx.Customers.Add(customer);
+            await _dbCtx.SaveChangesAsync();
+
+            return new ApiResult();
+        }
+
+        public async Task<ApiResult<CustomerResp>> UpdateCustomerAsync(int customerId, CustomerReq customerReq)
+        {
+            if (!customerReq.Verify(out string failedreason))
+            {
+                return new ApiResult<CustomerResp>(ApiResultCode.InvalidRequest, failedreason);
+            }
+
+            var customer = await _dbCtx.Customers.FirstOrDefaultAsync(x => x.CustomerId == customerId);
+            if (customer == null)
+            {
+                return new ApiResult<CustomerResp>(ApiResultCode.NotFound, "Customer not found!");
+            }
+
+            if (await _dbCtx.Customers.AnyAsync(x => x.Email == customerReq.Email && x.CustomerId != customerId))
+            {
+                return new ApiResult<CustomerResp>(ApiResultCode.InvalidRequest, "Email already exists!");
+            }
+
+            if (await _dbCtx.Customers.AnyAsync(x => x.Phone == customerReq.Phone && x.CustomerId != customerId))
+            {
+                return new ApiResult<CustomerResp>(ApiResultCode.InvalidRequest, "Phone already exists!");
+            }
+
+            customer.CustomerName = customerReq.CustomerName;
+            customer.Phone = customerReq.Phone;
+            customer.Email = customerReq.Email;
+            customer.Address = customerReq.Address;
+
+            await _dbCtx.SaveChangesAsync();
+
+            return new ApiResult<CustomerResp>(new CustomerResp(customer, true));
+        }
+
+        public async Task<ApiResult<PagedResult<CustomerResp>>> GetCustomerListAsync(PagingRequest request)
+        {
+            var query = _dbCtx.Customers.AsNoTracking().AsQueryable();
+
+            if (!string.IsNullOrEmpty(request.Search))
+            {
+                query = query.Where(c => c.CustomerName.Contains(request.Search) || c.Email.Contains(request.Search) || c.Phone.Contains(request.Search));
+            }
+
+            if (request.SortBy != null && request.SortDirection != null)
+            {
+                switch (request.SortBy)
+                {
+                    case "customerName":
+                        query = query.ApplySort(request.SortDirection, c => c.CustomerName);
+                        break;
+                    case "createdAt":
+                        query = query.ApplySort(request.SortDirection, c => c.CreatedAt);
+                        break;
+                    default:
+                        query = query.ApplySort(request.SortDirection, c => c.CustomerId);
+                        break;
+                }
+            }
+
+            int totalCount = await query.CountAsync();
+            if (totalCount == 0)
+            {
+                return new ApiResult<PagedResult<CustomerResp>>(new PagedResult<CustomerResp>
+                {
+                    data = new List<CustomerResp>(),
+                    TotalCount = 0,
+                    PageNumber = request.PageNumber,
+                    PageSize = request.PageSize
+                });
+            }
+
+            var data = await query.ApplyPaging(request).Select(i => new CustomerResp(i, false)).ToListAsync();
+
+            var pagedResult = new PagedResult<CustomerResp>
+            {
+                data = data,
+                TotalCount = totalCount,
+                PageNumber = request.PageNumber,
+                PageSize = request.PageSize
+            };
+
+            return new ApiResult<PagedResult<CustomerResp>>(pagedResult);
+        }
+    }
+}

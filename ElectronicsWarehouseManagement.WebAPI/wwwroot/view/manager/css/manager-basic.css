@@ -1,0 +1,97 @@
+/* 
+ * Manager Basic Styling
+ * Designed for simplicity and learning
+ */
+
+:root {
+    --sidebar-width: 240px;
+    --primary-color: #0d6efd; /* Bootstrap blue */
+    --bg-color: #f8f9fa;
+}
+
+body {
+    background-color: var(--bg-color);
+    font-family: Arial, sans-serif;
+}
+
+/* Header */
+.header {
+    margin-left: var(--sidebar-width);
+    padding: 1rem 2rem;
+    background: white;
+    border-bottom: 1px solid #dee2e6;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+/* Sidebar */
+.sidebar {
+    width: var(--sidebar-width);
+    height: 100vh;
+    position: fixed;
+    background: #343a40; /* Dark sidebar is common and easy to understand */
+    color: white;
+    z-index: 1001;
+}
+
+.sidebar .nav-link {
+    color: rgba(255, 255, 255, 0.7);
+    padding: 12px 20px;
+}
+
+.sidebar .nav-link:hover, .sidebar .nav-link.active {
+    color: white;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.sidebar .active {
+    border-left: 4px solid var(--primary-color);
+}
+
+/* Content Area */
+.main-content {
+    margin-left: var(--sidebar-width);
+    padding: 2rem;
+}
+
+/* Profile Dropdown (Simplified) */
+.profile-dropdown {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: 100%;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 0.25rem;
+    min-width: 160px;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+.profile-dropdown.show {
+    display: block;
+}
+
+.profile-dropdown a {
+    display: block;
+    padding: 10px 15px;
+    color: black;
+    text-decoration: none;
+}
+
+.profile-dropdown a:hover {
+    background: #f8f9fa;
+}
+
+/* Image Thumbnails */
+.thumbnail-img {
+    width: 50px;
+    height: 50px;
+    object-fit: cover;
+    border: 1px solid #dee2e6;
+}
+
+/* Utility Class for cursor */
+.cursor-pointer {
+    cursor: pointer;
+}
