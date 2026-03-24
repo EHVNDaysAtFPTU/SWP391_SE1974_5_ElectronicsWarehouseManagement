@@ -19,6 +19,10 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
         [JsonPropertyName("warehouse_to_id")]
         public int? WarehouseToId { get; set; }
 
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        [JsonPropertyName("customer_id")]
+        public int? CustomerId { get; set; }
+
         [JsonIgnore]
         internal TransferType Type { get; set; }
 

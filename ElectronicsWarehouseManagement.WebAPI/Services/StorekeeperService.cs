@@ -40,6 +40,10 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
         Task<ApiResult<int>> GetBinCountAsync();
         Task<ApiResult<int>> GetComponentInBinCountAsync();
         Task<ApiResult<int>> GetTransferRequestCountAsync(int creatorId);
+
+        Task<ApiResult<List<CustomerResp>>> GetCustomersAsync();
+        Task<ApiResult<int>> GetCustomerCountAsync();
+        Task<ApiResult<CustomerResp>> GetCustomerAsync(int customerId);
     }
 
     public class StorekeeperService : IStorekeeperService
@@ -242,8 +246,8 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
                 return new ApiResult<BinResp>(ApiResultCode.InvalidRequest, $"Bin with ID '{binId}' cannot be set to empty because it contains components.");
             bin.Status = status;
             await _dbCtx.SaveChangesAsync();
-            //await _dbCtx.Entry(bin).Reference(b => b.Warehouse).LoadAsync();
-            //await _dbCtx.Entry(bin).Collection(b => b.ComponentBins).LoadAsync();
+            await _dbCtx.Entry(bin).Reference(b => b.Warehouse).LoadAsync();
+            await _dbCtx.Entry(bin).Collection(b => b.ComponentBins).LoadAsync();
             return new ApiResult<BinResp>(new BinResp(bin, true));
         }
 
@@ -330,6 +334,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
                 BinFromId = warehouseFrom?.Bins.ElementAt(0).BinId,
                 BinToId = warehouseTo?.Bins.ElementAt(0).BinId,
                 TransferRequestComponents = tComponents,
+                CustomerId = request.CustomerId
             };
             _dbCtx.TransferRequests.Add(transferRequest);
             await _dbCtx.SaveChangesAsync();
@@ -523,6 +528,19 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
         {
             int result = await _dbCtx.TransferRequests.Where(tr => tr.CreatorId == creatorId).CountAsync();
             return new ApiResult<int>(result);
+        }
+
+
+        public async Task<ApiResult<List<CustomerResp>>> GetCustomersAsync() => new ApiResult<List<CustomerResp>>((List<CustomerResp>?)await _dbCtx.Customers.AsNoTracking().Select(c => new CustomerResp(c, false)).ToListAsync());
+
+        public async Task<ApiResult<int>> GetCustomerCountAsync() => new ApiResult<int>(await _dbCtx.Customers.CountAsync());
+
+        public async Task<ApiResult<CustomerResp>> GetCustomerAsync(int customerId)
+        {
+            Customer? customer = await _dbCtx.Customers.AsNoTracking().Where(c => c.CustomerId == customerId).FirstOrDefaultAsync();
+            if (customer is null)
+                return new ApiResult<CustomerResp>(ApiResultCode.NotFound, $"Customer with ID '{customerId}' does not exist.");
+            return new ApiResult<CustomerResp>(new CustomerResp(customer, true));
         }
     }
 }
