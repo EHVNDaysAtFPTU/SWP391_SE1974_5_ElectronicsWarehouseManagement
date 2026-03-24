@@ -16,7 +16,6 @@ namespace ElectronicsWarehouseManagement.WebAPI.Filters
         public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
         {
             var result = await _adminService.GetSystemConfigAsync();
-
             if (!result.Success)
             {
                 await next();
@@ -24,43 +23,30 @@ namespace ElectronicsWarehouseManagement.WebAPI.Filters
             }
 
             var cfg = result.Data;
-            var now = DateTime.Now;
 
-            bool isMaintenance = false;
-
-            // bật tay
-            if (cfg.MaintenanceMode)
-                isMaintenance = true;
-
-            // theo giờ
-            if (!isMaintenance &&
-                cfg.MaintenanceStartTime.HasValue &&
-                cfg.MaintenanceEndTime.HasValue)
-            {
-                if (now >= cfg.MaintenanceStartTime && now <= cfg.MaintenanceEndTime)
-                    isMaintenance = true;
-            }
+            bool isMaintenance = cfg.MaintenanceMode;
 
             if (isMaintenance)
             {
                 var path = context.HttpContext.Request.Path.Value?.ToLower();
 
-                // ✅ whitelist API
-                if (path != null && (
-                    path.Contains("/api/admin/config") ||
-                    path.StartsWith("/api/auth")
-                ))
+                if (!string.IsNullOrEmpty(path))
                 {
-                    await next();
-                    return;
+                    if (path.StartsWith("/api/auth") ||
+                        path.StartsWith("/api/admin/config") ||
+                        path.StartsWith("/login.html"))
+                    {
+                        await next();
+                        return;
+                    }
                 }
+
                 if (context.HttpContext.User.IsInRole("1"))
                 {
                     await next();
                     return;
                 }
 
-                // ❌ block user thường
                 context.Result = new ObjectResult(new
                 {
                     message = string.IsNullOrEmpty(cfg.MaintenanceMessage)
@@ -70,7 +56,6 @@ namespace ElectronicsWarehouseManagement.WebAPI.Filters
                 {
                     StatusCode = 503
                 };
-
                 return;
             }
 

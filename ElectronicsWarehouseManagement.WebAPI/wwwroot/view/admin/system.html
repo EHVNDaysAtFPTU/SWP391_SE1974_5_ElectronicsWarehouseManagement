@@ -50,19 +50,6 @@
 
                         <label>Maintenance Message</label>
                         <input type="text" id="maintenanceMessage">
-
-                        <div class="time-row">
-                            <div>
-                                <label>Start Time</label>
-                                <input type="datetime-local" id="maintenanceStart">
-                            </div>
-
-                            <div>
-                                <label>End Time</label>
-                                <input type="datetime-local" id="maintenanceEnd">
-                            </div>
-                        </div>
-
                     </div>
 
                 </div>
@@ -100,16 +87,6 @@
             const now = new Date();
 
             let isMaintenance = cfg.maintenanceMode;
-
-            if (!isMaintenance && cfg.maintenanceStartTime && cfg.maintenanceEndTime) {
-                const start = new Date(cfg.maintenanceStartTime);
-                const end = new Date(cfg.maintenanceEndTime);
-
-                if (now >= start && now <= end) {
-                    isMaintenance = true;
-                }
-            }
-
             if (isMaintenance) {
                 statusBadge.innerText = "MAINTENANCE";
                 statusBadge.className = "status maintenance";
@@ -123,8 +100,6 @@
             const cfg = {
                 maintenanceMode: document.getElementById("maintenance").checked,
                 maintenanceMessage: document.getElementById("maintenanceMessage").value,
-                maintenanceStartTime: document.getElementById("maintenanceStart").value || null,
-                maintenanceEndTime: document.getElementById("maintenanceEnd").value || null
             };
 
             const res = await fetch('/api/admin/config/save', {

@@ -195,9 +195,10 @@ namespace ElectronicsWarehouseManagement.WebAPI
             //        ctx.Context.Response.StatusCode = StatusCodes.Status404NotFound;
             //        ctx.Context.Response.ContentLength = 0;
             //        ctx.Context.Response.Body = Stream.Null;
-            //    }
+            //    }using ElectronicsWarehouseManagement.WebAPI.Filters;
             //});
 
+            app.UseStaticFiles(); 
             app.MapControllers();
             app.Run();
         }

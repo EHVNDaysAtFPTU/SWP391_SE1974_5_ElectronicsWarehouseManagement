@@ -20,7 +20,6 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
         Task<ApiResult<SystemConfigDto>> GetSystemConfigAsync();
         Task<ApiResult> SaveSystemConfigAsync(SystemConfigDto config);
         Task<ApiResult> ResetSystemConfigAsync();
-        Task<bool> IsUnderMaintenanceAsync();
     }
 
     public class AdminService : IAdminService
@@ -166,8 +165,6 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
                     {
                         MaintenanceMode = false,
                         MaintenanceMessage = "",
-                        MaintenanceStartTime = null,
-                        MaintenanceEndTime = null
                     };
 
                     var json = JsonSerializer.Serialize(defaultConfig, new JsonSerializerOptions
@@ -193,14 +190,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
         public async Task<ApiResult> SaveSystemConfigAsync(SystemConfigDto config)
         {
             try
-            {
-                // validate trước
-                if (config.MaintenanceStartTime.HasValue && config.MaintenanceEndTime.HasValue)
-                {
-                    if (config.MaintenanceStartTime > config.MaintenanceEndTime)
-                        return new ApiResult(ApiResultCode.InvalidRequest, "Start must be before End");
-                }
-
+            {     
                 var json = JsonSerializer.Serialize(config, new JsonSerializerOptions
                 {
                     WriteIndented = true
@@ -224,8 +214,6 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
                 {
                     MaintenanceMode = false,
                     MaintenanceMessage = "",
-                    MaintenanceStartTime = null,
-                    MaintenanceEndTime = null
                 };
 
                 var json = JsonSerializer.Serialize(defaultConfig, new JsonSerializerOptions
@@ -242,23 +230,6 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
                 return new ApiResult(ApiResultCode.ServerError, ex.Message);
             }
         }
-        public async Task<bool> IsUnderMaintenanceAsync()
-        {
-            var result = await GetSystemConfigAsync();
-            if (!result.Success) return false;
-
-            var cfg = result.Data;
-            var now = DateTime.Now;
-
-            if (cfg.MaintenanceMode)
-                return true;
-
-            if (cfg.MaintenanceStartTime.HasValue && cfg.MaintenanceEndTime.HasValue)
-            {
-                return now >= cfg.MaintenanceStartTime && now <= cfg.MaintenanceEndTime;
-            }
-
-            return false;
-        }
+     
     }
 }
