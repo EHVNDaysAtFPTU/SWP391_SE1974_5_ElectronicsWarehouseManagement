@@ -100,4 +100,19 @@ public sealed class ViewCtrl : ControllerBase
             return NotFound();
         return PhysicalFile(physicalPath, "text/html; charset=utf-8");
     }
+    
+    [AllowAnonymous]
+    [HttpGet("/auth/reset-password")]
+    public IActionResult ResetPasswordView([FromQuery] string token, [FromServices] IWebHostEnvironment env)
+    {
+        if (User?.Identity?.IsAuthenticated == true)
+            return Forbid();
+        if (string.IsNullOrWhiteSpace(token))
+            return Redirect("/login");
+        DisableClientCache();
+        var physicalPath = Path.Combine(env.WebRootPath, "reset-password.html");
+        if (!System.IO.File.Exists(physicalPath))
+            return NotFound();
+        return PhysicalFile(physicalPath, "text/html; charset=utf-8");
+    }
 }

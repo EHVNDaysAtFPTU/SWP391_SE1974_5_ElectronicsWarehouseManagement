@@ -23,6 +23,8 @@ public partial class EWMDbCtx : DbContext
 
     public virtual DbSet<ComponentCategory> ComponentCategories { get; set; }
 
+    public virtual DbSet<Customer> Customers { get; set; }
+
     public virtual DbSet<Role> Roles { get; set; }
 
     public virtual DbSet<TransferRequest> TransferRequests { get; set; }
@@ -119,6 +121,31 @@ public partial class EWMDbCtx : DbContext
                 .HasColumnName("category_name");
         });
 
+        modelBuilder.Entity<Customer>(entity =>
+        {
+            entity.ToTable("Customer");
+
+            entity.HasIndex(e => e.Email, "UQ_Customer_Email").IsUnique();
+
+            entity.Property(e => e.CustomerId).HasColumnName("customer_id");
+            entity.Property(e => e.Address).HasColumnName("address");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime")
+                .HasColumnName("created_at");
+            entity.Property(e => e.CustomerName)
+                .IsRequired()
+                .HasMaxLength(100)
+                .HasColumnName("customer_name");
+            entity.Property(e => e.Email)
+                .HasMaxLength(320)
+                .HasColumnName("email");
+            entity.Property(e => e.Phone)
+                .HasMaxLength(20)
+                .IsUnicode(false)
+                .HasColumnName("phone");
+        });
+
         modelBuilder.Entity<Role>(entity =>
         {
             entity.ToTable("Role");
@@ -145,12 +172,10 @@ public partial class EWMDbCtx : DbContext
                 .HasColumnType("datetime")
                 .HasColumnName("creation_time");
             entity.Property(e => e.CreatorId).HasColumnName("creator_id");
+            entity.Property(e => e.CustomerId).HasColumnName("customer_id");
             entity.Property(e => e.Description)
                 .IsRequired()
                 .HasColumnName("description");
-            entity.Property(e => e.CustomerInfoJson)
-                .IsRequired()
-                .HasColumnName("customer_info_json");
             entity.Property(e => e.ExecutionTime)
                 .HasColumnType("datetime")
                 .HasColumnName("execution_time");
@@ -173,6 +198,10 @@ public partial class EWMDbCtx : DbContext
                 .HasForeignKey(d => d.CreatorId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_TransferRequest_User_Creator");
+
+            entity.HasOne(d => d.Customer).WithMany(p => p.TransferRequests)
+                .HasForeignKey(d => d.CustomerId)
+                .HasConstraintName("FK_TransferRequest_Customer");
         });
 
         modelBuilder.Entity<TransferRequestComponent>(entity =>
