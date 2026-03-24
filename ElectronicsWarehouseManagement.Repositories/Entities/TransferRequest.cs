@@ -29,8 +29,7 @@ public partial class TransferRequest
 
     public int? BinToId { get; set; }
 
-    [Obsolete("Use CustomerInfo instead.")]
-    public string CustomerInfoJson { get; set; }
+    public int? CustomerId { get; set; }
 
     public virtual User Approver { get; set; }
 
@@ -39,6 +38,8 @@ public partial class TransferRequest
     public virtual Bin BinTo { get; set; }
 
     public virtual User Creator { get; set; }
+
+    public virtual Customer Customer { get; set; }
 
     public virtual ICollection<TransferRequestComponent> TransferRequestComponents { get; set; } = new List<TransferRequestComponent>();
 }

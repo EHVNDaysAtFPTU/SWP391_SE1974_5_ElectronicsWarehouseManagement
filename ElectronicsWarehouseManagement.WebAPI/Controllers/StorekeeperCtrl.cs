@@ -93,7 +93,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
                 return Ok(result);
             return BadRequest(result);
         }
-        
+
         [HttpGet("warehouses/count")]
         public async Task<IActionResult> GetWarehouseCount()
         {
@@ -111,7 +111,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
                 return Ok(result);
             return BadRequest(result);
         }
-        
+
         [HttpGet("warehouses/{warehouseId:int}/components")]
         public async Task<IActionResult> GetWarehouseComponents([FromRoute] int warehouseId)
         {
@@ -210,7 +210,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
         {
             return await CreateTransferRequest(request, TransferType.InternalTransfer);
         }
-        
+
         [HttpPost("transfers/confirm")]
         public async Task<IActionResult> ConfirmTransferRequest([FromBody] ConfirmTransferRequestReq request)
         {
@@ -228,7 +228,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
                 return Ok(result);
             return BadRequest(result);
         }
-        
+
         [HttpGet("transfers/count")]
         public async Task<IActionResult> GetTransferRequestCount()
         {
@@ -242,6 +242,33 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
         public async Task<IActionResult> GetTransferRequest([FromRoute] int transferId)
         {
             var result = await _storekeeperService.GetTransferRequestAsync(transferId, int.Parse(HttpContext.Session.GetString("UserId")!));
+            if (result.Success)
+                return Ok(result);
+            return BadRequest(result);
+        }
+
+        [HttpGet("customers")]
+        public async Task<IActionResult> GetCustomers()
+        {
+            var result = await _storekeeperService.GetCustomersAsync();
+            if (result.Success)
+                return Ok(result);
+            return BadRequest(result);
+        }
+
+        [HttpGet("customers/count")]
+        public async Task<IActionResult> GetCustomerCount()
+        {
+            var result = await _storekeeperService.GetCustomerCountAsync();
+            if (result.Success)
+                return Ok(result);
+            return BadRequest(result);
+        }
+
+        [HttpGet("customers/{customerId:int}")]
+        public async Task<IActionResult> UpdateCustomer([FromRoute] int customerId)
+        {
+            var result = await _storekeeperService.GetCustomerAsync(customerId);
             if (result.Success)
                 return Ok(result);
             return BadRequest(result);
