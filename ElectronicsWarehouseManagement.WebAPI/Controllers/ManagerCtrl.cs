@@ -73,7 +73,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
         [HttpPost("transfer-requests/{transferId:int}/decisions")]
         public async Task<IActionResult> PostTransferReq([FromRoute] int transferId, [FromBody] TransferDecisionRequest request)
         {
-            string? userIdString = GetCurrentUserId();
+            string? userIdString = HttpContext.Session.GetString("UserId");
             int? approverId = null;
 
             if (!string.IsNullOrEmpty(userIdString) && int.TryParse(userIdString, out int parsedId))
@@ -98,7 +98,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
         [HttpGet("get-bin/{binId:int}")]
         public async Task<IActionResult> GetBin([FromRoute] int binId, [FromQuery] bool fullInfo)
         {
-            var result = await _managerService.GetBin(binId, fullInfo);
+            var result = await _managerService.GetBinAsync(binId, fullInfo);
 
             if (result.Success)
             {
@@ -123,7 +123,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
         [HttpGet("get-bins")]
         public async Task<IActionResult> GetBinList([FromQuery]PagingRequest request)
         {
-            var result = await _managerService.GetBinList(request);
+            var result = await _managerService.GetBinListAsync(request);
 
             if (result.Success)
             {
@@ -183,62 +183,5 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
             return BadRequest(result);
 
         }
-        [HttpGet("export/transfer/{transferId:int}")]
-        public async Task<IActionResult> ExportTransferReq([FromRoute] int transferId)
-        {
-            var file = await _managerService.ExportTransferPdfAsync(transferId);
-
-            return File(
-                file,
-                "application/pdf",
-                $"transfer_{transferId}.pdf"
-            );
-        }
-
-        //[HttpPost("export/inventory")]
-        //public async Task<IActionResult> ExportInventoryPdf([FromBody] InventoryExportReq request)
-        //{
-        //    var file = await _managerService.ExportInventoryPdfAsync(request);
-
-        //    return File(
-        //        file,
-        //        "application/pdf",
-        //        "inventory_report.pdf"
-        //    );
-        //}
-
-        //[HttpGet("export/statistics")]
-        //public async Task<IActionResult> ExportStatisticsPdf([FromQuery] int days = 7)
-        //{
-        //    var file = await _managerService.ExportStatisticsPdfAsync(days);
-
-        //    return File(
-        //        file,
-        //        "application/pdf",
-        //        "statistics_report.pdf"
-        //    );
-        //}
-
-
-        private String? GetCurrentUserId()
-        {
-            string? result = HttpContext.Session.GetString("UserId");
-            if(result == null)
-            {
-                return null;
-            }
-            return result;
-        }
-
-
-        private String? GetCurrentUsername()
-        {
-            return HttpContext.Session.GetString("User");
-        }
-
-       
-
-        
-
     }
 }
