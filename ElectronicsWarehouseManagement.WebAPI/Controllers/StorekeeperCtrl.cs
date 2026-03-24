@@ -76,15 +76,6 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
             return BadRequest(result);
         }
 
-        [HttpPost("warehouses/create")]
-        public async Task<IActionResult> CreateWarehouse([FromBody] CreateWarehouseReq request)
-        {
-            var result = await _storekeeperService.CreateWarehouseAsync(request);
-            if (result.Success)
-                return Ok(result);
-            return BadRequest(result);
-        }
-
         [HttpGet("warehouses")]
         public async Task<IActionResult> GetWarehouseList()
         {
@@ -116,15 +107,6 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
         public async Task<IActionResult> GetWarehouseComponents([FromRoute] int warehouseId)
         {
             var result = await _storekeeperService.GetComponentsInWarehouseAsync(warehouseId);
-            if (result.Success)
-                return Ok(result);
-            return BadRequest(result);
-        }
-
-        [HttpGet("bins/create")]
-        public async Task<IActionResult> CreateBin([FromBody] CreateBinReq request)
-        {
-            var result = await _storekeeperService.CreateBinAsync(request);
             if (result.Success)
                 return Ok(result);
             return BadRequest(result);

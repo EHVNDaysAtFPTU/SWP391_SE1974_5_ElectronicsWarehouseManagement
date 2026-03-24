@@ -5,7 +5,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
     public class DashboardChartResp
     {
         [JsonPropertyName("transfer_chart")]
-        public List<ImportExportChart> transferChart { get; set; }
+        public List<ImportExportChart> transferChart { get; set; } = [];
     }
 
     public class ImportExportChart

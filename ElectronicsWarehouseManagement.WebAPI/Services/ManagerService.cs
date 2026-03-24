@@ -37,6 +37,9 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
         Task<ApiResult<DashboardChartResp>> GetChartDataAsync(int days);
         //Task<byte[]> ExportStatisticsPdfAsync(int days);
 
+        Task<ApiResult<BinResp>> CreateBinAsync(CreateBinReq request);
+        Task<ApiResult<WarehouseResp>> CreateWarehouseAsync(CreateWarehouseReq request);
+
     }
 
     public class ManagerService : IManagerService
@@ -207,6 +210,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             {
                 TransferDecisionType.ApprovedAndWaitForConfirm => TransferStatus.ApprovedAndWaitForConfirm,
                 TransferDecisionType.Rejected => TransferStatus.Rejected,
+                _ => throw new ArgumentException("Invalid transfer decision type", nameof(decision)),
             };
         }
         public async Task<ApiResult> PostTransferDecisionAsync(int transferId, TransferDecisionType decision, int? approverId)
@@ -624,6 +628,52 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             };
 
             return new ApiResult<PagedResult<CustomerResp>>(pagedResult);
+        }
+
+
+        public async Task<ApiResult<WarehouseResp>> CreateWarehouseAsync(CreateWarehouseReq request)
+        {
+            if (!request.Verify(out string failedReason))
+                return new ApiResult<WarehouseResp>(ApiResultCode.InvalidRequest, failedReason);
+            var warehouse = new Warehouse
+            {
+                WarehouseName = request.Name,
+                Description = request.Description,
+                PhysicalLocation = request.PhysicalLocation,
+                ImageUrl = request.ImageUrl
+            };
+            warehouse.Bins.Add(new Bin
+            {
+                LocationInWarehouse = "Default Bin",
+                Status = BinStatus.Empty
+            });
+            _dbCtx.Warehouses.Add(warehouse);
+            await _dbCtx.SaveChangesAsync();
+
+            await _dbCtx.Entry(warehouse).Collection(w => w.Bins).LoadAsync();
+
+            return new ApiResult<WarehouseResp>(new WarehouseResp(warehouse, true));
+        }
+
+        public async Task<ApiResult<BinResp>> CreateBinAsync(CreateBinReq request)
+        {
+            if (!request.Verify(out string failedReason))
+                return new ApiResult<BinResp>(ApiResultCode.InvalidRequest, failedReason);
+            if (!await _dbCtx.Warehouses.AnyAsync(w => w.WarehouseId == request.WarehouseID))
+                return new ApiResult<BinResp>(ApiResultCode.InvalidRequest, $"Warehouse with ID '{request.WarehouseID}' does not exist.");
+            var bin = new Bin
+            {
+                WarehouseId = request.WarehouseID,
+                LocationInWarehouse = request.LocationInWarehouse,
+                Status = BinStatus.Empty
+            };
+            _dbCtx.Bins.Add(bin);
+            await _dbCtx.SaveChangesAsync();
+
+            await _dbCtx.Entry(bin).Reference(b => b.Warehouse).LoadAsync();
+            await _dbCtx.Entry(bin).Collection(b => b.ComponentBins).LoadAsync();
+
+            return new ApiResult<BinResp>(new BinResp(bin, true));
         }
     }
 }

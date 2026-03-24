@@ -19,6 +19,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
             _managerService = managerService;
             _logger = logger;
         }
+       
         [HttpGet("get-component/{componentId:int}")]
         public async Task<IActionResult> GetComponent([FromRoute] int componentId, [FromQuery] bool fullInfo)
         {
@@ -31,6 +32,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
 
             return BadRequest(result);
         }
+        
         [HttpGet("get-components")]
         public async Task<IActionResult> GetItemList([FromQuery] PagingRequest request)
         {
@@ -70,27 +72,17 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
         [HttpPost("transfer-requests/{transferId:int}/decisions")]
         public async Task<IActionResult> PostTransferReq([FromRoute] int transferId, [FromBody] TransferDecisionRequest request)
         {
-            string? userIdString = GetCurrentUserId();
+            string? userIdString = HttpContext.Session.GetString("User");
             int? approverId = null;
-
             if (!string.IsNullOrEmpty(userIdString) && int.TryParse(userIdString, out int parsedId))
-            {
                 approverId = parsedId;
-            }
-
             if (approverId == null)
-            {
                 return BadRequest("Invalid or missing UserId in session.");
-            }
-
             var result = await _managerService.PostTransferDecisionAsync(transferId, request.Decision, approverId.Value);
             if (result.Success)
-            {
                 return Ok(result);
-            }
             return BadRequest(result);
         }
-
 
         [HttpGet("get-bin/{binId:int}")]
         public async Task<IActionResult> GetBin([FromRoute] int binId, [FromQuery] bool fullInfo)
@@ -117,19 +109,15 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
 
             return BadRequest(result);
         }
+       
         [HttpGet("get-bins")]
         public async Task<IActionResult> GetBinList([FromQuery] PagingRequest request)
         {
             var result = await _managerService.GetBinListAsync(request);
-
             if (result.Success)
-            {
                 return Ok(result);
-            }
-
             return BadRequest(result);
         }
-
 
         [HttpGet("get-warehouse/{warehouseId:int}")]
         public async Task<IActionResult> GetWarehouseList(int warehouseId, [FromQuery] bool fullInfo)
@@ -143,6 +131,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
 
             return BadRequest(result);
         }
+        
         [HttpPost("create-customer")]
         public async Task<IActionResult> CreateCustomer([FromBody] CustomerReq customer)
         {
@@ -190,6 +179,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
 
             return BadRequest(result);
         }
+        
         [HttpGet("get-statistics/summary")]
         public async Task<IActionResult> GetStatisticsSummary()
         {
@@ -202,6 +192,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
 
             return BadRequest(result);
         }
+        
         [HttpGet("get-statistics/charts")]
         public async Task<IActionResult> GetStatisticsChart()
         {
@@ -214,25 +205,22 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
 
         }
 
-
-        private String? GetCurrentUserId()
+        [HttpPost("warehouses/create")]
+        public async Task<IActionResult> CreateWarehouse([FromBody] CreateWarehouseReq request)
         {
-            string? result = HttpContext.Session.GetString("UserId");
-            if (result == null)
-            {
-                return null;
-            }
-            return result;
+            var result = await _managerService.CreateWarehouseAsync(request);
+            if (result.Success)
+                return Ok(result);
+            return BadRequest(result);
         }
 
-
-        private String? GetCurrentUsername()
+        [HttpPost("bins/create")]
+        public async Task<IActionResult> CreateBin([FromBody] CreateBinReq request)
         {
-            return HttpContext.Session.GetString("User");
+            var result = await _managerService.CreateBinAsync(request);
+            if (result.Success)
+                return Ok(result);
+            return BadRequest(result);
         }
-
-
-
-
     }
 }
