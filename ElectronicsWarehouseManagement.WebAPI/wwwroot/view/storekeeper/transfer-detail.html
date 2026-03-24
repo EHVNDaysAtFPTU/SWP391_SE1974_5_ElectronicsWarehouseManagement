@@ -1,23 +1,53 @@
 <!DOCTYPE html>
-<html>
+<html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Transfer Detail</title>
+    <title>Chi tiết Phiếu Chuyển Kho</title>
     <style>
-        body{font-family:Arial;padding:30px;background:#eef2ff}
-        .card{background:white;padding:20px;border-radius:8px}
-        button{padding:8px 12px;border:none;border-radius:6px;cursor:pointer}
-        .back{background:#64748b;color:white}
-        .confirm{background:#f59e0b;color:white}
+        :root{--muted:#64748b;--accent:#3b82f6}
+        body{font-family:Inter, 'Segoe UI', Roboto, Arial, sans-serif;padding:24px;background:#eff6ff;color:#0f172a;margin:0}
+        .container{max-width:1000px;margin:0 auto}
+        .card{background:#fff;padding:24px;border-radius:12px;box-shadow:0 10px 30px rgba(2,6,23,0.06)}
+        .header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:20px}
+        .title{display:flex;flex-direction:column;gap:6px}
+        h2{margin:0;font-size:22px;color:#1e293b}
+        .meta{color:var(--muted);font-size:13px}
+        .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:12px}
+        .info-block{background:#f8fafc;padding:16px;border-radius:10px;border:1px solid #e2e8f0}
+        table{width:100%;border-collapse:collapse;margin-top:12px}
+        th,td{padding:12px;border-bottom:1px solid #f1f5f9;text-align:left;font-size:14px}
+        thead th{background:#f1f5f9;color:#334155;font-weight:600}
+        .actions{display:flex;gap:12px;margin-top:24px}
+        .btn{padding:10px 16px;border-radius:8px;border:none;cursor:pointer;font-weight:600;font-size:14px;transition:0.2s}
+        .btn:hover{opacity:0.9}
+        .btn.primary{background:var(--accent);color:#fff}
+        .btn.ghost{background:transparent;border:1px solid #cbd5e1;color:#475569}
+        .table-card{background:#fff;border-radius:10px;padding:8px;border:1px solid #e2e8f0;margin-top:16px}
+        hr{border:none;border-top:1px dashed #cbd5e1;margin:24px 0}
+        h4{margin:0 0 12px 0;color:#1e293b;font-size:16px}
     </style>
 </head>
 <body>
-    <div class="card">
-        <button class="back" onclick="location.href='transfer-list.html'">⬅ Back</button>
-        <h2>Transfer Detail</h2>
-        <div id="detail"></div>
-        <div style="margin-top:20px">
-            <button id="confirmBtn" class="confirm" onclick="confirmOrder()" style="display:none">Confirm</button>
+    <div class="container">
+        <div class="card">
+            <div class="header">
+                <div class="title">
+                    <button class="btn ghost" style="width:fit-content;padding:6px 12px;margin-bottom:12px" onclick="location.href='transfer-list.html'">⬅ Quay lại</button>
+                    <h2>Chi tiết Phiếu Chuyển Kho</h2>
+                    <div class="meta">Thông tin chuyển nội bộ giữa các bin</div>
+                </div>
+                <div style="text-align:right">
+                    <div id="createdBy" class="meta">Người tạo: -</div>
+                    <div id="createdAt" class="meta">Ngày tạo: -</div>
+                </div>
+            </div>
+
+            <div id="detail">Đang tải dữ liệu...</div>
+
+            <div class="actions">
+                <button id="confirmBtn" class="btn primary" onclick="confirmOrder()" style="display:none">Xác nhận phiếu</button>
+                <button class="btn ghost" onclick="location.href='transfer-list.html'">Quay lại danh sách</button>
+            </div>
         </div>
     </div>
 
@@ -41,54 +71,27 @@
         }
 
         function getComponentName(c) {
-            return c?.name ?? c?.Name ?? c?.metadata?.name ?? c?.Metadata?.name ?? c?.component?.metadata?.name ?? c?.component?.metadata?.Name ?? ('Component #' + (c.component_id ?? c.componentId ?? c.component?.id ?? '?'));
-        }
-
-        async function resolveCustomers(transfers) {
-            if (!Array.isArray(transfers) || transfers.length === 0) return;
-            try {
-                const res = await fetch(BASE + '/storekeeper/customers', { credentials: 'include' });
-                if (!res.ok) return;
-                const json = await res.json();
-                if (!json?.success || !Array.isArray(json.data)) return;
-                json.data.forEach(c => { customerCache[c.id ?? c.customer_id ?? c.customerId] = c; });
-            } catch (e) { /* ignore */ }
-            transfers.forEach(t => {
-                const cid = t.customer_id ?? t.CustomerId ?? t.customerId ?? null;
-                if (cid && customerCache[cid]) t._customerName = customerCache[cid].name ?? customerCache[cid].customer_name ?? customerCache[cid].displayName ?? customerCache[cid].fullName ?? null;
-            });
-        }
-
-        async function load() {
-            const res = await fetch(BASE + '/storekeeper/transfers/' + id, {credentials:'include'});
-            const json = await res.json();
-            transfer = json.data;
-            // resolve component names and warehouse info before rendering
-            const comps = getComponents(transfer);
-            await resolveComponentNames(comps);
-            await resolveWarehouses(transfer);
-            render();
+            return c?.name ?? c?.Name ?? c?.metadata?.name ?? c?.Metadata?.name ?? c?.component?.metadata?.name ?? c?.component?.metadata?.Name ?? ('Sản phẩm #' + (c.component_id ?? c.componentId ?? c.component?.id ?? '?'));
         }
 
         async function resolveComponentNames(comps) {
             if (!Array.isArray(comps)) return;
             await Promise.all(comps.map(async c => {
                 const currentName = getComponentName(c);
-                if (currentName && !currentName.startsWith('Component #')) return;
-                const id = c.component_id ?? c.componentId ?? c.component?.id;
-                if (!id) return;
-                if (componentCache[id]) {
-                    // attach cached metadata
+                if (currentName && !currentName.startsWith('Sản phẩm #')) return;
+                const cid = c.component_id ?? c.componentId ?? c.component?.id;
+                if (!cid) return;
+                if (componentCache[cid]) {
                     c.component = c.component ?? {};
-                    c.component.metadata = componentCache[id].metadata ?? componentCache[id].Metadata ?? componentCache[id];
+                    c.component.metadata = componentCache[cid].metadata ?? componentCache[cid].Metadata ?? componentCache[cid];
                     return;
                 }
                 try {
-                    const cres = await fetch(BASE + '/storekeeper/components/' + id, { credentials: 'include' });
+                    const cres = await fetch(BASE + '/storekeeper/components/' + cid, { credentials: 'include' });
                     if (!cres.ok) return;
                     const cjson = await cres.json();
                     if (cjson?.success && cjson.data) {
-                        componentCache[id] = cjson.data;
+                        componentCache[cid] = cjson.data;
                         c.component = c.component ?? {};
                         c.component.metadata = cjson.data.metadata ?? cjson.data.Metadata ?? cjson.data;
                     }
@@ -102,39 +105,68 @@
                 // bin_from
                 const binFrom = t.bin_from ?? t.binFrom ?? null;
                 if (binFrom) {
-                    const w = binFrom.warehouse ?? binFrom.Warehouse ?? null;
-                    const wid = (typeof binFrom.warehouse === 'object') ? (binFrom.warehouse?.id) : (binFrom.warehouse ?? binFrom.warehouse_id ?? binFrom.warehouseId ?? binFrom.WarehouseId);
-                    const needFetch = !w || (typeof w !== 'object');
-                    if (needFetch && wid && !warehouseCache[wid]) {
+                    const wid = typeof binFrom.warehouse === 'object' ? binFrom.warehouse?.id : (binFrom.warehouse ?? binFrom.warehouse_id ?? binFrom.warehouseId);
+                    if (wid && !warehouseCache[wid]) {
                         try {
                             const wres = await fetch(BASE + '/storekeeper/warehouses/' + wid, { credentials: 'include' });
                             if (wres.ok) {
                                 const wjson = await wres.json();
                                 if (wjson?.success && wjson.data) warehouseCache[wid] = wjson.data;
                             }
-                        } catch (e) { console.error('warehouse fetch failed', e); }
+                        } catch (e) { }
                     }
-                    if (warehouseCache[wid]) binFrom.warehouse = warehouseCache[wid];
+                    if (wid && warehouseCache[wid]) binFrom.warehouse = warehouseCache[wid];
                 }
 
                 // bin_to
                 const binTo = t.bin_to ?? t.binTo ?? null;
                 if (binTo) {
-                    const w2 = binTo.warehouse ?? binTo.Warehouse ?? null;
-                    const wid2 = (typeof binTo.warehouse === 'object') ? (binTo.warehouse?.id) : (binTo.warehouse ?? binTo.warehouse_id ?? binTo.warehouseId ?? binTo.WarehouseId);
-                    const needFetch2 = !w2 || (typeof w2 !== 'object');
-                    if (needFetch2 && wid2 && !warehouseCache[wid2]) {
+                    const wid2 = typeof binTo.warehouse === 'object' ? binTo.warehouse?.id : (binTo.warehouse ?? binTo.warehouse_id ?? binTo.warehouseId);
+                    if (wid2 && !warehouseCache[wid2]) {
                         try {
                             const wres2 = await fetch(BASE + '/storekeeper/warehouses/' + wid2, { credentials: 'include' });
                             if (wres2.ok) {
                                 const wjson2 = await wres2.json();
                                 if (wjson2?.success && wjson2.data) warehouseCache[wid2] = wjson2.data;
                             }
-                        } catch (e) { console.error('warehouse fetch failed', e); }
+                        } catch (e) { }
                     }
-                    if (warehouseCache[wid2]) binTo.warehouse = warehouseCache[wid2];
+                    if (wid2 && warehouseCache[wid2]) binTo.warehouse = warehouseCache[wid2];
                 }
             } catch (e) { console.error('resolveWarehouses failed', e); }
+        }
+
+        async function load() {
+            try {
+                const res = await fetch(BASE + '/storekeeper/transfers/' + id, {credentials:'include'});
+                if (!res.ok) throw new Error('Không thể tải phiếu báo cáo');
+                const json = await res.json();
+                if (!json.success || !json.data) throw new Error(json.msg || 'Không có dữ liệu');
+                transfer = json.data;
+                const comps = getComponents(transfer);
+                await resolveComponentNames(comps);
+                await resolveWarehouses(transfer);
+                render();
+                
+                // Set creator info
+                let createdBy = transfer.created_by_name ?? transfer.createdByName ?? transfer.created_by ?? transfer.createdBy ?? transfer.creator?.display_name ?? transfer.creator?.username ?? transfer.creator?.fullName ?? transfer.creator?.name ?? null;
+                if (!createdBy && (transfer.creator_id || transfer.creatorId)) {
+                    try {
+                        const uid = transfer.creator_id ?? transfer.creatorId;
+                        const ures = await fetch(BASE.replace('/storekeeper','') + '/users/' + uid, {credentials: 'include'});
+                        if (ures.ok) {
+                            const ujson = await ures.json();
+                            if (ujson?.success && ujson.data) createdBy = ujson.data.display_name ?? ujson.data.username ?? ujson.data.fullname ?? ujson.data.Username ?? uid;
+                        }
+                    } catch(e) {}
+                }
+                if (!createdBy) createdBy = '-';
+                const createdAt = transfer.creation_date ?? transfer.creationDate ?? transfer.created_at ?? transfer.createdAt ?? null;
+                document.getElementById('createdBy').innerText = 'Người tạo: ' + createdBy;
+                document.getElementById('createdAt').innerText = 'Ngày tạo: ' + (createdAt ? new Date(createdAt).toLocaleString('vi-VN') : '-');
+            } catch (err) {
+                document.getElementById('detail').innerHTML = `<div style="color:#ef4444;font-weight:600;padding:12px">Lỗi: ${err.message}</div>`;
+            }
         }
 
         function render() {
@@ -142,11 +174,11 @@
 
             function getStatusText(status){
                 switch(status){
-                    case 0: return 'Unknown';
-                    case 1: return 'Pending';
-                    case 2: return 'Approved - Waiting Confirm';
-                    case 3: return 'Rejected';
-                    default: return 'Completed';
+                    case 0: return 'Không xác định';
+                    case 1: return 'Chờ xử lý';
+                    case 2: return 'Đã duyệt - Chờ xác nhận';
+                    case 3: return 'Bị từ chối';
+                    default: return 'Hoàn thành';
                 }
             }
 
@@ -159,80 +191,99 @@
             let html = `
                 <div class="info-grid">
                     <div class="info-block">
-                        <div style="font-weight:700">Description</div>
-                        <div class="meta">${transfer.description ?? '-'}</div>
+                        <div style="font-weight:700;margin-bottom:6px;color:#0f172a">Mô tả phiếu</div>
+                        <div class="meta" style="font-size:14px">${transfer.description ?? '-'}</div>
+                        <div style="height:16px"></div>
+                        <div style="font-weight:700;margin-bottom:6px;color:#0f172a">Trạng thái</div>
+                        <div class="meta" style="font-size:14px;color:var(--accent);font-weight:600">${statusText}</div>
                     </div>
                     <div class="info-block">
-                        <div style="font-weight:700">Status</div>
-                        <div class="meta">${statusText}</div>
-                        <div style="height:8px"></div>
-                        <div style="font-weight:700">From Warehouse / Bin</div>
-                        <div class="meta">${fromWarehouse} / ${fromBin}</div>
-                        <div style="height:6px"></div>
-                        <div style="font-weight:700">To Warehouse / Bin</div>
-                        <div class="meta">${toWarehouse} / ${toBin}</div>
-                        <div style="height:6px"></div>
-                        <div style="font-weight:700">Customer</div>
-                        <div class="meta">${transfer._customerName ?? (transfer.customer_id ? ('Customer ID: ' + transfer.customer_id) : '-')}</div>
+                        <div style="font-weight:700;margin-bottom:6px;color:#0f172a">Từ Kho / Bin xuất</div>
+                        <div class="meta" style="font-size:14px">${fromWarehouse} / <b>${fromBin}</b></div>
+                        <div style="height:16px"></div>
+                        <div style="font-weight:700;margin-bottom:6px;color:#0f172a">Đến Kho / Bin nhập</div>
+                        <div class="meta" style="font-size:14px">${toWarehouse} / <b>${toBin}</b></div>
                     </div>
                 </div>
                 <hr />
-                <h4>Products</h4>
+                <h4>Danh sách Sản phẩm</h4>
                 <div class="table-card">
                     <table>
                         <thead>
-                            <tr><th>Name</th><th style="width:120px">Số lượng</th><th style="width:140px">Đơn giá</th></tr>
+                            <tr><th>Tên hàng</th><th style="width:120px">Số lượng</th></tr>
                         </thead>
                         <tbody>
 `;
 
             const comps = getComponents(transfer);
-            comps.forEach(c => {
-                const name = getComponentName(c);
-                const qty = c.quantity ?? c.Quantity ?? c.qty ?? 0;
-                const price = c.unit_price ?? c.unitPrice ?? c.UnitPrice ?? '';
-                html += `<tr><td>${name}</td><td>${qty}</td><td>${price}</td></tr>`;
-            });
+            if (comps.length === 0) {
+                html += `<tr><td colspan="2" style="text-align:center;color:#64748b;padding:20px">Không có sản phẩm nào</td></tr>`;
+            } else {
+                comps.forEach(c => {
+                    const name = getComponentName(c);
+                    const qty = c.quantity ?? c.Quantity ?? c.qty ?? 0;
+                    html += `<tr><td style="font-weight:500">${name}</td><td>${qty}</td></tr>`;
+                });
+            }
 
             html += `</tbody></table></div>`;
-
             document.getElementById('detail').innerHTML = html;
 
             // show confirm button for appropriate statuses
-            if (transfer.status === 2) document.getElementById('confirmBtn').style.display = 'inline-block';
-            else document.getElementById('confirmBtn').style.display = 'none';
+            if (transfer.status === 2 || transfer.status === 1) {
+                document.getElementById('confirmBtn').style.display = 'inline-block';
+            } else {
+                document.getElementById('confirmBtn').style.display = 'none';
+            }
         }
 
         async function confirmOrder() {
-            if (!confirm('Confirm this transfer?')) return;
-            const comps = getComponents(transfer);
-            // For internal transfer confirmation, send both bins_from and bins_to if available
-            // Build bins_from and bins_to from transfer details
-            const related = transfer._related ?? [transfer];
-            const binsFrom = [];
-            const binsTo = [];
-            for (const t of related) {
-                const binFromId = t.bin_from_id ?? t.binFromId ?? t.bin_from?.id ?? t.bin_from?.ID;
-                const binToId = t.bin_to_id ?? t.binToId ?? t.bin_to?.id ?? t.bin_to?.ID;
-                const comps = getComponents(t) || [];
-                const compsPayload = comps.map(c => ({ component_id: c.component_id ?? c.componentId ?? c.component?.id, quantity: c.quantity ?? c.qty ?? c.Quantity }));
-                if (binFromId && compsPayload.length > 0) binsFrom.push({ bin_id: binFromId, components: compsPayload });
-                if (binToId && compsPayload.length > 0) binsTo.push({ bin_id: binToId, components: compsPayload });
+            if (!confirm('Xác nhận phiếu chuyển kho này?')) return;
+            
+            const requestId = transfer.id ?? transfer.request_id ?? transfer.RequestId ?? transfer.ID;
+            const payload = { request_id: requestId };
+
+            const binFromId = transfer.bin_from_id ?? transfer.binFromId ?? transfer.bin_from?.id ?? transfer.bin_from?.ID;
+            if (binFromId) {
+                const comps = getComponents(transfer) || [];
+                const pComps = comps.map(c => ({ component_id: c.component_id ?? c.componentId ?? c.component?.id, quantity: Number((c.quantity ?? c.qty ?? c.Quantity) || 0) }));
+                payload.bins_from = [{ bin_id: binFromId, components: pComps }];
             }
-            const payload = { request_id: transfer.id, bins_from: binsFrom.length ? binsFrom : undefined, bins_to: binsTo.length ? binsTo : undefined };
+
+            const binToId = transfer.bin_to_id ?? transfer.binToId ?? transfer.bin_to?.id ?? transfer.bin_to?.ID;
+            if (binToId) {
+                const comps = getComponents(transfer) || [];
+                const pComps = comps.map(c => ({ component_id: c.component_id ?? c.componentId ?? c.component?.id, quantity: Number((c.quantity ?? c.qty ?? c.Quantity) || 0) }));
+                payload.bins_to = [{ bin_id: binToId, components: pComps }];
+            }
 
             const res = await fetch(BASE + '/storekeeper/transfers/confirm', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(payload)
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json' }, 
+                credentials: 'include', 
+                body: JSON.stringify(payload)
             });
+            
             if (!res.ok) {
                 const txt = await res.text().catch(()=>null);
                 console.error('confirm error', txt || res.statusText);
-                return alert('Tạo thất bại: ' + (txt || res.statusText));
+                let errMsg = txt || res.statusText;
+                try {
+                    const obj = JSON.parse(txt);
+                    if(obj.msg || obj.message) errMsg = obj.msg || obj.message;
+                } catch(e) {}
+                return alert('Xác nhận thất bại: ' + errMsg);
             }
+            
             let json;
-            try { json = await res.json(); } catch(e) { return alert('Server returned invalid response'); }
-            if (json?.success) { alert('Confirmed'); location.href='transfer-list.html'; }
-            else alert(json?.msg || json?.message || 'Error');
+            try { json = await res.json(); } catch(e) { return alert('Server trả về phản hồi không hợp lệ'); }
+            
+            if (json?.success) { 
+                alert('Đã xác nhận phiếu chuyển thành công!'); 
+                location.href='transfer-list.html'; 
+            } else {
+                alert('Xác nhận thất bại: ' + (json?.msg || json?.message || 'Có lỗi xảy ra'));
+            }
         }
 
         load();

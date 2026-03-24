@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
@@ -277,6 +277,22 @@
             catch (err) { console.error('loadBinsFrom error', err); alert('Lỗi khi load bin'); }
         }
 
+        function ensureDistinctBins() {
+            let conflictRemoved = false;
+            const binTo = document.getElementById('binTo');
+            if (!binTo || !binTo.value) return false;
+            const cbs = document.querySelectorAll('#binFromContainer input[type="checkbox"]:checked');
+            cbs.forEach(cb => {
+                if (cb.value === binTo.value) {
+                    cb.checked = false;
+                    conflictRemoved = true;
+                    const label = cb.dataset.label || cb.getAttribute('data-label') || cb.value;
+                    alert('Bin xuất và Bin nhập không được trùng nhau ("' + label + '"). Đã tự động bỏ chọn bin xuất này.');
+                }
+            });
+            return conflictRemoved;
+        }
+
         // Select or deselect all options in the binFrom container
         function selectAllBins(selectAll) {
             const container = document.getElementById('binFromContainer');
@@ -310,7 +326,7 @@
                     select.innerHTML += `<option value="${id}">${code}</option>`;
                 });
                 // when destination bin changes, ensure it doesn't conflict with selected source bins
-                select.addEventListener('change', function(){ ensureDistinctBins(); });
+                select.addEventListener('change', function(){ if (ensureDistinctBins()) loadSelectedBinsContents(); });
             }
             catch (err) { console.error('loadBinsTo error', err); alert('Lỗi khi load bin'); }
         }
