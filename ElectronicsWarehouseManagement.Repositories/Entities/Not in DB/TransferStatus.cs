@@ -7,6 +7,7 @@
         ApprovedAndWaitForConfirm,
         Rejected,
         Confirmed,
-        MissingComponents
+        MissingComponents,
+        Canceled
     }
 }
