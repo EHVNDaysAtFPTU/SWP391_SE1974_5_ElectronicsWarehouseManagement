@@ -2,7 +2,11 @@
 {
     public class SystemConfigDto
     {
-        public bool MaintenanceMode { get; set; }
-        public string? MaintenanceMessage { get; set; }
+        public bool MaintenanceMode { get; set; } = false;
+
+        // Bắt buộc khi MaintenanceMode = true
+        public DateTime? ScheduledEnd { get; set; }
+
+        public string MaintenanceMessage { get; set; } = string.Empty;
     }
 }

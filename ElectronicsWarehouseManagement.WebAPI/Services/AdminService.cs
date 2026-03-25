@@ -149,37 +149,38 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
 
         public async Task<ApiResult<int>> GetUserCountAsync()
         {
-#pragma warning disable CS0618 // Type or member is obsolete
+#pragma warning disable CS0618 
             int count = await _dbCtx.Users.CountAsync(u => u.StatusInt != (int)UserStatus.Deleted);
-#pragma warning restore CS0618 // Type or member is obsolete
+#pragma warning restore CS0618 
             return new ApiResult<int>(count);
         }
+
+        private readonly string ConfigPath = "systemconfig.json";
 
         public async Task<ApiResult<SystemConfigDto>> GetSystemConfigAsync()
         {
             try
             {
-                if (!File.Exists("systemconfig.json"))
+                if (!File.Exists(ConfigPath))
                 {
-                    var defaultConfig = new SystemConfigDto
-                    {
-                        MaintenanceMode = false,
-                        MaintenanceMessage = "",
-                    };
-
-                    var json = JsonSerializer.Serialize(defaultConfig, new JsonSerializerOptions
-                    {
-                        WriteIndented = true
-                    });
-
-                    await File.WriteAllTextAsync("systemconfig.json", json);
+                    var defaultConfig = new SystemConfigDto();
+                    var json = JsonSerializer.Serialize(defaultConfig, new JsonSerializerOptions { WriteIndented = true });
+                    await File.WriteAllTextAsync(ConfigPath, json);
                     return new ApiResult<SystemConfigDto>(defaultConfig);
                 }
 
-                var content = await File.ReadAllTextAsync("systemconfig.json");
-                var config = JsonSerializer.Deserialize<SystemConfigDto>(content);
+                var content = await File.ReadAllTextAsync(ConfigPath);
+                var cfg = JsonSerializer.Deserialize<SystemConfigDto>(content)!;
 
-                return new ApiResult<SystemConfigDto>(config!);
+                if (cfg.ScheduledEnd != null && cfg.ScheduledEnd <= DateTime.UtcNow)
+                {
+                    cfg.MaintenanceMode = false;
+                    cfg.ScheduledEnd = null;
+                    var json = JsonSerializer.Serialize(cfg, new JsonSerializerOptions { WriteIndented = true });
+                    await File.WriteAllTextAsync(ConfigPath, json);
+                }
+
+                return new ApiResult<SystemConfigDto>(cfg);
             }
             catch (Exception ex)
             {
@@ -187,18 +188,25 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             }
         }
 
-        public async Task<ApiResult> SaveSystemConfigAsync(SystemConfigDto config)
+        public async Task<ApiResult> SaveSystemConfigAsync(SystemConfigDto cfg)
         {
             try
-            {     
-                var json = JsonSerializer.Serialize(config, new JsonSerializerOptions
+            {
+                // Nếu bật Maintenance mà không có ScheduledEnd -> báo lỗi
+                if (cfg.MaintenanceMode && cfg.ScheduledEnd == null)
                 {
-                    WriteIndented = true
-                });
+                    return new ApiResult(ApiResultCode.InvalidRequest, "ScheduledEnd must be set when enabling MaintenanceMode.");
+                }
 
-                await File.WriteAllTextAsync("systemconfig.json", json);
+                // Nếu ScheduledEnd < now -> cũng invalid
+                if (cfg.ScheduledEnd != null && cfg.ScheduledEnd <= DateTime.UtcNow)
+                {
+                    return new ApiResult(ApiResultCode.InvalidRequest, "ScheduledEnd must be in the future.");
+                }
 
-                return new ApiResult(); 
+                var json = JsonSerializer.Serialize(cfg, new JsonSerializerOptions { WriteIndented = true });
+                await File.WriteAllTextAsync(ConfigPath, json);
+                return new ApiResult();
             }
             catch (Exception ex)
             {
@@ -210,19 +218,9 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
         {
             try
             {
-                var defaultConfig = new SystemConfigDto
-                {
-                    MaintenanceMode = false,
-                    MaintenanceMessage = "",
-                };
-
-                var json = JsonSerializer.Serialize(defaultConfig, new JsonSerializerOptions
-                {
-                    WriteIndented = true
-                });
-
-                await File.WriteAllTextAsync("systemconfig.json", json);
-
+                var defaultConfig = new SystemConfigDto();
+                var json = JsonSerializer.Serialize(defaultConfig, new JsonSerializerOptions { WriteIndented = true });
+                await File.WriteAllTextAsync(ConfigPath, json);
                 return new ApiResult();
             }
             catch (Exception ex)
@@ -230,6 +228,6 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
                 return new ApiResult(ApiResultCode.ServerError, ex.Message);
             }
         }
-     
+
     }
 }

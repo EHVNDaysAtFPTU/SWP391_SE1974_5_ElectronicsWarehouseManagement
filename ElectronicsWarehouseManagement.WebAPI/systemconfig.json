@@ -1,6 +1,5 @@
 {
-  "MaintenanceMode": false,
-  "MaintenanceMessage": "",
-  "MaintenanceStartTime": null,
-  "MaintenanceEndTime": null
+  "MaintenanceMode": true,
+  "ScheduledEnd": "2026-03-25T03:13:00Z",
+  "MaintenanceMessage": "bdd"
 }

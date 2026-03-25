@@ -2,11 +2,10 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>System Configuration</title>
+    <title>System Configuration & Countdown</title>
     <link rel="stylesheet" href="system-config.css">
 </head>
 <body>
-
     <div class="layout">
 
         <!-- Sidebar -->
@@ -28,8 +27,9 @@
 
             <!-- Content -->
             <section class="content">
-                <div class="box">
 
+                <!-- Maintenance Settings -->
+                <div class="box">
                     <div class="box-header">
                         <h2>Maintenance Settings</h2>
                         <div>
@@ -37,9 +37,7 @@
                             <button id="saveBtn" class="btn-primary">Save</button>
                         </div>
                     </div>
-
                     <div class="form">
-
                         <div class="row">
                             <span>Enable Maintenance Mode</span>
                             <label class="switch">
@@ -47,99 +45,123 @@
                                 <span class="slider"></span>
                             </label>
                         </div>
-
                         <label>Maintenance Message</label>
                         <input type="text" id="maintenanceMessage">
-                    </div>
 
+                        <label>Scheduled End Time (UTC)</label>
+                        <input type="datetime-local" id="scheduledEnd">
+
+                        <div class="row">
+                            <span>Countdown:</span>
+                            <span id="countdown">--:--:--</span>
+                        </div>
+                    </div>
                 </div>
+
             </section>
         </main>
-
     </div>
 
     <script>
         const saveBtn = document.getElementById("saveBtn");
         const resetBtn = document.getElementById("resetBtn");
         const statusBadge = document.getElementById("statusBadge");
+        const maintenanceCheck = document.getElementById("maintenance");
+        const messageInput = document.getElementById("maintenanceMessage");
+        const scheduledEndInput = document.getElementById("scheduledEnd");
+        const countdownEl = document.getElementById("countdown");
 
+        let scheduledEndTime = null;
+
+        // Load config từ server
         async function loadConfig() {
             const res = await fetch('/api/admin/config');
             const result = await res.json();
-
             if (!result.success) return;
 
             const cfg = result.data;
+            maintenanceCheck.checked = cfg.maintenanceMode;
+            messageInput.value = cfg.maintenanceMessage || "";
 
-            document.getElementById("maintenance").checked = cfg.maintenanceMode;
-            document.getElementById("maintenanceMessage").value = cfg.maintenanceMessage || "";
+            if (cfg.scheduledEnd)
+                scheduledEndInput.value = new Date(cfg.scheduledEnd).toISOString().slice(0, 16);
+            else
+                scheduledEndInput.value = "";
 
-            if (cfg.maintenanceStartTime)
-                document.getElementById("maintenanceStart").value = cfg.maintenanceStartTime.slice(0, 16);
-
-            if (cfg.maintenanceEndTime)
-                document.getElementById("maintenanceEnd").value = cfg.maintenanceEndTime.slice(0, 16);
-
-            updateStatus(cfg);
+            updateStatus(cfg.maintenanceMode);
+            scheduledEndTime = cfg.scheduledEnd ? new Date(cfg.scheduledEnd) : null;
         }
 
-        function updateStatus(cfg) {
-            const now = new Date();
-
-            let isMaintenance = cfg.maintenanceMode;
-            if (isMaintenance) {
-                statusBadge.innerText = "MAINTENANCE";
-                statusBadge.className = "status maintenance";
-            } else {
-                statusBadge.innerText = "LIVE";
-                statusBadge.className = "status live";
-            }
+        // Update trạng thái LIVE/MAINTENANCE
+        function updateStatus(isMaintenance) {
+            statusBadge.innerText = isMaintenance ? "MAINTENANCE" : "LIVE";
+            statusBadge.className = "status " + (isMaintenance ? "maintenance" : "live");
         }
 
+        // Save config
         async function saveConfig() {
             const cfg = {
-                maintenanceMode: document.getElementById("maintenance").checked,
-                maintenanceMessage: document.getElementById("maintenanceMessage").value,
+                MaintenanceMode: maintenanceCheck.checked,
+                MaintenanceMessage: messageInput.value,
+                ScheduledEnd: scheduledEndInput.value ? new Date(scheduledEndInput.value).toISOString() : null
             };
-
             const res = await fetch('/api/admin/config/save', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(cfg)
             });
-
             const result = await res.json();
-
             if (result.success) {
                 alert("Saved!");
-                loadConfig();
+                scheduledEndTime = cfg.ScheduledEnd ? new Date(cfg.ScheduledEnd) : null;
+                updateStatus(cfg.MaintenanceMode);
             } else {
                 alert(result.msg);
             }
         }
 
+        // Reset config
         async function resetConfig() {
             if (!confirm("Reset về mặc định?")) return;
-
-            const res = await fetch('/api/admin/config/reset', {
-                method: 'POST'
-            });
-
+            const res = await fetch('/api/admin/config/reset', { method: 'POST' });
             const result = await res.json();
-
             if (result.success) {
                 alert("Reset thành công!");
                 loadConfig();
-            } else {
-                alert(result.msg);
-            }
+            } else alert(result.msg);
         }
 
+        // Countdown
+        function updateCountdown() {
+            if (!scheduledEndTime) {
+                countdownEl.innerText = "--:--:--";
+                return;
+            }
+            const now = new Date();
+            const diff = scheduledEndTime - now;
+            if (diff <= 0) {
+                countdownEl.innerText = "00:00:00";
+                maintenanceCheck.checked = false;
+                scheduledEndInput.value = "";
+                scheduledEndTime = null;
+                updateStatus(false);
+                saveConfig(); // tự tắt maintenance khi countdown hết
+                return;
+            }
+            const hours = String(Math.floor(diff / 3600000)).padStart(2, '0');
+            const minutes = String(Math.floor((diff % 3600000) / 60000)).padStart(2, '0');
+            const seconds = String(Math.floor((diff % 60000) / 1000)).padStart(2, '0');
+            countdownEl.innerText = `${hours}:${minutes}:${seconds}`;
+        }
+
+        // Event
         saveBtn.addEventListener("click", saveConfig);
         resetBtn.addEventListener("click", resetConfig);
 
+        // Auto update countdown mỗi giây
+        setInterval(updateCountdown, 1000);
+
         window.onload = loadConfig;
     </script>
-
 </body>
 </html>

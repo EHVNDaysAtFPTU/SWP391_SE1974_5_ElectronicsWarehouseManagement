@@ -30,35 +30,25 @@ namespace ElectronicsWarehouseManagement.WebAPI.Filters
             {
                 var path = context.HttpContext.Request.Path.Value?.ToLower();
 
-                if (!string.IsNullOrEmpty(path))
-                {
-                    if (path.StartsWith("/api/auth") ||
-                        path.StartsWith("/api/admin/config") ||
-                        path.StartsWith("/login.html"))
-                    {
-                        await next();
-                        return;
-                    }
-                }
+   
 
-                if (context.HttpContext.User.IsInRole("1"))
+                bool isAdmin = context.HttpContext.User?.IsInRole("1") ?? false;
+
+                if (!isAdmin)
                 {
-                    await next();
+                    context.Result = new ObjectResult(new
+                    {
+                        message = string.IsNullOrEmpty(cfg.MaintenanceMessage)
+                            ? "System is under maintenance"
+                            : cfg.MaintenanceMessage,
+                        scheduledEnd = cfg.ScheduledEnd 
+                    })
+                    {
+                        StatusCode = 503
+                    };
                     return;
                 }
-
-                context.Result = new ObjectResult(new
-                {
-                    message = string.IsNullOrEmpty(cfg.MaintenanceMessage)
-                        ? "System is under maintenance"
-                        : cfg.MaintenanceMessage
-                })
-                {
-                    StatusCode = 503
-                };
-                return;
             }
-
             await next();
         }
     }
