@@ -293,6 +293,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             await _dbCtx.SaveChangesAsync();
 
             await _dbCtx.Entry(transferRequest).Reference(tr => tr.Creator).LoadAsync();
+            await _dbCtx.Entry(transferRequest).Reference(tr => tr.Customer).LoadAsync();
             await _dbCtx.Entry(transferRequest).Reference(tr => tr.BinFrom).LoadAsync();
             await _dbCtx.Entry(transferRequest).Reference(tr => tr.BinTo).LoadAsync();
             await _dbCtx.Entry(transferRequest).Collection(tr => tr.TransferRequestComponents).LoadAsync();
