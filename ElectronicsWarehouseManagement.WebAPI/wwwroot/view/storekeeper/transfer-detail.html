@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Chi tiết Phiếu Chuyển Kho</title>
+    <title>Transfer Detail</title>
     <style>
         :root{--muted:#64748b;--accent:#3b82f6}
         body{font-family:Inter, 'Segoe UI', Roboto, Arial, sans-serif;padding:24px;background:#eff6ff;color:#0f172a;margin:0}
@@ -32,40 +32,41 @@
         <div class="card">
             <div class="header">
                 <div class="title">
-                    <button class="btn ghost" style="width:fit-content;padding:6px 12px;margin-bottom:12px" onclick="location.href='transfer-list.html'">⬅ Quay lại</button>
-                    <h2>Chi tiết Phiếu Chuyển Kho</h2>
-                    <div class="meta">Thông tin chuyển nội bộ giữa các bin</div>
+                    <button class="btn ghost" style="width:fit-content;padding:6px 12px;margin-bottom:12px" onclick="location.href='transfer-list.html'">⬅ Back</button>
+                    <h2>Transfer Detail</h2>
+                    <div class="meta">Internal transfer information between bins</div>
                 </div>
                 <div style="text-align:right">
-                    <div id="createdBy" class="meta">Người tạo: -</div>
-                    <div id="createdAt" class="meta">Ngày tạo: -</div>
+                    <div id="createdBy" class="meta">Created by: -</div>
+                    <div id="createdAt" class="meta">Created at: -</div>
                 </div>
             </div>
 
             <div id="detail">Đang tải dữ liệu...</div>
 
             <div id="confirmSection" style="display:none; margin-top:20px; background:#eff6ff; border:1px solid #bfdbfe; padding:16px; border-radius:8px">
-                <h4 style="margin-top:0; color:#1e40af">Phân bổ Chuyển kho (Transfer)</h4>
-                <div style="margin-bottom:8px; color:#1e293b; font-size:14px">Vui lòng chọn Sản phẩm, Bin nguồn (xuất) và Bin đích (nhập) tương ứng. (Có thể phân bổ trên nhiều dòng để chuyển từ nhiều Bin nguồn sang nhiều Bin đích):</div>
+                <h4 style="margin-top:0; color:#1e40af">Transfer Allocation (Transfer)</h4>
+                <div style="margin-bottom:8px; color:#1e293b; font-size:14px">Please choose Product, Source Bin and Destination Bin and quantities. You may add multiple rows to move from multiple source bins to multiple destination bins.</div>
                 <table style="width:100%; text-align:left; background:#fff; border-radius:6px; border-collapse: collapse; margin-top:8px;" id="allocationTable">
                     <thead>
                         <tr style="border-bottom:1px solid #bfdbfe; background:#eff6ff;">
-                            <th style="padding:8px">Sản phẩm</th>
-                            <th style="padding:8px; width:180px;">Bin nguồn (Từ)</th>
-                            <th style="padding:8px; width:180px;">Bin đích (Đến)</th>
-                            <th style="padding:8px; width:100px;">Số lượng</th>
+                            <th style="padding:8px">Product</th>
+                            <th style="padding:8px; width:180px;">Source Bin (From)</th>
+                            <th style="padding:8px; width:180px;">Destination Bin (To)</th>
+                            <th style="padding:8px; width:100px;">Quantity</th>
                             <th style="padding:8px; width:50px;"></th>
                         </tr>
                     </thead>
                     <tbody id="allocationBody">
                     </tbody>
                 </table>
-                <button class="btn ghost" style="margin-top:12px; font-size:13px; border-color:#bfdbfe; color:#1e40af" onclick="addAllocationRow()">+ Thêm phân bổ</button>
+                <button class="btn ghost" style="margin-top:12px; font-size:13px; border-color:#bfdbfe; color:#1e40af" onclick="addAllocationRow()">+ Add allocation</button>
             </div>
 
             <div class="actions">
-                <button id="confirmBtn" class="btn primary" onclick="confirmOrder()" style="display:none">Xác nhận phiếu</button>
-                <button class="btn ghost" onclick="location.href='transfer-list.html'">Quay lại danh sách</button>
+                <button id="confirmBtn" class="btn primary" onclick="confirmOrder(false)" style="display:none">Confirm Transfer</button>
+                <button id="missingBtn" class="btn ghost" onclick="confirmOrder(true)" style="display:none;margin-left:8px;background:#f59e0b;color:#fff">Mark Missing</button>
+                <button class="btn ghost" onclick="location.href='transfer-list.html'">Back to List</button>
             </div>
         </div>
     </div>
@@ -95,7 +96,7 @@
         }
 
         function getComponentName(c) {
-            return c?.name ?? c?.Name ?? c?.metadata?.name ?? c?.Metadata?.name ?? c?.component?.metadata?.name ?? c?.component?.metadata?.Name ?? ('Sản phẩm #' + (c.component_id ?? c.componentId ?? c.component?.id ?? '?'));
+            return c?.name ?? c?.Name ?? c?.metadata?.name ?? c?.Metadata?.name ?? c?.component?.metadata?.name ?? c?.component?.metadata?.Name ?? ('Product #' + (c.component_id ?? c.componentId ?? c.component?.id ?? '?'));
         }
 
         async function resolveComponentNames(comps) {
@@ -187,9 +188,9 @@
         async function load() {
             try {
                 const res = await fetch(BASE + '/storekeeper/transfers/' + id, {credentials:'include'});
-                if (!res.ok) throw new Error('Không thể tải phiếu báo cáo');
+                if (!res.ok) throw new Error('Unable to load transfer');
                 const json = await res.json();
-                if (!json.success || !json.data) throw new Error(json.msg || 'Không có dữ liệu');
+                if (!json.success || !json.data) throw new Error(json.msg || 'No data');
                 transfer = json.data;
 
                 // find related transfers (grouping)
@@ -265,23 +266,25 @@
                 }
                 if (!createdBy) createdBy = '-';
                 const createdAt = transfer.creation_date ?? transfer.creationDate ?? transfer.created_at ?? transfer.createdAt ?? null;
-                document.getElementById('createdBy').innerText = 'Người tạo: ' + createdBy;
-                document.getElementById('createdAt').innerText = 'Ngày tạo: ' + (createdAt ? new Date(createdAt).toLocaleString('vi-VN') : '-');
+                document.getElementById('createdBy').innerText = 'Created by: ' + createdBy;
+                document.getElementById('createdAt').innerText = 'Created at: ' + (createdAt ? new Date(createdAt).toLocaleString() : '-');
             } catch (err) {
-                document.getElementById('detail').innerHTML = `<div style="color:#ef4444;font-weight:600;padding:12px">Lỗi: ${err.message}</div>`;
+                document.getElementById('detail').innerHTML = `<div style="color:#ef4444;font-weight:600;padding:12px">Error: ${err.message}</div>`;
             }
         }
 
         function render() {
             if (!transfer) return;
 
-            function getStatusText(status){
+    function getStatusText(status){
                 switch(status){
-                    case 0: return 'Không xác định';
-                    case 1: return 'Chờ xử lý';
-                    case 2: return 'Đã duyệt - Chờ xác nhận';
-                    case 3: return 'Bị từ chối';
-                    default: return 'Hoàn thành';
+                    case 0: return 'Unknown';
+                    case 1: return 'Pending';
+                    case 2: return 'Approved - Waiting Confirm';
+                    case 3: return 'Rejected';
+                    case 4: return 'Confirmed';
+                    case 5: return 'Missing components';
+                    default: return 'Unknown';
                 }
             }
 
@@ -322,33 +325,33 @@
             let html = `
                 <div class="info-grid">
                     <div class="info-block">
-                        <div style="font-weight:700;margin-bottom:6px;color:#0f172a">Mô tả phiếu</div>
-                        <div class="meta" style="font-size:14px">${transfer.description ?? '-'}</div>
+                <div style="font-weight:700;margin-bottom:6px;color:#0f172a">Description</div>
+                <div class="meta" style="font-size:14px">${transfer.description ?? '-'}</div>
                         <div style="height:16px"></div>
                         <div style="font-weight:700;margin-bottom:6px;color:#0f172a">Trạng thái</div>
                         <div class="meta" style="font-size:14px;color:var(--accent);font-weight:600">${statusText}</div>
                     </div>
                     <div class="info-block">
-                        <div style="font-weight:700;margin-bottom:6px;color:#0f172a">Từ Kho / Bin xuất</div>
+                        <div style="font-weight:700;margin-bottom:6px;color:#0f172a">From Warehouse / Source Bin</div>
                         <div class="meta" style="font-size:14px">${fromBinsArr.join('<br>')}</div>
                         <div style="height:16px"></div>
-                        <div style="font-weight:700;margin-bottom:6px;color:#0f172a">Đến Kho / Bin nhập</div>
+                        <div style="font-weight:700;margin-bottom:6px;color:#0f172a">To Warehouse / Destination Bin</div>
                         <div class="meta" style="font-size:14px">${toBinsArr.join('<br>')}</div>
                     </div>
                 </div>
                 <hr />
-                <h4>Danh sách Sản phẩm</h4>
+                <h4>Products</h4>
                 <div class="table-card">
                     <table>
                         <thead>
-                            <tr><th>Tên hàng</th><th style="width:120px">Số lượng</th></tr>
+                            <tr><th>Product</th><th style="width:120px">Quantity</th></tr>
                         </thead>
                         <tbody>
 `;
 
             const prodKeys = Object.keys(productsMap);
             if (prodKeys.length === 0) {
-                html += `<tr><td colspan="2" style="text-align:center;color:#64748b;padding:20px">Không có sản phẩm nào</td></tr>`;
+                html += `<tr><td colspan="2" style="text-align:center;color:#64748b;padding:20px">No products</td></tr>`;
             } else {
                 prodKeys.forEach(k => {
                     const p = productsMap[k];
@@ -359,14 +362,16 @@
             html += `</tbody></table></div>`;
             document.getElementById('detail').innerHTML = html;
 
-            // show confirm button for appropriate statuses
+            // show confirm and missing buttons for appropriate statuses
             if (transfer.status === 2) {
                 document.getElementById('confirmSection').style.display = 'block';
                 document.getElementById('confirmBtn').style.display = 'inline-block';
+                const mb = document.getElementById('missingBtn'); if (mb) mb.style.display = 'inline-block';
                 loadBinsForConfirm();
             } else {
                 if (document.getElementById('confirmSection')) document.getElementById('confirmSection').style.display = 'none';
                 document.getElementById('confirmBtn').style.display = 'none';
+                const mb = document.getElementById('missingBtn'); if (mb) mb.style.display = 'none';
             }
         }
 
@@ -427,19 +432,19 @@
             const row = document.createElement('tr');
             row.style.borderBottom = '1px solid #f9fafb';
 
-            let productOptions = '<option value="">-- Chọn sản phẩm --</option>';
+            let productOptions = '<option value="">-- Select product --</option>';
             orderProducts.forEach(p => {
                 const selected = p.id == defaultProductId ? 'selected' : '';
-                productOptions += `<option value="${p.id}" ${selected}>${p.name} (cần chuyển: ${p.maxQty})</option>`;
+                productOptions += `<option value="${p.id}" ${selected}>${p.name} (to transfer: ${p.maxQty})</option>`;
             });
 
-            let binSrcOptions = '<option value="">-- Chọn Bin nguồn --</option>';
+            let binSrcOptions = '<option value="">-- Select source Bin --</option>';
             availableSourceBins.forEach(b => {
                 const lbl = b.location_in_warehouse ?? b.locationInWarehouse ?? b.binCode ?? ('Bin ' + b.id);
                 binSrcOptions += `<option value="${b.id ?? b.ID ?? b.binId}">${lbl}</option>`;
             });
 
-            let binDestOptions = '<option value="">-- Chọn Bin đích --</option>';
+            let binDestOptions = '<option value="">-- Select destination Bin --</option>';
             availableDestBins.forEach(b => {
                 const lbl = b.location_in_warehouse ?? b.locationInWarehouse ?? b.binCode ?? ('Bin ' + b.id);
                 binDestOptions += `<option value="${b.id ?? b.ID ?? b.binId}">${lbl}</option>`;
@@ -455,14 +460,15 @@
             tbody.appendChild(row);
         }
 
-        async function confirmOrder() {
-            if (!confirm('Xác nhận phân bổ và chuyển kho?')) return;
+        async function confirmOrder(allowPartial = false) {
+            const confirmMsg = allowPartial ? 'Mark this transfer as MissingComponents and apply the provided allocations?' : 'Confirm allocation and transfer?';
+            if (!confirm(confirmMsg)) return;
             const related = transfer._related ?? [transfer];
             const isValidStatus = related.some(t => t.status === 2);
-            if (!isValidStatus) return alert('Phiếu này không ở trạng thái chờ xác nhận.');
+            if (!isValidStatus) return alert('This transfer is not in a confirmable status.');
 
             const rows = Array.from(document.querySelectorAll('#allocationBody tr'));
-            if (rows.length === 0) return alert('Vui lòng thêm ít nhất 1 phân bổ.');
+            if (rows.length === 0) return alert('Please add at least one allocation.');
 
             // Validate allocations
             const allocationSummary = {}; 
@@ -476,11 +482,11 @@
                 const bDestId = parseInt(r.querySelector('.alloc-bin-dest').value) || 0;
                 const qty = Number(r.querySelector('.alloc-qty').value) || 0;
 
-                if (!pId) return alert(`Dòng ${i+1}: Vui lòng chọn sản phẩm.`);
-                if (!bSrcId) return alert(`Dòng ${i+1}: Vui lòng chọn Bin nguồn.`);
-                if (!bDestId) return alert(`Dòng ${i+1}: Vui lòng chọn Bin đích.`);
-                if (bSrcId === bDestId) return alert(`Dòng ${i+1}: Bin nguồn và Bin đích không được trùng nhau.`);
-                if (qty <= 0) return alert(`Dòng ${i+1}: Số lượng phải lớn hơn 0.`);
+                if (!pId) return alert(`Row ${i+1}: please select product.`);
+                if (!bSrcId) return alert(`Row ${i+1}: please select source bin.`);
+                if (!bDestId) return alert(`Row ${i+1}: please select destination bin.`);
+                if (bSrcId === bDestId) return alert(`Row ${i+1}: source and destination bins cannot be the same.`);
+                if (qty <= 0) return alert(`Row ${i+1}: quantity must be greater than 0.`);
 
                 // validate against stock
                 const stock = (binAvailabilityByBin[bSrcId] && binAvailabilityByBin[bSrcId][pId]) ? binAvailabilityByBin[bSrcId][pId] : 0;
@@ -490,14 +496,14 @@
                     const bNameElem = r.querySelector('.alloc-bin-src');
                     const pName = pNameElem.options[pNameElem.selectedIndex]?.text.split(' (')[0] || pId;
                     const bName = bNameElem.options[bNameElem.selectedIndex]?.text || bSrcId;
-                    return alert(`Dòng ${i+1}: Tồn kho của Bin nguồn [${bName}] không đủ! (Chỉ còn ${stock} khả dụng cho sản phẩm "${pName}")`);
+                    return alert(`Row ${i+1}: Source bin [${bName}] does not have enough stock! (Only ${stock} available for product "${pName}")`);
                 }
 
                 allocationSummary[pId] = (allocationSummary[pId] || 0) + qty;
 
                 if (!globalBinsFromStockCheck[bSrcId]) globalBinsFromStockCheck[bSrcId] = {};
                 globalBinsFromStockCheck[bSrcId][pId] = (globalBinsFromStockCheck[bSrcId][pId] || 0) + qty;
-                
+
                 const key = bSrcId + "_" + bDestId;
                 if (!pairMap[key]) pairMap[key] = { srcId: bSrcId, destId: bDestId, components: {} };
                 pairMap[key].components[pId] = (pairMap[key].components[pId] || 0) + qty;
@@ -505,8 +511,8 @@
 
             for (const p of orderProducts) {
                 const sum = allocationSummary[p.id] || 0;
-                if (sum !== p.maxQty) {
-                    return alert(`Sản phẩm "${p.name}" được yêu cầu chuyển ${p.maxQty}, nhưng bạn đã phân bổ tổng ${sum}. Vui lòng phân bổ cho khớp.`);
+                if (!allowPartial && sum !== p.maxQty) {
+                    return alert(`Product "${p.name}" requested ${p.maxQty}, but total allocated is ${sum}. Please allocate to match.`);
                 }
             }
 
@@ -518,7 +524,7 @@
                 if (!reqId || t.status === 4 || t.status === 0 || t.status === 3) continue;
 
                 const payload = { request_id: reqId, bins_from: [], bins_to: [] };
-                
+
                 const comps = getComponents(t) || [];
                 const compsPayload = comps.map(c => ({ component_id: parseInt(c.component_id ?? c.componentId ?? c.component?.id), quantity: Number((c.quantity ?? c.qty ?? c.Quantity) || 0) }));
 
@@ -526,10 +532,10 @@
 
                 let subSuccess = true;
                 let localPairMap = {}; // mapping for this specific request payload
-                
+
                 for (const comp of compsPayload) {
                     let qtyRemaining = comp.quantity;
-                    
+
                     for (const key of Object.keys(pairMap)) {
                         if (qtyRemaining <= 0) break;
                         const pair = pairMap[key];
@@ -538,9 +544,9 @@
                             const take = Math.min(qtyRemaining, avail);
                             pair.components[comp.component_id] -= take;
                             qtyRemaining -= take;
-                            
+
                             if (!localPairMap[key]) localPairMap[key] = { srcId: pair.srcId, destId: pair.destId, components: [] };
-                            
+
                             const existing = localPairMap[key].components.find(c => c.component_id === comp.component_id);
                             if (existing) {
                                 existing.quantity += take;
@@ -550,12 +556,13 @@
                         }
                     }
                     if (qtyRemaining > 0) {
-                        subSuccess = false; break;
+                        // If partial allocation is allowed, continue and let server mark missing components.
+                        if (!allowPartial) { subSuccess = false; break; }
                     }
                 }
 
                 if (!subSuccess) {
-                    errMsg = 'Phân bổ không khớp với danh sách sản phẩm yêu cầu.';
+                    errMsg = 'Allocation does not match requested product list.';
                     allSuccess = false;
                     break;
                 }
@@ -584,7 +591,7 @@
                     const json = await res.json();
                     if (!json?.success) {
                         allSuccess = false;
-                        errMsg = json?.msg || json?.message || 'Có lỗi xảy ra';
+                        errMsg = json?.msg || json?.message || 'An error occurred';
                         break;
                     }
                 } catch (e) {
@@ -595,10 +602,10 @@
             }
 
             if (allSuccess) {
-                alert('Đã xác nhận phân bổ và chuyển kho thành công!');
+                alert('Transfer allocation and move confirmed successfully!');
                 location.href = 'transfer-list.html';
             } else {
-                alert('Xác nhận bị lỗi: ' + errMsg);
+                alert('Confirmation failed: ' + errMsg);
                 location.reload();
             }
         }

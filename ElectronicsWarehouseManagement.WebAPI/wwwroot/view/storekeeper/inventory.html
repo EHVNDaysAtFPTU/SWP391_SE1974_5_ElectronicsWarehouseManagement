@@ -109,10 +109,18 @@
                     return Object.assign({}, c, { _stock: qty });
                 });
 
+                // build quick lookup map for components by id to resolve names in bin breakdown
+                const fullMap = {};
+                fullData.forEach(c => {
+                    const cid = (c.id ?? c.ID ?? c.componentId ?? c.ComponentId);
+                    if (cid !== undefined && cid !== null) fullMap[String(cid)] = c;
+                });
+
                 currentPage = 1;
-                renderTable();
-                // load per-warehouse/bin breakdown
+                // load per-warehouse/bin breakdown (we will update aggregated stock from bins)
                 await loadWarehousesBreakdown();
+                // render after breakdown so aggregated stock is reflected
+                renderTable();
             } catch (e) {
                 console.error('loadInventory failed', e);
                 alert('Lỗi khi load inventory');
@@ -121,6 +129,14 @@
 
         async function loadWarehousesBreakdown() {
             try {
+                // aggregated stock across all warehouses/bins (componentId -> qty)
+                const aggregatedStock = {};
+                // build lookup map from fullData (components list) so we can resolve names
+                const fullMap = {};
+                (fullData || []).forEach(c => {
+                    const cid = (c.id ?? c.ID ?? c.componentId ?? c.ComponentId);
+                    if (cid !== undefined && cid !== null) fullMap[String(cid)] = c;
+                });
                 const wRes = await api('/storekeeper/warehouses');
                 if (!wRes.success) return;
                 const warehouses = wRes.data || [];
@@ -145,34 +161,60 @@
                     for (const b of bins) {
                         const bid = b.id ?? b.ID ?? b.binId;
                         const bname = b.location_in_warehouse ?? b.locationInWarehouse ?? b.binCode ?? ('Bin ' + bid);
-                        // get components in that bin
-                        const cbRes = await api('/storekeeper/debug/bin/' + bid);
+                        // get components in that bin using the public bins endpoint (debug endpoint may not exist)
                         let rowsForBin = '';
-                        if (cbRes.success && Array.isArray(cbRes.data) && cbRes.data.length > 0) {
-                            // Ensure we only use component-bins that belong to this bin (defensive)
-                            const items = cbRes.data.filter(x => {
-                                const binIdFromResp = x.bin?.id ?? x.BinId ?? x.bin_id ?? x.binId ?? x.bin?.ID;
-                                return Number(binIdFromResp) === Number(bid);
-                            });
-                            const useItems = items.length > 0 ? items : cbRes.data;
-
-                            // render one table row per component in the bin
-                            for (let i = 0; i < useItems.length; i++) {
-                                const x = useItems[i];
-                                const comp = x.component ?? x.Component ?? {};
-                                const compId = comp.id ?? comp.ID ?? comp.componentId ?? '';
-                                const name = comp.metadata?.name ?? comp.metadata?.Name ?? comp.name ?? comp.Name ?? (compId ? ('#' + compId) : 'Unknown');
-                                const qty = x.quantity ?? x.Quantity ?? 0;
-                                if (i === 0) {
-                                    // first component row shows bin name and id
-                                    rowsForBin += `<tr><td>${bname}</td><td>${bid}</td><td style="min-width:240px">${name}</td><td>${qty}</td></tr>`;
-                                } else {
-                                    // subsequent rows leave bin/id empty to group components
-                                    rowsForBin += `<tr><td></td><td></td><td style="min-width:240px">${name}</td><td>${qty}</td></tr>`;
+                        try {
+                            const cbRes = await api('/storekeeper/bins/' + bid);
+                            // cbRes.data may be an array or an object containing arrays under various keys
+                            let dataArr = null;
+                            if (cbRes && cbRes.success && cbRes.data) {
+                                if (Array.isArray(cbRes.data)) dataArr = cbRes.data;
+                                else {
+                                    // common property names
+                                    const props = ['components', 'ComponentBins', 'componentBins', 'items', 'data', 'componentsList'];
+                                    for (const p of props) {
+                                        if (Array.isArray(cbRes.data[p])) { dataArr = cbRes.data[p]; break; }
+                                    }
+                                    // fallback: find first array property that looks like component-bin entries
+                                    if (!dataArr) {
+                                        for (const k of Object.keys(cbRes.data)) {
+                                            const val = cbRes.data[k];
+                                            if (Array.isArray(val) && val.length > 0) {
+                                                const el = val[0];
+                                                if (el && (el.component_id !== undefined || el.quantity !== undefined || el.component !== undefined || el.Component !== undefined)) {
+                                                    dataArr = val; break;
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
-                        } else {
-                            // no components: show one empty row with bin info
+
+                            if (Array.isArray(dataArr) && dataArr.length > 0) {
+                                // render one table row per component in the bin
+                                for (let i = 0; i < dataArr.length; i++) {
+                                    const x = dataArr[i];
+                                    // normalize component id from various shapes (many possible API shapes)
+                                    const compIdRaw = x.component_id ?? x.ComponentId ?? x.componentId ?? x.component?.id ?? x.Component?.id ?? x.component?.componentId ?? x.component?.component_id ?? x.component?.component?.id ?? x.Component?.component?.id ?? x.id ?? x.ID ?? x.component?.componentId ?? '';
+                                    const compIdKey = compIdRaw !== undefined && compIdRaw !== null ? String(compIdRaw) : '';
+                                    // lookup metadata from previously loaded components list
+                                    const compMeta = fullMap[compIdKey] || fullData.find(cc => String(cc.id ?? cc.ID ?? cc.componentId ?? cc.ComponentId) === compIdKey);
+                                    const name = compMeta?.metadata?.name ?? compMeta?.metadata?.Name ?? compMeta?.name ?? compMeta?.Name ?? (compIdKey ? ('#' + compIdKey) : 'Unknown');
+                                    const qty = Number(x.quantity ?? x.Quantity ?? x.qty ?? x.component?.quantity ?? x.Component?.quantity ?? x.component?.Quantity ?? 0) || 0;
+                                    // accumulate into aggregatedStock
+                                    if (compIdKey) {
+                                        aggregatedStock[compIdKey] = (aggregatedStock[compIdKey] || 0) + qty;
+                                    }
+                                    if (i === 0) {
+                                        rowsForBin += `<tr><td>${bname}</td><td>${bid}</td><td style="min-width:240px">${name}</td><td>${qty}</td></tr>`;
+                                    } else {
+                                        rowsForBin += `<tr><td></td><td></td><td style="min-width:240px">${name}</td><td>${qty}</td></tr>`;
+                                    }
+                                }
+                            } else {
+                                rowsForBin = `<tr><td>${bname}</td><td>${bid}</td><td style="min-width:240px">${b.description ?? ''}</td><td><i>Empty</i></td></tr>`;
+                            }
+                        } catch (e) {
                             rowsForBin = `<tr><td>${bname}</td><td>${bid}</td><td style="min-width:240px">${b.description ?? ''}</td><td><i>Empty</i></td></tr>`;
                         }
                         html += rowsForBin;
@@ -180,6 +222,16 @@
                     html += '</tbody></table>';
                     document.getElementById('wh-' + wid).innerHTML = html;
                 }
+                // update fullData aggregated stock values from aggregatedStock map
+                try {
+                    (fullData || []).forEach(c => {
+                        const key = String(c.id ?? c.ID ?? c.componentId ?? c.ComponentId ?? '');
+                        if (key && aggregatedStock[key] !== undefined) {
+                            c._stock = aggregatedStock[key];
+                        }
+                    });
+                } catch (e) { console.warn('failed to apply aggregated stock', e); }
+
             } catch (e) { console.warn('loadWarehousesBreakdown error', e); }
         }
 

@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
-    <title>Phiếu Xuất Kho</title>
+    <title>Outbound Shipment</title>
 
     <style>
         body {
@@ -129,20 +129,19 @@
 
         <div class="top" style="align-items:flex-start">
             <div>
-                <h2>📤 PHIẾU XUẤT KHO</h2>
-                <p style="margin:6px 0 0 0;color:#6b7280;font-size:13px">Tạo phiếu xuất, chọn kho và bin nguồn để trừ
-                    tồn.</p>
+                <h2>📤 OUTBOUND SHIPMENT</h2>
+                <p style="margin:6px 0 0 0;color:#6b7280;font-size:13px">Create an outbound, select warehouse and source bin to decrease stock.</p>
             </div>
             <div style="display:flex;flex-direction:column;align-items:flex-end;gap:10px">
                 <div>
-                    <button class="back btn ghost" onclick="location.href='home.html'">⬅ Quay lại</button>
-                    <button class="btn primary" onclick="openModal()">+ Thêm sản phẩm</button>
+                    <button class="back btn ghost" onclick="location.href='home.html'">⬅ Back</button>
+                    <button class="btn primary" onclick="openModal()">+ Add product</button>
                 </div>
                 <div style="background:#fbfdff;border:1px solid #eef2ff;padding:8px;border-radius:8px;width:260px">
-                    <div style="font-size:13px;color:#6b7280">Người tạo</div>
+                    <div style="font-size:13px;color:#6b7280">Created by</div>
                     <div id="createdBy" style="font-weight:600">Auto</div>
                     <div style="height:8px"></div>
-                    <div style="font-size:13px;color:#6b7280">Ngày tạo</div>
+                    <div style="font-size:13px;color:#6b7280">Created at</div>
                     <div id="createdAt">-</div>
                 </div>
             </div>
@@ -150,18 +149,18 @@
 
         <br>
 
-        <label>Mô tả:</label>
-        <input id="desc" placeholder="Nhập mô tả đơn">
+        <label>Description:</label>
+        <input id="desc" placeholder="Enter order description">
 
         <br><br>
 
         <div class="row">
             <div>
-                <label>Chọn Kho:</label>
+                <label>Select Warehouse:</label>
                 <select id="warehouse" onchange="loadWarehouseAvailability()"></select>
             </div>
             <div>
-                <!-- Bin selection omitted. Bin picking is performed upon approval in the detail view. -->
+
             </div>
         </div>
 
@@ -171,24 +170,24 @@
             <div style="flex:1">
                 <label>Customer</label>
                 <select id="customerSelect">
-                    <option value="">-- Không chọn --</option>
+                    <option value="">-- Not selected --</option>
                 </select>
             </div>
             <div style="width:320px">
-                <label>Người nhận</label>
-                <input id="recipientInput" placeholder="Nhập tên người nhận (tùy chọn)" />
+                <label>Recipient</label>
+                <input id="recipientInput" placeholder="Enter recipient name (optional)" />
             </div>
         </div>
 
-        <button class="add" onclick="openModal()">+ Thêm sản phẩm</button>
+        <button class="add" onclick="openModal()">+ Add product</button>
 
         <table>
             <thead>
                 <tr>
-                    <th style="width:60px;text-align:center">STT</th>
-                    <th>Tên hàng</th>
-                    <th style="width:140px;text-align:center">Đơn vị</th>
-                    <th style="width:140px;text-align:center">Số lượng</th>
+                    <th style="width:60px;text-align:center">No.</th>
+                    <th>Product Name</th>
+                    <th style="width:140px;text-align:center">Unit</th>
+                    <th style="width:140px;text-align:center">Quantity</th>
                     <th style="width:80px;text-align:center">&nbsp;</th>
                 </tr>
             </thead>
@@ -196,20 +195,20 @@
         </table>
 
         <div class="total" style="display:flex;justify-content:flex-end;align-items:center;margin-top:12px">
-            Tổng số lượng: <span id="totalMoney" style="margin-left:8px;font-weight:700">0</span>
+            Total quantity: <span id="totalMoney" style="margin-left:8px;font-weight:700">0</span>
         </div>
 
-        <button class="save" onclick="submitOutbound()">Lưu Phiếu</button>
+        <button class="save" onclick="submitOutbound()">Save</button>
 
     </div>
 
-    <!-- MODAL -->
+
     <div id="modal" class="modal">
         <div class="modal-box">
-            <h3>Danh sách sản phẩm</h3>
+            <h3>Product List</h3>
             <div id="productList"></div>
             <br>
-            <button onclick="closeModal()">Đóng</button>
+            <button onclick="closeModal()">Close</button>
         </div>
     </div>
 
@@ -218,9 +217,8 @@
         const BASE = "https://localhost:7297/api/storekeeper";
         let components = [];
         let count = 0;
-        let binAvailability = {}; // map componentId -> quantity available in selected bin
+        let binAvailability = {};
 
-        // handle per-row bin change: update availability for that row and ensure quantity limits
         function onRowBinChange(selectEl) {
             const tr = selectEl.closest('tr');
             if (!tr) return;
@@ -241,13 +239,12 @@
             calc();
         }
 
-        /* LOAD WAREHOUSE */
         async function loadWarehouses() {
             try {
                 const res = await fetch(BASE + "/warehouses", { credentials: "include" });
-                if (!res.ok) { console.error(await res.text()); return alert('API warehouse lỗi'); }
+                if (!res.ok) { console.error(await res.text()); return alert('Warehouse API error'); }
                 const json = await res.json();
-                if (!json.success || !json.data) return alert('Không load được warehouse');
+                if (!json.success || !json.data) return alert('Unable to load warehouses');
 
                 const select = document.getElementById('warehouse');
                 select.innerHTML = '';
@@ -259,10 +256,9 @@
 
                 loadWarehouseAvailability();
             }
-            catch (err) { console.error('loadWarehouses error', err); alert('Lỗi khi load warehouse'); }
+            catch (err) { console.error('loadWarehouses error', err); alert('Error loading warehouses'); }
         }
 
-        // aggregated availability per component across whole warehouse
         let aggregatedAvailability = {};
 
         async function loadWarehouseAvailability() {
@@ -279,7 +275,7 @@
                 const bins = json.data.bins ?? json.data;
                 const binIds = bins.map(b => b.id ?? b.ID ?? b.binId);
 
-                // fetch all bin details to aggregate availability
+
                 for (const binId of binIds) {
                     try {
                         const bres = await fetch(BASE + '/bins/' + binId, { credentials: 'include' });
@@ -297,7 +293,7 @@
                     } catch (e) { console.warn('bin fetch error', e); }
                 }
 
-                // update any existing rows
+
                 document.querySelectorAll('#tableBody tr').forEach(r => {
                     const compId = r.cells[1].dataset.id;
                     const avail = aggregatedAvailability[compId] || 0;
@@ -310,15 +306,14 @@
             } catch (err) { console.error('availability error', err); }
         }
 
-        /* LOAD COMPONENT */
         async function loadComponents() {
             const res = await fetch(BASE + "/components", { credentials: "include" });
             const json = await res.json();
-            if (!json.success) return alert("Không load được sản phẩm");
+            if (!json.success) return alert("Unable to load products");
             components = json.data;
         }
 
-        /* LOAD CUSTOMERS */
+
         async function loadCustomers() {
             try {
                 const res = await fetch(BASE.replace('/storekeeper', '') + '/storekeeper/customers', { credentials: 'include' });
@@ -331,26 +326,24 @@
                 select.innerHTML = '';
                 const emptyOpt = document.createElement('option');
                 emptyOpt.value = '';
-                emptyOpt.text = '-- Không chọn --';
+                emptyOpt.text = '-- Not selected --';
                 select.appendChild(emptyOpt);
                 json.data.forEach(ci => {
                     try {
                         const opt = document.createElement('option');
                         opt.value = (ci.id ?? ci.ID ?? ci.customerId ?? ci.customer_id ?? '');
-                        opt.text = ci.name ?? ci.Name ?? ci.displayName ?? ci.customerName ?? ci.CustomerName ?? (ci.contact ?? 'Khách hàng');
+                        opt.text = ci.name ?? ci.Name ?? ci.displayName ?? ci.customerName ?? ci.CustomerName ?? (ci.contact ?? 'Customer');
                         opt.dataset.raw = JSON.stringify(ci);
                         select.appendChild(opt);
-                    } catch (e) { /* ignore this item */ }
+                    } catch (e) { }
                 });
                 if (Array.isArray(json.data) && json.data.length === 0) console.warn('customers list is empty');
             } catch (e) { console.warn('loadCustomers error', e); }
         }
 
-        /* MODAL */
         function openModal() { renderList(); document.getElementById("modal").style.display = "flex"; }
         function closeModal() { document.getElementById("modal").style.display = "none"; }
 
-        /* RENDER LIST */
         function renderList() {
 
             const list = document.getElementById("productList");
@@ -363,29 +356,27 @@
                 const totalAvail = c.quantity ?? c.TotalQuantity ?? c.totalQuantity ?? 0;
 
                 const aggAvail = aggregatedAvailability[id] ?? aggregatedAvailability[id?.toString?.()] ?? totalAvail;
-                if (!aggAvail || aggAvail <= 0) return; // skip items not present in warehouse
+                if (!aggAvail || aggAvail <= 0) return;
 
                 list.innerHTML += `
 <div class="modal-item"
 onclick="addItemAsync(${id},'${name}','${unit}', ${aggAvail})">
 <b>${name}</b><br>
-Đơn vị: ${unit} · Có: ${aggAvail}
+Unit: ${unit} · Available: ${aggAvail}
 </div>`;
             });
         }
 
-        /* ADD ROW */
+
         async function addItemAsync(id, name, unit, available) {
             const aggAvail = aggregatedAvailability[id] ?? aggregatedAvailability[id.toString()] ?? available;
             return addItem(id, name, unit, aggAvail);
         }
 
         function addItem(id, name, unit, available) {
-
-            // prevent adding if no stock available in selected bin
             const avail = parseFloat(available) || 0;
             if (avail <= 0) {
-                alert('Sản phẩm "' + name + '" hiện không có trong bin đã chọn.');
+                alert('Product "' + name + '" is not available in the selected bin.');
                 return;
             }
 
@@ -409,7 +400,6 @@ onclick="addItemAsync(${id},'${name}','${unit}', ${aggAvail})">
         }
 
         function onQtyChange(input) {
-            // ensure value is within [1, max]
             const max = parseFloat(input.getAttribute('max')) || Infinity;
             let v = parseFloat(input.value) || 0;
             if (v < 1) v = 1;
@@ -427,7 +417,6 @@ onclick="addItemAsync(${id},'${name}','${unit}', ${aggAvail})">
             calc();
         }
 
-        /* CALC */
         function calc() {
 
             let total = 0;
@@ -435,10 +424,8 @@ onclick="addItemAsync(${id},'${name}','${unit}', ${aggAvail})">
             document.querySelectorAll("#tableBody tr").forEach(r => {
                 const inpEl = r.querySelector('input[type=number]');
                 const qty = parseFloat(inpEl?.value) || 0;
-                // validate against available
                 const avail = parseFloat(r.dataset.available) || Infinity;
                 if (qty > avail) {
-                    // mark input red
                     if (inpEl) inpEl.style.borderColor = '#ef4444';
                 } else {
                     if (inpEl) inpEl.style.borderColor = '';
@@ -447,7 +434,6 @@ onclick="addItemAsync(${id},'${name}','${unit}', ${aggAvail})">
             });
 
             document.getElementById("totalMoney").innerText = total;
-            // disable save button if any invalid quantity
             const anyInvalid = Array.from(document.querySelectorAll('#tableBody tr')).some(r => {
                 const inpEl = r.querySelector('input[type=number]');
                 const q = parseFloat(inpEl?.value) || 0;
@@ -458,11 +444,14 @@ onclick="addItemAsync(${id},'${name}','${unit}', ${aggAvail})">
             if (saveBtn) saveBtn.disabled = anyInvalid;
         }
 
-        /* SUBMIT */
         async function submitOutbound() {
 
             const rows = document.querySelectorAll("#tableBody tr");
-            if (rows.length === 0) return alert("Chưa có sản phẩm");
+            if (rows.length === 0) return alert("No products added");
+
+            const sel = document.getElementById('customerSelect');
+            const recip = document.getElementById('recipientInput');
+            if (!sel || !sel.value || !recip || !recip.value || !recip.value.trim()) return alert('Please select a customer and enter recipient before saving.');
 
             const payloadBody = {
                 desc: document.getElementById("desc").value,
@@ -477,7 +466,7 @@ onclick="addItemAsync(${id},'${name}','${unit}', ${aggAvail})">
                 let qtyRemaining = parseInt(r.querySelector('input[type=number]').value);
                 const avail = parseFloat(r.dataset.available) || Infinity;
                 if (qtyRemaining > avail) {
-                    alert('Số lượng yêu cầu (' + qtyRemaining + ") vượt quá tổng tồn kho cho sản phẩm ID " + compId + ". Có: " + avail);
+                    alert('Requested quantity (' + qtyRemaining + ") exceeds total stock for product ID " + compId + ". Available: " + avail);
                     return;
                 }
                 payloadBody.components.push({ component_id: compId, quantity: qtyRemaining });
@@ -506,26 +495,25 @@ onclick="addItemAsync(${id},'${name}','${unit}', ${aggAvail})">
                 credentials: "include",
                 body: JSON.stringify(payloadBody)
             });
-            if (!res.ok) { const txt = await res.text().catch(() => null); console.error('server error', txt || res.statusText); return alert('Tạo thất bại: ' + (txt || res.statusText)); }
+            if (!res.ok) { const txt = await res.text().catch(() => null); console.error('server error', txt || res.statusText); return alert('Creation failed: ' + (txt || res.statusText)); }
             const json = await res.json().catch(() => null);
-            if (!json || !json.success) return alert('Tạo thất bại: ' + (json?.msg || 'unknown'));
+            if (!json || !json.success) return alert('Creation failed: ' + (json?.msg || 'unknown'));
 
-            alert('Tạo phiếu xuất thành công.');
+            alert('Outbound created successfully.');
             location.reload();
         }
 
-        /* INIT */
         loadWarehouses();
         loadComponents();
         loadCustomers();
-        // populate creator name and date from backend if available
+
         async function setCreatorAndDate() {
             try {
                 const apiRoot = BASE.replace('/storekeeper', '');
                 const res = await fetch(apiRoot + '/me/info', { credentials: 'include' });
                 const elBy = document.getElementById('createdBy');
                 const elAt = document.getElementById('createdAt');
-                if (elAt) elAt.innerText = new Date().toLocaleString('vi-VN');
+                if (elAt) elAt.innerText = new Date().toLocaleString();
                 if (!elBy) return;
                 if (res && res.ok) {
                     const j = await res.json().catch(() => null);
@@ -536,7 +524,6 @@ onclick="addItemAsync(${id},'${name}','${unit}', ${aggAvail})">
                         return;
                     }
                 }
-                // fallback to cookies
                 function _getCookie(name) { const v = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)'); return v ? decodeURIComponent(v.pop()) : null; }
                 elBy.innerText = _getCookie('username') || _getCookie('displayName') || _getCookie('fullname') || elBy.innerText || 'Auto';
             } catch (e) { console.warn('setCreatorAndDate error', e); }
@@ -547,12 +534,11 @@ onclick="addItemAsync(${id},'${name}','${unit}', ${aggAvail})">
 
 
     <script>
-        // Non-intrusive: set createdBy (prefer username cookie) and createdAt
         (function () {
             function _getCookie(name) { const v = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)'); return v ? decodeURIComponent(v.pop()) : null; }
             try {
                 const elBy = document.getElementById('createdBy'); if (elBy) { elBy.innerText = _getCookie('username') || _getCookie('displayName') || _getCookie('fullname') || elBy.innerText || 'Auto'; }
-                const elAt = document.getElementById('createdAt'); if (elAt) elAt.innerText = new Date().toLocaleString('vi-VN');
+                const elAt = document.getElementById('createdAt'); if (elAt) elAt.innerText = new Date().toLocaleString();
             } catch (e) { }
         })();
     </script>
