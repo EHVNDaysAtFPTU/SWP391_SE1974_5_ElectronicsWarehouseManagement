@@ -109,3 +109,6 @@ async function loadTransferChart() {
         }
     });
 }
+function openProfile() {
+    window.location.href = "/me/index.html";
+}

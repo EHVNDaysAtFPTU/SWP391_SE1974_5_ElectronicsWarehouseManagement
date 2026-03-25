@@ -14,6 +14,9 @@
             <nav>
                 <a class="active">System Configuration</a>
             </nav>
+            <div class="menu">
+                <p onclick="goBack()">← Back</p>
+            </div>
         </aside>
 
         <!-- Main -->
@@ -145,7 +148,7 @@
                 scheduledEndInput.value = "";
                 scheduledEndTime = null;
                 updateStatus(false);
-                saveConfig(); // tự tắt maintenance khi countdown hết
+                saveConfig(); 
                 return;
             }
             const hours = String(Math.floor(diff / 3600000)).padStart(2, '0');
@@ -154,11 +157,12 @@
             countdownEl.innerText = `${hours}:${minutes}:${seconds}`;
         }
 
-        // Event
+        function goBack() {
+            window.history.back();
+        }
         saveBtn.addEventListener("click", saveConfig);
         resetBtn.addEventListener("click", resetConfig);
 
-        // Auto update countdown mỗi giây
         setInterval(updateCountdown, 1000);
 
         window.onload = loadConfig;

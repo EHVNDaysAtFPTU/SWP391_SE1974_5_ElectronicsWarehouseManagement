@@ -163,3 +163,45 @@ input:checked + .slider {
     input:checked + .slider:before {
         transform: translateX(20px);
     }
+/* Sidebar menu */
+.sidebar .menu {
+    margin-top: 20px;
+}
+
+    .sidebar .menu p {
+        margin: 10px 0;
+        padding: 8px 12px;
+        background: #444;
+        color: white;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background 0.3s;
+    }
+
+        .sidebar .menu p:hover {
+            background: #555;
+        }
+
+        .sidebar .menu p.active {
+            background: #00bfff;
+            font-weight: bold;
+        }
+
+/* Menu links under nav */
+.sidebar nav a {
+    display: block;
+    color: white;
+    text-decoration: none;
+    padding: 10px 12px;
+    border-radius: 4px;
+    transition: background 0.3s;
+}
+
+    .sidebar nav a:hover {
+        background: #444;
+    }
+
+    .sidebar nav a.active {
+ 
+        font-weight: bold;
+    }
