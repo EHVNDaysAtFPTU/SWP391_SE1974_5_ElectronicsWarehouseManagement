@@ -41,6 +41,24 @@
 
             <div id="detail"></div>
 
+            <div id="confirmSection" style="display:none; margin-top:20px; background:#f0fdf4; border:1px solid #bbf7d0; padding:16px; border-radius:8px">
+                <h4 style="margin-top:0; color:#065f46">Phân bổ Lưu kho (Inbound)</h4>
+                <div style="margin-bottom:8px; color:#0f172a; font-size:14px">Vui lòng chọn sản phẩm, số lượng và Bin tương ứng để lưu trữ (có thể phân bổ vào nhiều Bin):</div>
+                <table style="width:100%; text-align:left; background:#fff; border-radius:6px; border-collapse: collapse; margin-top:8px;" id="allocationTable">
+                    <thead>
+                        <tr style="border-bottom:1px solid #bbf7d0; background:#f0fdf4;">
+                            <th style="padding:8px">Sản phẩm</th>
+                            <th style="padding:8px; width:200px;">Bin lưu trữ</th>
+                            <th style="padding:8px; width:120px;">Số lượng</th>
+                            <th style="padding:8px; width:60px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="allocationBody">
+                    </tbody>
+                </table>
+                <button class="btn ghost" style="margin-top:12px; font-size:13px; border-color:#bbf7d0; color:#065f46" onclick="addAllocationRow()">+ Thêm phân bổ</button>
+            </div>
+
             <div class="actions">
                 <button id="confirmBtn" class="btn primary" onclick="confirmOrder()" style="display:none">Xác nhận</button>
                 <button class="btn ghost" onclick="location.href='inbound-list.html'">Quay lại</button>
@@ -112,9 +130,22 @@
         }
 
         async function load() {
-            const res = await fetch(BASE + '/storekeeper/transfers/' + id, {credentials:'include'});
-            const json = await res.json();
-            transfer = json.data;
+            try {
+                const res = await fetch(BASE + '/storekeeper/transfers/' + id, {credentials:'include'});
+                if (!res.ok) {
+                    document.getElementById('detail').innerHTML = `<div style="color:#ef4444; font-weight:bold; padding:12px;">Lỗi tải dữ liệu phiếu nhập: Server trả về mã ${res.status}. Vui lòng thử tải lại trang hoặc chờ trong giây lát.</div>`;
+                    return;
+                }
+                const json = await res.json();
+                transfer = json.data;
+                if (!transfer) {
+                    document.getElementById('detail').innerHTML = `<div style="color:#ef4444; font-weight:bold; padding:12px;">Không tìm thấy thông tin phiếu nhập.</div>`;
+                    return;
+                }
+            } catch (err) {
+                document.getElementById('detail').innerHTML = `<div style="color:#ef4444; font-weight:bold; padding:12px;">Lỗi mạng hoặc máy chủ không phản hồi: ${err.message}</div>`;
+                return;
+            }
 
             const comps = getComponents(transfer);
             await resolveComponentNames(comps);
@@ -211,27 +242,124 @@
 
             document.getElementById('detail').innerHTML = html;
 
-            // hiển thị nút confirm khi trạng thái là Approved hoặc Approved - Waiting Confirm
-            if (transfer.status === 1 || transfer.status === 2) {
+            // hiển thị nút confirm khi trạng thái là Approved
+            if (transfer.status === 2) {
                 document.getElementById('confirmBtn').style.display = 'inline-block';
+                document.getElementById('confirmSection').style.display = 'block';
+                loadBinsForConfirm();
             }
         }
 
-        async function confirmOrder() {
-            if (!confirm('Xác nhận đơn?')) return;
+        let availableBins = [];
+        let orderProducts = [];
 
-            const comps = getComponents(transfer);
-            const requestId = transfer.id ?? transfer.ID ?? transfer.request_id ?? transfer.RequestId ?? 0;
-            // Build bins_to from related transfers (or single transfer)
-            const related = transfer._related ?? [transfer];
-            const binsTo = [];
-            for (const t of related) {
-                const binToId = t.bin_to_id ?? t.binToId ?? t.bin_to?.id ?? t.bin_to?.ID ?? null;
-                const compsT = getComponents(t) || [];
-                const compsPayload = compsT.map(c => ({ component_id: c.component_id ?? c.componentId ?? c.component?.id, quantity: c.quantity ?? c.qty ?? c.Quantity }));
-                if (binToId && compsPayload.length) binsTo.push({ bin_id: binToId, components: compsPayload });
+        async function loadBinsForConfirm() {
+            try {
+                orderProducts = getComponents(transfer).map(c => ({
+                    id: c.component_id ?? c.componentId ?? c.component?.id,
+                    name: getComponentName(c),
+                    maxQty: Number(c.quantity ?? c.qty ?? c.Quantity ?? 0)
+                }));
+                
+                // Add initial row for each product
+                document.getElementById('allocationBody').innerHTML = '';
+                orderProducts.forEach(p => addAllocationRow(p.id, p.maxQty));
+
+                // Find warehouse ID attached to the transfer for available destination bins
+                let wId = transfer.warehouse_to_id ?? transfer.warehouseToId ?? transfer.warehouse?.id ?? transfer.warehouse?.ID ?? transfer.warehouse_id ?? transfer.warehouseId;
+                if (!wId && transfer.bin_to) wId = transfer.bin_to.warehouse?.id ?? transfer.bin_to.warehouse_id ?? transfer.bin_to.warehouseId;
+                if (!wId && transfer.bin_from) wId = transfer.bin_from.warehouse?.id ?? transfer.bin_from.warehouse_id ?? transfer.bin_from.warehouseId;
+
+                if (!wId) {
+                    console.warn('Kho chưa được cấu hình cho phiếu này');
+                    return;
+                }
+                const bres = await fetch(BASE + '/storekeeper/warehouses/' + wId, { credentials: 'include' });
+                if (bres.ok) {
+                    const bjson = await bres.json();
+                    if (bjson?.success && bjson.data) {
+                        availableBins = bjson.data.bins ?? bjson.data;
+                        // Reload rows with populated bins
+                        document.getElementById('allocationBody').innerHTML = '';
+                        orderProducts.forEach(p => addAllocationRow(p.id, p.maxQty));
+                    }
+                }
+            } catch (e) {
+                console.error('loadBinsForConfirm err', e);
             }
-            const payload = { request_id: requestId, bins_to: binsTo.length ? binsTo : undefined };
+        }
+
+        function addAllocationRow(defaultProductId = '', defaultQty = '') {
+            const tbody = document.getElementById('allocationBody');
+            const row = document.createElement('tr');
+            row.style.borderBottom = '1px solid #f1f5f4';
+
+            let productOptions = '<option value="">-- Chọn sản phẩm --</option>';
+            orderProducts.forEach(p => {
+                const selected = p.id == defaultProductId ? 'selected' : '';
+                productOptions += `<option value="${p.id}" ${selected}>${p.name} (cần nhập: ${p.maxQty})</option>`;
+            });
+
+            let binOptions = '<option value="">-- Chọn Bin --</option>';
+            availableBins.forEach(b => {
+                const lbl = b.location_in_warehouse ?? b.locationInWarehouse ?? b.binCode ?? ('Bin ' + b.id);
+                binOptions += `<option value="${b.id ?? b.ID ?? b.binId}">${lbl}</option>`;
+            });
+
+            row.innerHTML = `
+                <td style="padding:8px"><select class="alloc-product" style="width:100%; padding:6px; border-radius:4px; border:1px solid #ccc">${productOptions}</select></td>
+                <td style="padding:8px"><select class="alloc-bin" style="width:100%; padding:6px; border-radius:4px; border:1px solid #ccc">${binOptions}</select></td>
+                <td style="padding:8px"><input type="number" class="alloc-qty" value="${defaultQty}" min="1" style="width:100px; padding:6px; border-radius:4px; border:1px solid #ccc"></td>
+                <td style="padding:8px; text-align:center"><button class="btn ghost" style="color:#ef4444; border-color:#fca5a5; padding:4px 8px" onclick="this.closest('tr').remove()">X</button></td>
+            `;
+            tbody.appendChild(row);
+        }
+
+        async function confirmOrder() {
+            if (!confirm('Xác nhận lưu kho với các phân bổ này?')) return;
+
+            const rows = Array.from(document.querySelectorAll('#allocationBody tr'));
+            if (rows.length === 0) return alert('Vui lòng thêm ít nhất 1 phân bổ.');
+
+            // Validate allocations
+            const allocationSummary = {}; // product_id -> total allocated
+            const binsToPayload = {}; // bin_id -> { component_id: qty }
+
+            for (let i = 0; i < rows.length; i++) {
+                const r = rows[i];
+                const pId = r.querySelector('.alloc-product').value;
+                const bId = r.querySelector('.alloc-bin').value;
+                const qty = Number(r.querySelector('.alloc-qty').value) || 0;
+
+                if (!pId) return alert(`Dòng ${i+1}: Vui lòng chọn sản phẩm.`);
+                if (!bId) return alert(`Dòng ${i+1}: Vui lòng chọn Bin.`);
+                if (qty <= 0) return alert(`Dòng ${i+1}: Số lượng phải lớn hơn 0.`);
+
+                allocationSummary[pId] = (allocationSummary[pId] || 0) + qty;
+
+                if (!binsToPayload[bId]) binsToPayload[bId] = {};
+                binsToPayload[bId][pId] = (binsToPayload[bId][pId] || 0) + qty;
+            }
+
+            // Check if allocations match request exactly (optional but good practice)
+            for (const p of orderProducts) {
+                const sum = allocationSummary[p.id] || 0;
+                if (sum !== p.maxQty) {
+                    return alert(`Sản phẩm "${p.name}" được yêu cầu nhập ${p.maxQty}, nhưng bạn đã phân bổ tổng ${sum}. Vui lòng phân bổ cho khớp.`);
+                }
+            }
+
+            const binsTo = [];
+            for (const [binId, compsMap] of Object.entries(binsToPayload)) {
+                const components = [];
+                for (const [compId, qty] of Object.entries(compsMap)) {
+                    components.push({ component_id: parseInt(compId), quantity: qty });
+                }
+                binsTo.push({ bin_id: parseInt(binId), components });
+            }
+
+            const requestId = transfer.id ?? transfer.ID ?? transfer.request_id ?? transfer.RequestId ?? 0;
+            const payload = { request_id: requestId, bins_to: binsTo.length > 0 ? binsTo : undefined };
 
             const res = await fetch(BASE + '/storekeeper/transfers/confirm', {
                 method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(payload)
@@ -243,7 +371,7 @@
             }
             let json;
             try { json = await res.json(); } catch (e) { return alert('Server returned invalid response'); }
-            if (json?.success) { alert('Confirmed'); location.href='inbound-list.html'; }
+            if (json?.success) { alert('Đã lưu kho thành công!'); location.href='inbound-list.html'; }
             else alert(json?.msg || json?.message || 'Error');
         }
 

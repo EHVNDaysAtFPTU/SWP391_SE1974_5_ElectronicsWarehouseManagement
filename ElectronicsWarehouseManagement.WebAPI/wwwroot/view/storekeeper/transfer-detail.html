@@ -44,6 +44,25 @@
 
             <div id="detail">Đang tải dữ liệu...</div>
 
+            <div id="confirmSection" style="display:none; margin-top:20px; background:#eff6ff; border:1px solid #bfdbfe; padding:16px; border-radius:8px">
+                <h4 style="margin-top:0; color:#1e40af">Phân bổ Chuyển kho (Transfer)</h4>
+                <div style="margin-bottom:8px; color:#1e293b; font-size:14px">Vui lòng chọn Sản phẩm, Bin nguồn (xuất) và Bin đích (nhập) tương ứng. (Có thể phân bổ trên nhiều dòng để chuyển từ nhiều Bin nguồn sang nhiều Bin đích):</div>
+                <table style="width:100%; text-align:left; background:#fff; border-radius:6px; border-collapse: collapse; margin-top:8px;" id="allocationTable">
+                    <thead>
+                        <tr style="border-bottom:1px solid #bfdbfe; background:#eff6ff;">
+                            <th style="padding:8px">Sản phẩm</th>
+                            <th style="padding:8px; width:180px;">Bin nguồn (Từ)</th>
+                            <th style="padding:8px; width:180px;">Bin đích (Đến)</th>
+                            <th style="padding:8px; width:100px;">Số lượng</th>
+                            <th style="padding:8px; width:50px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="allocationBody">
+                    </tbody>
+                </table>
+                <button class="btn ghost" style="margin-top:12px; font-size:13px; border-color:#bfdbfe; color:#1e40af" onclick="addAllocationRow()">+ Thêm phân bổ</button>
+            </div>
+
             <div class="actions">
                 <button id="confirmBtn" class="btn primary" onclick="confirmOrder()" style="display:none">Xác nhận phiếu</button>
                 <button class="btn ghost" onclick="location.href='transfer-list.html'">Quay lại danh sách</button>
@@ -58,6 +77,11 @@
         let transfer = null;
         const componentCache = {};
         const warehouseCache = {};
+        let globalProductsMap = {};
+        let availableSourceBins = [];
+        let availableDestBins = [];
+        let orderProducts = [];
+        let binAvailabilityByBin = {};
 
         function getComponents(obj) {
             if (!obj) return [];
@@ -117,6 +141,7 @@
                 
                 if (binFrom) {
                     const wid = typeof binFrom.warehouse === 'object' ? binFrom.warehouse?.id : (binFrom.warehouse ?? binFrom.warehouse_id ?? binFrom.warehouseId);
+                    t._fromWarehouseId = wid;
                     if (wid && !warehouseCache[wid]) {
                         try {
                             const wres = await fetch(BASE + '/storekeeper/warehouses/' + wid, { credentials: 'include' });
@@ -144,6 +169,7 @@
 
                 if (binTo) {
                     const wid2 = typeof binTo.warehouse === 'object' ? binTo.warehouse?.id : (binTo.warehouse ?? binTo.warehouse_id ?? binTo.warehouseId);
+                    t._toWarehouseId = wid2;
                     if (wid2 && !warehouseCache[wid2]) {
                         try {
                             const wres2 = await fetch(BASE + '/storekeeper/warehouses/' + wid2, { credentials: 'include' });
@@ -198,12 +224,12 @@
 
                 const relatedDetails = [];
                 const seen = new Set();
-                const mainId = transfer.request_id ?? transfer.RequestId ?? transfer.id ?? transfer.ID ?? null;
+                const mainId = transfer.request_id ?? transfer.RequestId ?? transfer.requestId ?? transfer.id ?? transfer.ID ?? null;
                 if (mainId) { relatedDetails.push(transfer); seen.add(String(mainId)); }
 
                 for (const r of related) {
                     try {
-                        const idToFetch = r.request_id ?? r.RequestId ?? r.id ?? r.ID;
+                        const idToFetch = r.request_id ?? r.RequestId ?? r.requestId ?? r.id ?? r.ID;
                         if (!idToFetch || seen.has(String(idToFetch))) continue;
                         const dres = await fetch(BASE + '/storekeeper/transfers/' + idToFetch, { credentials: 'include' });
                         if (dres.ok) {
@@ -289,6 +315,7 @@
                 });
                 statuses.add(t.status ?? t.Status ?? 0);
             });
+            globalProductsMap = productsMap;
 
             const statusText = statuses.size === 1 ? getStatusText(Array.from(statuses)[0]) : 'Multiple';
 
@@ -333,62 +360,227 @@
             document.getElementById('detail').innerHTML = html;
 
             // show confirm button for appropriate statuses
-            if (transfer.status === 2 || transfer.status === 1) {
+            if (transfer.status === 2) {
+                document.getElementById('confirmSection').style.display = 'block';
                 document.getElementById('confirmBtn').style.display = 'inline-block';
+                loadBinsForConfirm();
             } else {
+                if (document.getElementById('confirmSection')) document.getElementById('confirmSection').style.display = 'none';
                 document.getElementById('confirmBtn').style.display = 'none';
             }
         }
 
+        async function loadBinsForConfirm() {
+            try {
+                orderProducts = Object.keys(globalProductsMap).map(cid => ({
+                    id: cid, name: globalProductsMap[cid].name, maxQty: globalProductsMap[cid].total
+                }));
+                document.getElementById('allocationBody').innerHTML = '';
+                orderProducts.forEach(p => addAllocationRow(p.id, p.maxQty));
+
+                const wFromId = transfer._fromWarehouseId ?? transfer.warehouse_from_id ?? transfer.warehouseFromId ?? transfer.bin_from?.warehouse?.id;
+                const wToId = transfer._toWarehouseId ?? transfer.warehouse_to_id ?? transfer.warehouseToId ?? transfer.bin_to?.warehouse?.id;
+                
+                if (wFromId) {
+                    const res = await fetch(BASE + '/storekeeper/warehouses/' + wFromId, { credentials: 'include' });
+                    if (res.ok) {
+                        const json = await res.json();
+                        if (json?.success && json.data) availableSourceBins = json.data.bins ?? json.data;
+                    }
+                }
+                if (wToId) {
+                    const res = await fetch(BASE + '/storekeeper/warehouses/' + wToId, { credentials: 'include' });
+                    if (res.ok) {
+                        const json = await res.json();
+                        if (json?.success && json.data) availableDestBins = json.data.bins ?? json.data;
+                    }
+                }
+
+                document.getElementById('allocationBody').innerHTML = '';
+                orderProducts.forEach(p => addAllocationRow(p.id, p.maxQty));
+
+                for (let b of availableSourceBins) {
+                    const binId = b.id ?? b.ID ?? b.binId;
+                    if (!binId) continue;
+                    try {
+                        const bres = await fetch(BASE + '/storekeeper/bins/' + binId, { credentials: 'include' });
+                        if (!bres.ok) continue;
+                        const bjson = await bres.json();
+                        if (bjson?.success) {
+                            const dataArr = Array.isArray(bjson.data) ? bjson.data : (Array.isArray(bjson.data?.components) ? bjson.data.components : null);
+                            if (Array.isArray(dataArr)) {
+                                binAvailabilityByBin[binId] = {};
+                                for (const cb of dataArr) {
+                                    const cid = cb.component_id ?? cb.ComponentId ?? cb.componentId ?? cb.component?.componentId ?? cb.component?.id;
+                                    const qty = parseFloat(cb.quantity ?? cb.Quantity ?? cb.component?.quantity ?? cb.Quantity ?? 0) || 0;
+                                    if (cid) binAvailabilityByBin[binId][cid] = qty;
+                                }
+                            }
+                        }
+                    } catch(e) {}
+                }
+            } catch (e) { console.error('loadBins err', e); }
+        }
+
+        function addAllocationRow(defaultProductId = '', defaultQty = '') {
+            const tbody = document.getElementById('allocationBody');
+            const row = document.createElement('tr');
+            row.style.borderBottom = '1px solid #f9fafb';
+
+            let productOptions = '<option value="">-- Chọn sản phẩm --</option>';
+            orderProducts.forEach(p => {
+                const selected = p.id == defaultProductId ? 'selected' : '';
+                productOptions += `<option value="${p.id}" ${selected}>${p.name} (cần chuyển: ${p.maxQty})</option>`;
+            });
+
+            let binSrcOptions = '<option value="">-- Chọn Bin nguồn --</option>';
+            availableSourceBins.forEach(b => {
+                const lbl = b.location_in_warehouse ?? b.locationInWarehouse ?? b.binCode ?? ('Bin ' + b.id);
+                binSrcOptions += `<option value="${b.id ?? b.ID ?? b.binId}">${lbl}</option>`;
+            });
+
+            let binDestOptions = '<option value="">-- Chọn Bin đích --</option>';
+            availableDestBins.forEach(b => {
+                const lbl = b.location_in_warehouse ?? b.locationInWarehouse ?? b.binCode ?? ('Bin ' + b.id);
+                binDestOptions += `<option value="${b.id ?? b.ID ?? b.binId}">${lbl}</option>`;
+            });
+
+            row.innerHTML = `
+                <td style="padding:8px"><select class="alloc-product" style="width:100%; padding:6px; border-radius:4px; border:1px solid #ccc">${productOptions}</select></td>
+                <td style="padding:8px"><select class="alloc-bin-src" style="width:100%; padding:6px; border-radius:4px; border:1px solid #ccc">${binSrcOptions}</select></td>
+                <td style="padding:8px"><select class="alloc-bin-dest" style="width:100%; padding:6px; border-radius:4px; border:1px solid #ccc">${binDestOptions}</select></td>
+                <td style="padding:8px"><input type="number" class="alloc-qty" value="${defaultQty}" min="1" style="width:100%; padding:6px; border-radius:4px; border:1px solid #ccc"></td>
+                <td style="padding:8px; text-align:center"><button class="btn ghost" style="color:#ef4444; border-color:#fca5a5; padding:4px 8px" onclick="this.closest('tr').remove()">X</button></td>
+            `;
+            tbody.appendChild(row);
+        }
+
         async function confirmOrder() {
-            if (!confirm('Xác nhận phiếu chuyển kho này?')) return;
-            
+            if (!confirm('Xác nhận phân bổ và chuyển kho?')) return;
             const related = transfer._related ?? [transfer];
-            let allSuccess = true;
+            const isValidStatus = related.some(t => t.status === 2);
+            if (!isValidStatus) return alert('Phiếu này không ở trạng thái chờ xác nhận.');
+
+            const rows = Array.from(document.querySelectorAll('#allocationBody tr'));
+            if (rows.length === 0) return alert('Vui lòng thêm ít nhất 1 phân bổ.');
+
+            // Validate allocations
+            const allocationSummary = {}; 
+            const globalBinsFromStockCheck = {}; 
+            const pairMap = {}; // key: srcId_destId -> { srcId, destId, components }
+
+            for (let i = 0; i < rows.length; i++) {
+                const r = rows[i];
+                const pId = parseInt(r.querySelector('.alloc-product').value) || 0;
+                const bSrcId = parseInt(r.querySelector('.alloc-bin-src').value) || 0;
+                const bDestId = parseInt(r.querySelector('.alloc-bin-dest').value) || 0;
+                const qty = Number(r.querySelector('.alloc-qty').value) || 0;
+
+                if (!pId) return alert(`Dòng ${i+1}: Vui lòng chọn sản phẩm.`);
+                if (!bSrcId) return alert(`Dòng ${i+1}: Vui lòng chọn Bin nguồn.`);
+                if (!bDestId) return alert(`Dòng ${i+1}: Vui lòng chọn Bin đích.`);
+                if (bSrcId === bDestId) return alert(`Dòng ${i+1}: Bin nguồn và Bin đích không được trùng nhau.`);
+                if (qty <= 0) return alert(`Dòng ${i+1}: Số lượng phải lớn hơn 0.`);
+
+                // validate against stock
+                const stock = (binAvailabilityByBin[bSrcId] && binAvailabilityByBin[bSrcId][pId]) ? binAvailabilityByBin[bSrcId][pId] : 0;
+                let alreadyAllocated = globalBinsFromStockCheck[bSrcId]?.[pId] || 0;
+                if (qty + alreadyAllocated > stock) {
+                    const pNameElem = r.querySelector('.alloc-product');
+                    const bNameElem = r.querySelector('.alloc-bin-src');
+                    const pName = pNameElem.options[pNameElem.selectedIndex]?.text.split(' (')[0] || pId;
+                    const bName = bNameElem.options[bNameElem.selectedIndex]?.text || bSrcId;
+                    return alert(`Dòng ${i+1}: Tồn kho của Bin nguồn [${bName}] không đủ! (Chỉ còn ${stock} khả dụng cho sản phẩm "${pName}")`);
+                }
+
+                allocationSummary[pId] = (allocationSummary[pId] || 0) + qty;
+
+                if (!globalBinsFromStockCheck[bSrcId]) globalBinsFromStockCheck[bSrcId] = {};
+                globalBinsFromStockCheck[bSrcId][pId] = (globalBinsFromStockCheck[bSrcId][pId] || 0) + qty;
+                
+                const key = bSrcId + "_" + bDestId;
+                if (!pairMap[key]) pairMap[key] = { srcId: bSrcId, destId: bDestId, components: {} };
+                pairMap[key].components[pId] = (pairMap[key].components[pId] || 0) + qty;
+            }
+
+            for (const p of orderProducts) {
+                const sum = allocationSummary[p.id] || 0;
+                if (sum !== p.maxQty) {
+                    return alert(`Sản phẩm "${p.name}" được yêu cầu chuyển ${p.maxQty}, nhưng bạn đã phân bổ tổng ${sum}. Vui lòng phân bổ cho khớp.`);
+                }
+            }
+
             let errMsg = '';
-            let skipCount = 0;
+            let allSuccess = true;
 
             for (const t of related) {
-                const reqId = t.id ?? t.request_id ?? t.RequestId ?? t.ID;
-                if (!reqId || t.status === 4 || t.status === 0 || t.status === 3) { skipCount++; continue; }
+                const reqId = t.id ?? t.ID ?? t.request_id ?? t.requestId ?? t.RequestId;
+                if (!reqId || t.status === 4 || t.status === 0 || t.status === 3) continue;
 
-                const payload = { request_id: reqId };
-                const binsFrom = [];
-                const binsTo = [];
-
+                const payload = { request_id: reqId, bins_from: [], bins_to: [] };
+                
                 const comps = getComponents(t) || [];
-                const pComps = comps.map(c => ({ component_id: c.component_id ?? c.componentId ?? c.component?.id, quantity: Number((c.quantity ?? c.qty ?? c.Quantity) || 0) }));
-                if (pComps.length === 0) { skipCount++; continue; }
+                const compsPayload = comps.map(c => ({ component_id: parseInt(c.component_id ?? c.componentId ?? c.component?.id), quantity: Number((c.quantity ?? c.qty ?? c.Quantity) || 0) }));
 
-                const binFromId = t.bin_from_id ?? t.binFromId ?? t.bin_from?.id ?? t.bin_from?.ID;
-                if (binFromId) binsFrom.push({ bin_id: binFromId, components: pComps });
+                if (compsPayload.length === 0) continue;
 
-                const binToId = t.bin_to_id ?? t.binToId ?? t.bin_to?.id ?? t.bin_to?.ID;
-                if (binToId) binsTo.push({ bin_id: binToId, components: pComps });
+                let subSuccess = true;
+                let localPairMap = {}; // mapping for this specific request payload
+                
+                for (const comp of compsPayload) {
+                    let qtyRemaining = comp.quantity;
+                    
+                    for (const key of Object.keys(pairMap)) {
+                        if (qtyRemaining <= 0) break;
+                        const pair = pairMap[key];
+                        const avail = pair.components[comp.component_id] || 0;
+                        if (avail > 0) {
+                            const take = Math.min(qtyRemaining, avail);
+                            pair.components[comp.component_id] -= take;
+                            qtyRemaining -= take;
+                            
+                            if (!localPairMap[key]) localPairMap[key] = { srcId: pair.srcId, destId: pair.destId, components: [] };
+                            
+                            const existing = localPairMap[key].components.find(c => c.component_id === comp.component_id);
+                            if (existing) {
+                                existing.quantity += take;
+                            } else {
+                                localPairMap[key].components.push({ component_id: comp.component_id, quantity: take });
+                            }
+                        }
+                    }
+                    if (qtyRemaining > 0) {
+                        subSuccess = false; break;
+                    }
+                }
 
-                if (binsFrom.length > 0) payload.bins_from = binsFrom;
-                if (binsTo.length > 0) payload.bins_to = binsTo;
+                if (!subSuccess) {
+                    errMsg = 'Phân bổ không khớp với danh sách sản phẩm yêu cầu.';
+                    allSuccess = false;
+                    break;
+                }
+
+                // Push equal sized paired allocations
+                for (const key of Object.keys(localPairMap)) {
+                    const pair = localPairMap[key];
+                    // IMPORTANT: clone the array to ensure components structure doesn't conflict by reference
+                    const compsToSubmit = JSON.parse(JSON.stringify(pair.components));
+                    payload.bins_from.push({ bin_id: pair.srcId, components: compsToSubmit });
+                    payload.bins_to.push({ bin_id: pair.destId, components: compsToSubmit });
+                }
 
                 try {
                     const res = await fetch(BASE + '/storekeeper/transfers/confirm', {
-                        method: 'POST', 
-                        headers: { 'Content-Type': 'application/json' }, 
-                        credentials: 'include', 
-                        body: JSON.stringify(payload)
+                        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(payload)
                     });
-                    
                     if (!res.ok) {
                         const txt = await res.text().catch(()=>null);
-                        let msg = txt || res.statusText;
-                        try {
-                            const obj = JSON.parse(txt);
-                            if(obj.msg || obj.message) msg = obj.msg || obj.message;
-                        } catch(e) {}
                         allSuccess = false;
+                        let msg = txt || res.statusText;
+                        try { const obj = JSON.parse(txt); if(obj.msg || obj.message) msg = obj.msg || obj.message; } catch(e) {}
                         errMsg = msg;
                         break;
                     }
-                    
                     const json = await res.json();
                     if (!json?.success) {
                         allSuccess = false;
@@ -403,17 +595,13 @@
             }
 
             if (allSuccess) {
-                if (skipCount === related.length && related.length > 0) {
-                    alert('Các phiếu này đã được xác nhận hoặc không hợp lệ để xác nhận!');
-                } else {
-                    alert('Đã xác nhận phiếu chuyển thành công!');
-                }
-                location.href='transfer-list.html';
+                alert('Đã xác nhận phân bổ và chuyển kho thành công!');
+                location.href = 'transfer-list.html';
             } else {
-                alert('Xác nhận một phần thất bại: ' + errMsg);
+                alert('Xác nhận bị lỗi: ' + errMsg);
+                location.reload();
             }
         }
-
         load();
     </script>
 </body>

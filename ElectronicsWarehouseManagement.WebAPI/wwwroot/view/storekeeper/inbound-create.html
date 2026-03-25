@@ -64,11 +64,7 @@
                         <div style="display:flex;gap:12px;margin-top:14px">
                             <div style="flex:1">
                                 <label for="warehouse">Chọn Kho</label>
-                                <select id="warehouse" onchange="loadBinsByWarehouse()"></select>
-                            </div>
-                            <div style="width:200px">
-                                <label for="binTo">Bin đích</label>
-                                <select id="binTo"></select>
+                                <select id="warehouse"></select>
                             </div>
                             <div style="width:260px">
                                 <label for="customerSelect">Supplier</label>
@@ -108,7 +104,7 @@
                 <div>
                     <div class="panel">
                         <h4 style="margin:0 0 8px 0">Thông tin nhanh</h4>
-                        <div style="color:var(--muted);font-size:14px">Bạn có thể chọn kho và bin đích ở đây. Dữ liệu sẽ được gửi đến backend để xử lý nhập kho.</div>
+                        <div style="color:var(--muted);font-size:14px">Vui lòng chọn kho đích. Việc chọn bin lưu trữ sẽ được thực hiện khi xác nhận nhập kho.</div>
                         <hr style="margin:12px 0;border:none;border-top:1px solid #f1f5f9" />
                         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
                             <div style="font-size:13px;color:var(--muted)">Người tạo</div>
@@ -160,7 +156,6 @@
                 select.innerHTML += `<option value="${id}">${name}</option>`;
             });
 
-            loadBinsByWarehouse();
             }
             catch (err) {
                 console.error('loadWarehouses error', err);
@@ -168,40 +163,7 @@
             }
         }
 
-        /* LOAD BIN THEO WAREHOUSE */
-        function parseId(v) {
-            if (!v && v !== 0) return NaN;
-            const s = String(v);
-            const m = s.match(/(\d+)/);
-            return m ? parseInt(m[0], 10) : NaN;
-        }
-
-        async function loadBinsByWarehouse() {
-
-            const raw = document.getElementById("warehouse").value;
-            const warehouseId = parseId(raw);
-
-            if (isNaN(warehouseId)) return;
-
-            const res = await fetch(BASE + "/warehouses/" + warehouseId, { credentials: "include" });
-            if (!res.ok) {
-                console.log(await res.text());
-                return alert("API bins lỗi");
-            }
-
-            const json = await res.json();
-            if (!json.success || !json.data) return alert("Không load được bin");
-
-            const binSelect = document.getElementById("binTo");
-            binSelect.innerHTML = "";
-
-            const bins = json.data.bins ?? json.data;
-            bins.forEach(b => {
-                const id = b.id ?? b.ID ?? b.binId;
-                const code = b.location_in_warehouse ?? b.locationInWarehouse ?? b.binCode ?? "Bin #" + id;
-                binSelect.innerHTML += `<option value="${id}">${code}</option>`;
-            });
-        }
+        /* LOAD BIN THEO WAREHOUSE -> Removed for Confirm Step */
 
         /* LOAD COMPONENT */
         async function loadComponents() {
@@ -391,8 +353,7 @@
             const payload = {
                 desc: document.getElementById("desc").value,
                 bin_from_id: null,
-                bin_to_id: parseInt(document.getElementById("binTo").value),
-             
+                bin_to_id: null,
                 warehouse_to_id: parseInt(document.getElementById("warehouse").value) || null,
                 components: componentList
             };

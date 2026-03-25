@@ -39,7 +39,7 @@
             <div class="controls">
                 <div class="search">
                     <input id="q" placeholder="Tìm theo mã, kho, bin..." />
-                    <button class="btn ghost" onclick="load()">Search</button>
+                    <button class="btn ghost" onclick="searchFilter()">Search</button>
                 </div>
                 <button class="btn primary" onclick="goHome()">Back</button>
             </div>
@@ -60,6 +60,12 @@
                 </thead>
                 <tbody id="orderTable"></tbody>
             </table>
+            <!-- Pagination Controls -->
+            <div id="paginationControls" style="display:flex; justify-content:space-between; align-items:center; margin-top:20px; padding-top:16px; border-top:1px solid #f1f5f9;">
+                <div id="pageInfo" class="meta" style="font-size:14px;">Hiển thị 0-0 trong số 0</div>
+                <div style="display:flex; gap:8px;" id="pageButtons">
+                </div>
+            </div>
         </div>
     </div>
 
@@ -122,10 +128,9 @@
             // 🔥 Outbound = type === 2
             const outboundListSummary = (result.data || []).filter(x => x.type === 2);
             const warehouseCache = {};
-
-            const q = (document.getElementById('q')?.value || '').toString().toLowerCase();
             // fetch full details for each outbound transfer
-            const detailedTransfers = await Promise.all(outboundListSummary.map(async t0 => {
+            const detailedTransfers = [];
+            for (let t0 of outboundListSummary) {
                 try {
                     // always try to fetch full transfer detail first (contains components and bin info)
                     const dres = await fetch(BASE + "/storekeeper/transfers/" + (getId(t0)), { credentials: 'include' });
@@ -136,14 +141,15 @@
                         }
                     }
 
-                    // if bin_from already contains useful info, attach helper name and try to resolve warehouse object if missing
-                    if (t0.bin_from && (t0.bin_from.location_in_warehouse || t0.bin_from.locationInWarehouse || t0.bin_from.binCode)) {
+                    // if binFrom already contains useful info, attach helper name and try to resolve warehouse object if missing
+                    let binFromObj = t0.bin_from ?? t0.binFrom ?? null;
+                    if (binFromObj && (binFromObj.location_in_warehouse || binFromObj.locationInWarehouse || binFromObj.binCode)) {
                         try {
-                            const fromName = t0.bin_from?.warehouse?.name ?? t0.bin_from?.warehouse?.warehouseName ?? t0.bin_from?.warehouse ?? null;
+                            const fromName = binFromObj.warehouse?.name ?? binFromObj.warehouse?.warehouseName ?? binFromObj.warehouse ?? null;
                             t0._fromWarehouseName = fromName ?? null;
                             // if warehouse object is missing but warehouse id exists, try fetch warehouse and cache it
-                            const wid = (typeof t0.bin_from?.warehouse === 'object') ? (t0.bin_from.warehouse?.id) : (t0.bin_from?.warehouse ?? t0.bin_from?.warehouse_id ?? t0.bin_from?.warehouseId ?? t0.bin_from?.WarehouseId);
-                            const needFetch = !t0.bin_from?.warehouse || (typeof t0.bin_from.warehouse !== 'object');
+                            const wid = (typeof binFromObj.warehouse === 'object') ? (binFromObj.warehouse?.id) : (binFromObj.warehouse ?? binFromObj.warehouse_id ?? binFromObj.warehouseId ?? binFromObj.WarehouseId);
+                            const needFetch = !binFromObj.warehouse || (typeof binFromObj.warehouse !== 'object');
                             if (needFetch && wid) {
                                 if (!warehouseCache[wid]) {
                                     try {
@@ -155,19 +161,21 @@
                                     } catch (e) { console.error('warehouse fetch failed', e); }
                                 }
                                 if (warehouseCache[wid]) {
-                                    t0.bin_from.warehouse = warehouseCache[wid];
+                                    binFromObj.warehouse = warehouseCache[wid];
                                     t0._fromWarehouseName = warehouseCache[wid].name ?? warehouseCache[wid].warehouseName ?? t0._fromWarehouseName;
                                 }
                             }
                         } catch (e) { /* ignore */ }
-                        return t0;
+                        t0.bin_from = binFromObj;
+                        detailedTransfers.push(t0);
+                        continue;
                     }
 
-                    const binId = t0.bin_from_id ?? t0.binFromId ?? t0.bin_from?.id ?? t0.bin_from?.ID;
-                    if (!binId) return t0;
+                    const binId = t0.bin_from_id ?? t0.binFromId ?? t0.bin_from?.id ?? t0.bin_from?.ID ?? t0.binFrom?.id;
+                    if (!binId) { detailedTransfers.push(t0); continue; }
 
                     const bres = await fetch(BASE + "/storekeeper/bins/" + binId, { credentials: 'include' });
-                    if (!bres.ok) return t0;
+                    if (!bres.ok) { detailedTransfers.push(t0); continue; }
                     const bjson = await bres.json();
                     if (bjson?.success && bjson.data) {
                         t0.bin_from = bjson.data;
@@ -193,12 +201,12 @@
                             t0._toWarehouseName = toName ?? null;
                         } catch (e) { console.error('resolve to warehouse failed', e); }
                     }
-                    return t0;
+                    detailedTransfers.push(t0);
                 } catch (e) {
                     console.error('detail/bin fetch failed', e);
-                    return t0;
+                    detailedTransfers.push(t0);
                 }
-            }));
+            }
             // Group transfers by description and creation time to support multiple bins frontend-only
             const groups = [];
             detailedTransfers.forEach(t => {
@@ -219,52 +227,116 @@
                 }
             });
 
-            let html = "";
-            groups.forEach(groupObj => {
-                const group = groupObj.items;
-                // aggregate bins and warehouses
+            globalGroups = groups;
+            searchFilter();
+        }
+
+        let globalGroups = [];
+        let filteredGroups = [];
+        let currentPage = 1;
+        const pageSize = 10;
+
+        function searchFilter() {
+            const q = (document.getElementById('q')?.value || '').toString().toLowerCase();
+            filteredGroups = globalGroups.filter(g => {
+                const group = g.items;
                 const bins = new Set();
                 const warehouses = new Set();
-                let totalItems = 0;
-                const statuses = new Set();
-                const ids = [];
                 group.forEach(o => {
-                    ids.push(getId(o));
-                    const binFrom = o['bin_from'] ?? o.bin_from ?? null;
+                    const binFrom = o.bin_from ?? o.binFrom ?? null;
                     const warehouseName = o._fromWarehouseName ?? (binFrom?.warehouse?.name ?? binFrom?.warehouse?.warehouseName ?? binFrom?.warehouse) ?? (o.warehouse?.name ?? o.warehouse?.warehouseName ?? o.warehouse) ?? '-';
                     warehouses.add(warehouseName);
                     const binName = binFrom?.location_in_warehouse ?? binFrom?.locationInWarehouse ?? binFrom?.binCode ?? o.location_in_warehouse ?? o.locationInWarehouse ?? '-';
                     bins.add(binName);
-                    const comps = getComponents(o);
-                    totalItems += comps.reduce((s, c) => s + (c.quantity ?? c.Quantity ?? c.qty ?? 0), 0);
-                    statuses.add(o.status ?? o.Status ?? 0);
                 });
-
-                // status: if multiple statuses, show 'Multiple' else show mapped status text
-                let statusText = 'Multiple';
-                if (statuses.size === 1) statusText = getStatusText(Array.from(statuses)[0]);
-                let statusClass = 'status-pending';
-                if (statusText.toLowerCase().includes('complete') || statusText.toLowerCase().includes('confirmed')) statusClass = 'status-complete';
-
-                // action: open detail for first id in group
-                const action = `<button class="detail-btn" onclick="goDetail('${ids[0]}')">Detail</button>`;
-
                 const rowText = ((group[0].description ?? '') + ' ' + Array.from(warehouses).join(' ') + ' ' + Array.from(bins).join(' ')).toLowerCase();
-                if (q && !rowText.includes(q)) return; // filter by search query
-
-                html += `
-<tr>
-<td>${group[0].description}</td>
-<td>${formatDate(group[0].creation_date ?? group[0].creationDate)}</td>
-<td>${Array.from(warehouses).join(', ')}</td>
-<td>${Array.from(bins).join(', ')}</td>
-<td>${totalItems}</td>
-<td class="${statusClass}">${statusText}</td>
-<td>${action}</td>
-</tr>`;
+                return rowText.includes(q);
             });
+            renderPage(1);
+        }
+
+        function renderPage(page) {
+            currentPage = page;
+            const start = (page - 1) * pageSize;
+            const end = start + pageSize;
+            const paginated = filteredGroups.slice(start, end);
+
+            let html = "";
+            if (paginated.length === 0) {
+                html = `<tr><td colspan="7" style="text-align:center; padding:24px; color:#64748b">Không có dữ liệu</td></tr>`;
+            } else {
+                paginated.forEach(groupObj => {
+                    const group = groupObj.items;
+                    // aggregate bins and warehouses
+                    const bins = new Set();
+                    const warehouses = new Set();
+                    let totalItems = 0;
+                    const statuses = new Set();
+                    const ids = [];
+                    group.forEach(o => {
+                        ids.push(getId(o));
+                        const binFrom = o.bin_from ?? o.binFrom ?? null;
+                        const warehouseName = o._fromWarehouseName ?? (binFrom?.warehouse?.name ?? binFrom?.warehouse?.warehouseName ?? binFrom?.warehouse) ?? (o.warehouse?.name ?? o.warehouse?.warehouseName ?? o.warehouse) ?? '-';
+                        warehouses.add(warehouseName);
+                        const binName = binFrom?.location_in_warehouse ?? binFrom?.locationInWarehouse ?? binFrom?.binCode ?? o.location_in_warehouse ?? o.locationInWarehouse ?? '-';
+                        bins.add(binName);
+                        const comps = getComponents(o);
+                        totalItems += comps.reduce((s, c) => s + (c.quantity ?? c.Quantity ?? c.qty ?? 0), 0);
+                        statuses.add(o.status ?? o.Status ?? 0);
+                    });
+
+                    // status
+                    let statusText = 'Multiple';
+                    if (statuses.size === 1) statusText = getStatusText(Array.from(statuses)[0]);
+                    let statusClass = 'status-pending';
+                    if (statusText.toLowerCase().includes('complete') || statusText.toLowerCase().includes('confirmed')) statusClass = 'status-complete';
+
+                    // action: open detail for first id in group
+                    const action = `<button class="action-btn" onclick="goDetail('${ids[0]}')">Detail</button>`;
+
+                    html += `<tr>
+                        <td>${group[0].description ?? '-'}</td>
+                        <td>${formatDate(group[0].creation_date ?? group[0].creationDate)}</td>
+                        <td>${Array.from(warehouses).join(', ')}</td>
+                        <td>${Array.from(bins).join(', ')}</td>
+                        <td>${totalItems}</td>
+                        <td class="${statusClass}">${statusText}</td>
+                        <td>${action}</td>
+                    </tr>`;
+                });
+            }
 
             document.getElementById("orderTable").innerHTML = html;
+
+            // Update stats
+            const totalItems = filteredGroups.length;
+            const s = totalItems === 0 ? 0 : start + 1;
+            const e = Math.min(start + pageSize, totalItems);
+            document.getElementById('pageInfo').innerText = `Hiển thị ${s}-${e} trong số ${totalItems}`;
+
+            // Render buttons
+            const totalPages = Math.ceil(totalItems / pageSize) || 1;
+            let btnHtml = "";
+            
+            // Prev button
+            btnHtml += `<button class="btn ghost" onclick="renderPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled style="opacity:0.5"' : ''}>&laquo; Trước</button>`;
+            
+            // Page numbers
+            for (let i = 1; i <= totalPages; i++) {
+                if (totalPages > 7) {
+                    if (i !== 1 && i !== totalPages && Math.abs(i - currentPage) > 1) {
+                        if (i === 2 || i === totalPages - 1) btnHtml += `<span style="padding:4px 8px">...</span>`;
+                        continue;
+                    }
+                }
+                const activeStyle = i === currentPage ? 'background:#e2e8f0;font-weight:bold;' : '';
+                btnHtml += `<button class="btn ghost" style="${activeStyle}" onclick="renderPage(${i})">${i}</button>`;
+            }
+
+            // Next button
+            btnHtml += `<button class="btn ghost" onclick="renderPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled style="opacity:0.5"' : ''}>Sau &raquo;</button>`;
+            
+            document.getElementById('pageButtons').innerHTML = btnHtml;
         }
 
         function goDetail(id) {

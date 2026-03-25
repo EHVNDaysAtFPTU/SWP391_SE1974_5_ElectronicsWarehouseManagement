@@ -152,35 +152,30 @@
 
         <br><br>
 
-        <div class="row">
+        <div class="row" style="grid-template-columns:1fr;">
             <div>
                 <label>Kho xuất:</label>
                 <select id="warehouseFrom" onchange="loadBinsFrom()"></select>
             </div>
 
-            <div>
-                <label>Bin xuất:</label>
+            <div style="display:none">
+                <label>Bin xuất (Tự động):</label>
                 <div style="display:flex;gap:8px;align-items:center">
-                    <!-- multi-bin container: rendered as checkboxes for easier multi-select -->
-                    <div id="binFromContainer" style="height:120px;flex:1;overflow:auto;padding:6px;border:1px solid #d1d5db;border-radius:6px;background:#fff"></div>
-                    <div style="display:flex;flex-direction:column;gap:6px">
-                        <button type="button" onclick="selectAllBins(true)" style="padding:6px 8px;border-radius:6px;">Chọn tất cả</button>
-                        <button type="button" onclick="selectAllBins(false)" style="padding:6px 8px;border-radius:6px;">Bỏ chọn</button>
-                    </div>
+                    <div id="binFromContainer"></div>
                 </div>
             </div>
         </div>
 
         <br>
 
-        <div class="row">
+        <div class="row" style="grid-template-columns:1fr;">
             <div>
                 <label>Kho nhập:</label>
                 <select id="warehouseTo" onchange="loadBinsTo()"></select>
             </div>
 
-            <div>
-                <label>Bin nhập:</label>
+            <div style="display:none">
+                <label>Bin nhập (Tự động):</label>
                 <select id="binTo"></select>
             </div>
         </div>
@@ -266,7 +261,7 @@
                 bins.forEach(b => {
                     const id = b.id ?? b.ID ?? b.binId;
                     const code = b.location_in_warehouse ?? b.locationInWarehouse ?? b.binCode ?? 'Bin #' + id;
-                    const html = `<div style="display:flex;align-items:center;gap:8px;padding:4px"><input type="checkbox" data-label="${code}" value="${id}" id="binchk-${id}"><label for="binchk-${id}">${code}</label></div>`;
+                    const html = `<div style="display:flex;align-items:center;gap:8px;padding:4px"><input type="checkbox" checked data-label="${code}" value="${id}" id="binchk-${id}"><label for="binchk-${id}">${code}</label></div>`;
                     if (container) container.innerHTML += html;
                 });
                 // when user changes selection (multi-select), ensure no conflict with binTo then reload availability
