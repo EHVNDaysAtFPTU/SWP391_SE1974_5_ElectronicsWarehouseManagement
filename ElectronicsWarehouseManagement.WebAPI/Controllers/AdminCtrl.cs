@@ -100,5 +100,29 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
                 return Ok(result);
             return BadRequest(result);
         }
+
+        [HttpGet("config")]
+        public async Task<IActionResult> GetSystemConfig()
+        {
+            var result = await _adminService.GetSystemConfigAsync();
+            if (result.Success) return Ok(result);
+            return BadRequest(result);
+        }
+
+        [HttpPost("config/save")]
+        public async Task<IActionResult> SaveSystemConfig([FromBody] SystemConfigDto config)
+        {
+            var result = await _adminService.SaveSystemConfigAsync(config);
+            if (result.Success) return Ok(result);
+            return BadRequest(result);
+        }
+
+        [HttpPost("config/reset")]
+        public async Task<IActionResult> ResetConfig()
+        {
+            var result = await _adminService.ResetSystemConfigAsync();
+            if (result.Success) return Ok(result);
+            return BadRequest(result);
+        }
     }
 }

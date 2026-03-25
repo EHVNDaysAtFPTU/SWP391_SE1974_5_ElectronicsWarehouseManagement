@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
@@ -200,36 +200,74 @@
                 }
             }));
 
+            // Group transfers by description and creation time to support multiple bins frontend-only
+            const groups = [];
+            list.forEach(t => {
+                const desc = (t.description ?? '').toString();
+                const createdTs = Date.parse(t.creation_date ?? t.creationDate ?? t.creationTime ?? '');
+                const creator = (t.creator_id ?? t.CreatorId ?? t.creator ?? t.Creator ?? '').toString();
+                
+                let foundGroup = groups.find(g => 
+                    g.desc === desc && 
+                    g.creator === creator && 
+                    (!isNaN(createdTs) && !isNaN(g.ts) ? Math.abs(g.ts - createdTs) <= 60000 : true)
+                );
+                
+                if (foundGroup) {
+                    foundGroup.items.push(t);
+                } else {
+                    groups.push({ desc, creator, ts: createdTs, items: [t] });
+                }
+            });
+
             let html = "";
+            groups.forEach(groupObj => {
+                const group = groupObj.items;
+                const reqId = group[0].request_id ?? group[0].RequestId ?? group[0].id ?? group[0].ID;
+                
+                const fromWarehouses = new Set();
+                const fromBins = new Set();
+                const toWarehouses = new Set();
+                const toBins = new Set();
+                let totalItems = 0;
+                const statuses = new Set();
+                
+                group.forEach(o => {
+                    const fw = o._fromWarehouseName ?? (o.bin_from?.warehouse?.name ?? o.bin_from?.warehouse?.warehouseName ?? o.bin_from?.warehouse) ?? '-';
+                    const fb = o.bin_from?.location_in_warehouse ?? o.bin_from?.locationInWarehouse ?? o.bin_from?.binCode ?? '-';
+                    if (fw !== '-') fromWarehouses.add(fw);
+                    if (fb !== '-') fromBins.add(fb);
 
-            list.forEach(o => {
+                    const tw = o._toWarehouseName ?? (o.bin_to?.warehouse?.name ?? o.bin_to?.warehouse?.warehouseName ?? o.bin_to?.warehouse) ?? '-';
+                    const tb = o.bin_to?.location_in_warehouse ?? o.bin_to?.locationInWarehouse ?? o.bin_to?.binCode ?? '-';
+                    if (tw !== '-') toWarehouses.add(tw);
+                    if (tb !== '-') toBins.add(tb);
 
-                const comps = getComponents(o);
-                let totalItems = comps.reduce((s, c) => s + (c.quantity ?? c.Quantity ?? c.qty ?? c.QuantityDouble ?? 0), 0);
+                    const comps = getComponents(o);
+                    totalItems += comps.reduce((s, c) => s + (c.quantity ?? c.Quantity ?? c.qty ?? c.QuantityDouble ?? 0), 0);
+                    statuses.add(o.status ?? o.Status ?? 0);
+                });
 
-                let statusText = getStatusText(o.status);
-                let statusClass = o.status === 3
-                    ? "status-complete"
-                    : "status-pending";
+                let statusText = statuses.size === 1 ? getStatusText(Array.from(statuses)[0]) : 'Multiple';
+                let statusClass = "status-pending";
+                if (statusText === "Unknown" || statusText === "Rejected") statusClass = "status-complete";
+                if (statusText.toLowerCase().includes('confirm') || statusText.toLowerCase().includes('complete') || Array.from(statuses).includes(4)) statusClass = "status-complete";
 
-                const rowText = ((o.description ?? '') + ' ' + (o._fromWarehouseName ?? '') + ' ' + (o.bin_from?.location_in_warehouse ?? '') + ' ' + (o._toWarehouseName ?? '') + ' ' + (o.bin_to?.location_in_warehouse ?? '')).toLowerCase();
+                const rowText = ((group[0].description ?? '') + ' ' + Array.from(fromWarehouses).join(' ') + ' ' + Array.from(fromBins).join(' ') + ' ' + Array.from(toWarehouses).join(' ') + ' ' + Array.from(toBins).join(' ')).toLowerCase();
                 if (q && !rowText.includes(q)) return;
 
                 html += `
 <tr>
-<td>${o.description}</td>
-<td>${formatDate(o.creation_date)}</td>
-
-                <td>${o._fromWarehouseName ?? (o.bin_from && ((o.bin_from.warehouse?.name) ?? (o.bin_from.warehouse?.warehouseName))) ?? '-'}</td>
-<td>${o.bin_from?.location_in_warehouse ?? o.bin_from?.locationInWarehouse ?? o.bin_from?.binCode ?? '-'}</td>
-
-                <td>${o._toWarehouseName ?? (o.bin_to && ((o.bin_to.warehouse?.name) ?? (o.bin_to.warehouse?.warehouseName))) ?? '-'}</td>
-<td>${o.bin_to?.location_in_warehouse ?? o.bin_to?.locationInWarehouse ?? o.bin_to?.binCode ?? '-'}</td>
-
+<td>${group[0].description}</td>
+<td>${formatDate(group[0].creation_date ?? group[0].creationDate)}</td>
+<td>${Array.from(fromWarehouses).join(', ') || '-'}</td>
+<td>${Array.from(fromBins).join(', ') || '-'}</td>
+<td>${Array.from(toWarehouses).join(', ') || '-'}</td>
+<td>${Array.from(toBins).join(', ') || '-'}</td>
 <td>${totalItems}</td>
 <td class="${statusClass}">${statusText}</td>
 <td>
-<button class="detail-btn" onclick="viewDetail(${o.id})">Detail</button>
+<button class="detail-btn action-btn" onclick="viewDetail(${reqId})">Detail</button>
 </td>
 </tr>`;
             });
