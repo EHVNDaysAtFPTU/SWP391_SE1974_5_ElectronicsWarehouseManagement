@@ -30,7 +30,9 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
         Task<ApiResult<List<TransferRequestResp>>> GetTransferRequestsAsync(int creatorId);
         Task<ApiResult<TransferRequestResp>> GetTransferRequestAsync(int requestId, int creatorId);
         Task<ApiResult<TransferRequestResp>> CreateTransferRequestAsync(CreateTransferRequestReq request, TransferType type, int creatorId);
+        Task<ApiResult<TransferRequestResp>> UpdateTransferRequestAsync(int requestId, UpdateTransferRequestReq request, int creatorId);
         Task<ApiResult<TransferRequestResp>> ConfirmTransferRequestAsync(ConfirmTransferRequestReq request, int approverId);
+        Task<ApiResult<TransferRequestResp>> CancelTransferRequestAsync(int transferId, int creatorId);
 
         Task<ApiResult<List<ComponentResp>>> GetComponentsInWarehouseAsync(int warehouseId);
 
@@ -450,6 +452,88 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             await _dbCtx.Entry(transferRequest).Reference(tr => tr.Customer).LoadAsync();
             await _dbCtx.Entry(transferRequest).Collection(tr => tr.TransferRequestComponents).LoadAsync();
 
+            return new ApiResult<TransferRequestResp>(new TransferRequestResp(transferRequest, true));
+        }
+
+        public async Task<ApiResult<TransferRequestResp>> UpdateTransferRequestAsync(int requestId, UpdateTransferRequestReq request, int creatorId)
+        {
+            if (!request.Verify(out string failedReason))
+                return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, failedReason);
+            var transferRequest = await _dbCtx.TransferRequests.FirstOrDefaultAsync(tr => tr.RequestId == requestId && tr.CreatorId == creatorId);
+            if (transferRequest is null)
+                return new ApiResult<TransferRequestResp>(ApiResultCode.NotFound, $"Transfer request with ID '{requestId}' does not exist.");
+            if (transferRequest.Status != TransferStatus.Pending)
+                return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Only pending transfer request can be updated.");
+            if (!string.IsNullOrWhiteSpace(request.Description))
+                transferRequest.Description = request.Description;
+            if (request.WarehouseFromId is not null)
+            {
+                Warehouse? warehouseFrom = await _dbCtx.Warehouses.Include(w => w.Bins).ThenInclude(b => b.ComponentBins).FirstOrDefaultAsync(w => w.WarehouseId == request.WarehouseFromId.Value);
+                if (warehouseFrom is null)
+                    return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Warehouse with ID '{request.WarehouseFromId}' does not exist.");
+                transferRequest.BinFromId = request.WarehouseFromId;
+            }
+            if (request.WarehouseToId is not null)
+            {
+                Warehouse? warehouseTo = await _dbCtx.Warehouses.Include(w => w.Bins).ThenInclude(b => b.ComponentBins).FirstOrDefaultAsync(w => w.WarehouseId == request.WarehouseToId.Value);
+                if (warehouseTo is null)
+                    return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Warehouse with ID '{request.WarehouseToId}' does not exist.");
+                transferRequest.BinToId = request.WarehouseToId;
+            }
+            if (request.CustomerId is not null)
+            {
+                Customer? customer = await _dbCtx.Customers.FindAsync(request.CustomerId.Value);
+                if (customer is null)
+                    return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Customer with ID '{request.CustomerId}' does not exist.");
+                transferRequest.CustomerId = request.CustomerId;
+            }
+            if (request.Components is not null && request.Components.Count > 0)
+            {
+                List<TransferRequestComponent> tComponents = [];
+                foreach (var componentReq in request.Components)
+                {
+                    var component = await _dbCtx.Components.FindAsync(componentReq.ComponentId);
+                    if (component is null)
+                        return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Component with ID '{componentReq.ComponentId}' does not exist in the warehouse.");
+                    TransferRequestComponent item = new TransferRequestComponent()
+                    {
+                        ComponentId = componentReq.ComponentId,
+                        Quantity = componentReq.Quantity,
+                    };
+                    if (transferRequest.Type == TransferType.Inbound)
+                    {
+                        if (componentReq.UnitPrice is null)
+                            return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Unit price is required for component with ID '{componentReq.ComponentId}' in inbound transfer request.");
+                        item.UnitPrice = componentReq.UnitPrice.Value;
+                    }
+                    tComponents.Add(item);
+                }
+                _dbCtx.TransferRequestComponents.RemoveRange(transferRequest.TransferRequestComponents);
+                transferRequest.TransferRequestComponents = tComponents;
+            }
+            await _dbCtx.SaveChangesAsync();
+            await _dbCtx.Entry(transferRequest).Reference(tr => tr.Creator).LoadAsync();
+            await _dbCtx.Entry(transferRequest).Reference(tr => tr.Approver).LoadAsync();
+            await _dbCtx.Entry(transferRequest).Reference(tr => tr.BinFrom).LoadAsync();
+            await _dbCtx.Entry(transferRequest).Reference(tr => tr.BinTo).LoadAsync();
+            await _dbCtx.Entry(transferRequest).Reference(tr => tr.Customer).LoadAsync();
+            await _dbCtx.Entry(transferRequest).Collection(tr => tr.TransferRequestComponents).LoadAsync();
+            return new ApiResult<TransferRequestResp>(new TransferRequestResp(transferRequest, true));
+        }
+
+        public async Task<ApiResult<TransferRequestResp>> CancelTransferRequestAsync(int transferId, int creatorId)
+        {
+            var transferRequest = await _dbCtx.TransferRequests.FirstOrDefaultAsync(tr => tr.RequestId == transferId && tr.CreatorId == creatorId);
+            if (transferRequest is null)
+                return new ApiResult<TransferRequestResp>(ApiResultCode.NotFound, $"Transfer request with ID '{transferId}' does not exist.");
+            transferRequest.Status = TransferStatus.Canceled;
+            await _dbCtx.SaveChangesAsync();
+            await _dbCtx.Entry(transferRequest).Reference(tr => tr.Creator).LoadAsync();
+            await _dbCtx.Entry(transferRequest).Reference(tr => tr.Approver).LoadAsync();
+            await _dbCtx.Entry(transferRequest).Reference(tr => tr.BinFrom).LoadAsync();
+            await _dbCtx.Entry(transferRequest).Reference(tr => tr.BinTo).LoadAsync();
+            await _dbCtx.Entry(transferRequest).Reference(tr => tr.Customer).LoadAsync();
+            await _dbCtx.Entry(transferRequest).Collection(tr => tr.TransferRequestComponents).LoadAsync();
             return new ApiResult<TransferRequestResp>(new TransferRequestResp(transferRequest, true));
         }
 
