@@ -30,7 +30,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Filters
             {
                 var path = context.HttpContext.Request.Path.Value?.ToLower();
 
-   
+
 
                 bool isAdmin = context.HttpContext.User?.IsInRole("1") ?? false;
 
@@ -41,7 +41,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Filters
                         message = string.IsNullOrEmpty(cfg.MaintenanceMessage)
                             ? "System is under maintenance"
                             : cfg.MaintenanceMessage,
-                        scheduledEnd = cfg.ScheduledEnd 
+                        scheduledEnd = cfg.ScheduledEnd
                     })
                     {
                         StatusCode = 503
