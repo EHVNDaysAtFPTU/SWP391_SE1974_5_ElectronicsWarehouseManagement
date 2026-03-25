@@ -210,7 +210,6 @@
             document.getElementById("confirmPwd").value = "";
 
             closeChangePwd();
-            logout();
         }
         async function logout() {
             await fetch("/api/auth/logout", {
