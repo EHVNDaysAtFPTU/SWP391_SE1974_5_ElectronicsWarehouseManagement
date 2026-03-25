@@ -101,4 +101,6 @@ public enum ApiResultCode
     InternalError,
     [Description("Unknown error")]
     UnknownError = -1,
+    [Description("Server error")]
+    ServerError = 500
 }
