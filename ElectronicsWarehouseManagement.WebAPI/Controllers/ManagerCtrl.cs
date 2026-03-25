@@ -231,5 +231,21 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
                 return Ok(result);
             return BadRequest(result);
         }
+        [HttpPost("bins/update")]
+        public async Task<IActionResult> UpdateBin([FromBody] UpdateBinReq request)
+        {
+            var result = await _managerService.UpdateBinAsync(request);
+            if (result.Success)
+                return Ok(result);
+            return BadRequest(result);
+        }
+        [HttpPost("warehouse/update")]
+        public async Task<IActionResult> UpdateWarehouse([FromBody] UpdateWarehouseReq request)
+        {
+            var result = await _managerService.UpdateWarehouseAsync(request);
+            if (result.Success)
+                return Ok(result);
+            return BadRequest(result);
+        }
     }
 }

@@ -1,7 +1,3 @@
-/**
- * Warehouse List JS (FULL VERSION - Upload Image)
- */
-
 let currentPage = 1;
 let pageSize = 10;
 let totalPages = 1;
@@ -9,12 +5,19 @@ let search = "";
 let sortBy = "";
 let sortDirection = "asc";
 let createModal;
+let editWarehouseModal;
 
 document.addEventListener("DOMContentLoaded", function () {
-    // Init modal
+    // Init create modal
     const modalEl = document.getElementById("createWarehouseModal");
     if (modalEl) {
         createModal = new bootstrap.Modal(modalEl);
+    }
+
+    // Init edit modal
+    const editModalEl = document.getElementById("editWarehouseModal");
+    if (editModalEl) {
+        editWarehouseModal = new bootstrap.Modal(editModalEl);
     }
 
     // Page size change
@@ -44,7 +47,7 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 
-// ================== LOAD DATA ==================
+// Load data
 async function loadWarehouses(page = 1) {
     currentPage = page;
     const tbody = document.getElementById("warehouseTable");
@@ -82,7 +85,7 @@ async function loadWarehouses(page = 1) {
 }
 
 
-// ================== RENDER TABLE ==================
+// Render table
 function renderWarehouseTable(warehouses) {
     const tbody = document.getElementById("warehouseTable");
     tbody.innerHTML = "";
@@ -110,9 +113,14 @@ function renderWarehouseTable(warehouses) {
                 </span>
             </td>
             <td class="text-end">
-                <button class="btn btn-sm btn-outline-primary me-2"
+                <button class="btn btn-sm btn-outline-primary me-1"
                     onclick="toggleWarehouseDetail(${JSON.stringify(w).replace(/"/g, '&quot;')}, this)">
                     View Detail
+                </button>
+
+                <button class="btn btn-sm btn-warning me-1"
+                    onclick='openEditWarehouse(${JSON.stringify(w)})'>
+                    Edit
                 </button>
 
                 <button class="btn btn-sm btn-primary"
@@ -127,7 +135,7 @@ function renderWarehouseTable(warehouses) {
 }
 
 
-// ================== DETAIL ==================
+// detail
 function toggleWarehouseDetail(w, button) {
     const mainRow = button.closest("tr");
     const nextRow = mainRow.nextElementSibling;
@@ -164,7 +172,7 @@ function toggleWarehouseDetail(w, button) {
 }
 
 
-// ================== PAGINATION ==================
+// Pagination
 function renderPagination(pages) {
     totalPages = pages;
     const container = document.getElementById("pagination");
@@ -282,12 +290,65 @@ async function createWarehouse() {
     }
 }
 
-
-// ================== FILTER ==================
+// Filter
 function applyFilter() {
     search = document.getElementById("searchInput").value.trim() || null;
     sortBy = document.getElementById("sortBy").value || null;
     sortDirection = document.getElementById("sortDirection").value || "asc";
 
     loadWarehouses(1);
+}
+
+// Edit warehouse
+function openEditWarehouse(w) {
+    if (!editWarehouseModal) {
+        alert("Edit modal not ready");
+        return;
+    }
+
+    document.getElementById("editWhId").value = w.id;
+    document.getElementById("editWhName").value = w.name || "";
+    document.getElementById("editWhLocation").value = w.physical_location || "";
+    document.getElementById("editWhDesc").value = w.desc || "";
+
+    editWarehouseModal.show();
+}
+
+async function updateWarehouse() {
+    const warehouseId = parseInt(document.getElementById("editWhId").value);
+    const name = document.getElementById("editWhName").value.trim();
+    const location = document.getElementById("editWhLocation").value.trim();
+    const desc = document.getElementById("editWhDesc").value.trim();
+
+    if (!name) {
+        alert("Warehouse name is required");
+        return;
+    }
+
+    const request = {
+        warehouse_id: warehouseId,
+        warehouse_name: name,
+        physical_location: location,
+        description: desc
+    };
+
+    try {
+        const result = await apiFetch("/api/manager/warehouse/update", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(request)
+        });
+
+        if (!result.success) {
+            alert(result.msg || "Update warehouse failed");
+            return;
+        }
+
+        alert("Warehouse updated successfully!");
+        editWarehouseModal.hide();
+        loadWarehouses(currentPage);
+
+    } catch (error) {
+        alert("Error: " + error.message);
+    }
 }

@@ -27,6 +27,8 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
         Task<ApiResult<CustomerResp>> UpdateCustomerAsync(int customerId, CustomerReq customerReq);
         Task<ApiResult<BinResp>> CreateBinAsync(CreateBinReq request);
         Task<ApiResult<WarehouseResp>> CreateWarehouseAsync(CreateWarehouseReq request);
+        Task<ApiResult<BinResp>> UpdateBinAsync(UpdateBinReq request);
+        Task<ApiResult<WarehouseResp>> UpdateWarehouseAsync(UpdateWarehouseReq request);
 
         // Dashboard
         Task<ApiResult<DashboardSummaryResp>> GetSummaryAsync();
@@ -651,6 +653,40 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             using (var stream = new FileStream(filePath, FileMode.Create))
                 await image.CopyToAsync(stream);
             return new ApiResult<string>(filePath.Replace('\\', '/'));
+        }
+
+        public async Task<ApiResult<BinResp>> UpdateBinAsync(UpdateBinReq request)
+        {
+
+            var bin = await _dbCtx.Bins.FirstOrDefaultAsync(x => x.BinId == request.BinId);
+            if (bin == null)
+            {
+                return new ApiResult<BinResp>(ApiResultCode.NotFound, "Bin not found!");
+            }
+
+            bin.LocationInWarehouse = request.LocationInWarehouse;
+            bin.StatusInt = bin.StatusInt;
+
+            await _dbCtx.SaveChangesAsync();
+
+            return new ApiResult<BinResp>(new BinResp(bin, true));
+        }
+
+        public async Task<ApiResult<WarehouseResp>> UpdateWarehouseAsync(UpdateWarehouseReq request)
+        {
+            var warehouse = await _dbCtx.Warehouses.FirstOrDefaultAsync(x => x.WarehouseId == request.WarehouseId);
+            if (warehouse == null)
+            {
+                return new ApiResult<WarehouseResp>(ApiResultCode.NotFound, "Warehouse not found!");
+            }
+
+            warehouse.WarehouseName = request.WarehouseName;
+            warehouse.Description = warehouse.Description;
+            warehouse.PhysicalLocation = request.PhysicalLocation;
+
+            await _dbCtx.SaveChangesAsync();
+
+            return new ApiResult<WarehouseResp>(new WarehouseResp(warehouse, true));
         }
     }
 }

@@ -9,6 +9,7 @@ let search = "";
 let sortBy = "";
 let sortDirection = "asc";
 let createBinModal;
+let editBinModal;
 
 
 document.addEventListener("DOMContentLoaded", function () {
@@ -18,6 +19,10 @@ document.addEventListener("DOMContentLoaded", function () {
         createBinModal = new bootstrap.Modal(modalEl);
     }
 
+    const editModalEl = document.getElementById("editBinModal");
+    if (editModalEl) {
+        editBinModal = new bootstrap.Modal(editModalEl);
+    }
 
     const pageSizeSelect = document.getElementById("pageSize");
     if (pageSizeSelect) {
@@ -103,9 +108,13 @@ function renderBins(data) {
             <td class="align-middle">${bin.warehouse_id}</td>
             <td class="align-middle text-end">
                 <a href="bin-detail.html?binId=${bin.id}" 
-                   class="btn btn-sm btn-outline-primary rounded-pill px-3">
+                   class="btn btn-sm btn-outline-primary rounded-pill px-3 me-1">
                    View
                 </a>
+                <button class="btn btn-sm btn-warning rounded-pill px-3"
+                    onclick='openEditBin(${JSON.stringify(bin)})'>
+                   Edit
+                </button>
             </td>
         `;
 
@@ -266,4 +275,59 @@ function applyFilter() {
     sortDirection = sortDirectionValue || "asc";
 
     loadBins(1);
+}
+
+// Edit bin
+function openEditBin(bin) {
+    if (!editBinModal) {
+        alert("Edit modal not ready");
+        return;
+    }
+
+    document.getElementById("editBinId").value = bin.id;
+    document.getElementById("editBinLocation").value = bin.location_in_warehouse || "";
+
+    const statusSelect = document.getElementById("editBinStatus");
+    // bin.status is a BinStatus enum int 
+    const statusVal = typeof bin.status === "number" ? bin.status : parseInt(bin.status) || 1;
+    statusSelect.value = statusVal;
+
+    editBinModal.show();
+}
+
+async function updateBin() {
+    const binId = parseInt(document.getElementById("editBinId").value);
+    const location = document.getElementById("editBinLocation").value.trim();
+    const statusInt = parseInt(document.getElementById("editBinStatus").value);
+
+    if (!location) {
+        alert("Location is required");
+        return;
+    }
+
+    const request = {
+        bin_id: binId,
+        location_in_warehouse: location,
+        status_int: statusInt
+    };
+
+    try {
+        const result = await apiFetch("/api/manager/bins/update", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(request)
+        });
+
+        if (!result.success) {
+            alert(result.msg || "Update bin failed");
+            return;
+        }
+
+        alert("Bin updated successfully!");
+        editBinModal.hide();
+        loadBins(currentPage);
+
+    } catch (error) {
+        alert("Error: " + error.message);
+    }
 }

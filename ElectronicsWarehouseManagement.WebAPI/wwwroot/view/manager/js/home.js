@@ -43,7 +43,7 @@ async function getTransferChartData() {
     try {
         const json = await apiFetch("/api/manager/get-statistics/charts");
         if (!json.success) throw new Error(json.msg);
-        return json.data.transfer_chart; // Matches [JsonPropertyName("transfer_chart")] in DTO
+        return json.data.transfer_chart;
     } catch (error) {
         console.error("Error loading chart data:", error);
         return [];
@@ -54,7 +54,7 @@ async function loadTransferChart() {
     const chartData = await getTransferChartData();
     if (!chartData || chartData.length === 0) return;
 
-    const labels = chartData.map(x => formatDate(x.date).split(',')[0]); // Just the date
+    const labels = chartData.map(x => formatDate(x.date).split(',')[0]);
     const imports = chartData.map(x => x.import);
     const exports = chartData.map(x => x.export);
 
