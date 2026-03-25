@@ -219,6 +219,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
                 .Include(tr => tr.Creator).Include(tr => tr.Approver)
                 .Include(tr => tr.BinFrom).Include(tr => tr.BinTo)
                 .Include(tr => tr.TransferRequestComponents)
+                .Include(tr => tr.Customer)
                 .Where(tr => tr.RequestId == requestId && tr.CreatorId == creatorId)
                 .Select(tr => new TransferRequestResp(tr, true)).FirstOrDefaultAsync());
         }
@@ -230,17 +231,24 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
                 return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, failedReason);
             Warehouse? warehouseFrom = null;
             Warehouse? warehouseTo = null;
+            Customer? customer = null;
             if (request.WarehouseFromId.HasValue)
                 warehouseFrom = await _dbCtx.Warehouses.Include(w => w.Bins).ThenInclude(b => b.ComponentBins).FirstOrDefaultAsync(w => w.WarehouseId == request.WarehouseFromId.Value);
             if (request.WarehouseToId.HasValue)
                 warehouseTo = await _dbCtx.Warehouses.Include(w => w.Bins).ThenInclude(b => b.ComponentBins).FirstOrDefaultAsync(w => w.WarehouseId == request.WarehouseToId.Value);
+            if (request.CustomerId.HasValue)
+                customer = await _dbCtx.Customers.FindAsync(request.CustomerId.Value);
             switch (type)
             {
                 case TransferType.Inbound:
+                    if (customer is null)
+                        return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Customer with ID '{request.CustomerId}' does not exist.");
                     if (warehouseTo is null)
                         return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Warehouse with ID '{request.WarehouseToId}' does not exist.");
                     break;
                 case TransferType.Outbound:
+                    if (customer is null)
+                        return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Customer with ID '{request.CustomerId}' does not exist.");
                     if (warehouseFrom is null)
                         return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Warehouse with ID '{request.WarehouseFromId}' does not exist.");
                     break;
@@ -297,6 +305,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             await _dbCtx.Entry(transferRequest).Reference(tr => tr.BinFrom).LoadAsync();
             await _dbCtx.Entry(transferRequest).Reference(tr => tr.BinTo).LoadAsync();
             await _dbCtx.Entry(transferRequest).Collection(tr => tr.TransferRequestComponents).LoadAsync();
+            await _dbCtx.Entry(transferRequest).Reference(tr => tr.Customer).LoadAsync();
 
             return new ApiResult<TransferRequestResp>(new TransferRequestResp(transferRequest, true));
         }
