@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
@@ -39,7 +39,7 @@
             <div class="controls">
                 <div class="search">
                     <input id="q" placeholder="Tìm theo mã, kho, bin..." />
-                    <button class="btn ghost" onclick="load()">Search</button>
+                    <button class="btn ghost" onclick="searchFilter()">Search</button>
                 </div>
                 <button class="btn primary" onclick="goHome()">Back</button>
             </div>
@@ -62,6 +62,12 @@
                 </thead>
                 <tbody id="data"></tbody>
             </table>
+            <!-- Pagination Controls -->
+            <div id="paginationControls" style="display:flex; justify-content:space-between; align-items:center; margin-top:20px; padding-top:16px; border-top:1px solid #f1f5f9;">
+                <div id="pageInfo" class="meta" style="font-size:14px;">Hiển thị 0-0 trong số 0</div>
+                <div style="display:flex; gap:8px;" id="pageButtons">
+                </div>
+            </div>
         </div>
     </div>
 
@@ -125,12 +131,12 @@
             let result = await res.json();
 
             // 🔥 Transfer type = 3
-            const q = (document.getElementById('q')?.value || '').toString().toLowerCase();
             const listSummary = (result.data || []).filter(x => x.type === 3);
             const list = await Promise.all(listSummary.map(async t => {
                 try {
                     // fetch full transfer detail first so we have components for total calculation
-                    const dres = await fetch(BASE + "/storekeeper/transfers/" + (t.id ?? t.ID ?? t.request_id), { credentials: 'include' });
+                    const reqId = t.id ?? t.ID ?? t.request_id ?? t.requestId ?? t.RequestId;
+                    const dres = await fetch(BASE + "/storekeeper/transfers/" + reqId, { credentials: 'include' });
                     if (dres.ok) {
                         const djson = await dres.json();
                         if (djson?.success && djson.data) t = djson.data;
@@ -140,7 +146,7 @@
                     const binFromId = t.bin_from_id ?? t.binFromId ?? t.bin_from?.id ?? t.bin_from?.ID;
                     const binToId = t.bin_to_id ?? t.binToId ?? t.bin_to?.id ?? t.bin_to?.ID;
 
-                    if (binFromId && !(t.bin_from && (t.bin_from.location_in_warehouse || t.bin_from.locationInWarehouse || t.bin_from.binCode))) {
+                    if (binFromId && !(t.bin_from && (t.bin_from.location_in_warehouse || t.bin_from.locationInWarehouse || t.bin_from.binCode)) && !(t.binFrom && (t.binFrom.location_in_warehouse || t.binFrom.locationInWarehouse || t.binFrom.binCode))) {
                         try {
                             const bres = await fetch(BASE + "/storekeeper/bins/" + binFromId, { credentials: 'include' });
                             if (bres.ok) {
@@ -150,7 +156,7 @@
                         } catch (e) { console.error('binFrom fetch failed', e); }
                     }
 
-                    if (binToId && !(t.bin_to && (t.bin_to.location_in_warehouse || t.bin_to.locationInWarehouse || t.bin_to.binCode))) {
+                    if (binToId && !(t.bin_to && (t.bin_to.location_in_warehouse || t.bin_to.locationInWarehouse || t.bin_to.binCode)) && !(t.binTo && (t.binTo.location_in_warehouse || t.binTo.locationInWarehouse || t.binTo.binCode))) {
                         try {
                             const bres2 = await fetch(BASE + "/storekeeper/bins/" + binToId, { credentials: 'include' });
                             if (bres2.ok) {
@@ -163,9 +169,10 @@
                     // resolve warehouse names for display (from bin or from direct fields)
                     try {
                         // from
-                        let fromName = t.bin_from?.warehouse?.name ?? t.bin_from?.warehouse?.warehouseName ?? t.bin_from?.warehouse ?? t.bin_from?.warehouseName ?? null;
+                        const bFrom = t.bin_from ?? t.binFrom;
+                        let fromName = bFrom?.warehouse?.name ?? bFrom?.warehouse?.warehouseName ?? bFrom?.warehouse ?? bFrom?.warehouseName ?? null;
                         if (!fromName) {
-                            const fromId = t.bin_from_id ?? t.binFromId ?? t.bin_from?.id ?? t.bin_from?.ID;
+                            const fromId = t.bin_from_id ?? t.binFromId ?? bFrom?.id ?? bFrom?.ID;
                             if (fromId) {
                                 const bres = await fetch(BASE + "/storekeeper/bins/" + fromId, { credentials: 'include' });
                                 if (bres.ok) {
@@ -179,9 +186,10 @@
 
                     try {
                         // to
-                        let toName = t.bin_to?.warehouse?.name ?? t.bin_to?.warehouse?.warehouseName ?? t.bin_to?.warehouse ?? t.bin_to?.warehouseName ?? null;
+                        const bTo = t.bin_to ?? t.binTo;
+                        let toName = bTo?.warehouse?.name ?? bTo?.warehouse?.warehouseName ?? bTo?.warehouse ?? bTo?.warehouseName ?? null;
                         if (!toName) {
-                            const toId = t.bin_to_id ?? t.binToId ?? t.bin_to?.id ?? t.bin_to?.ID;
+                            const toId = t.bin_to_id ?? t.binToId ?? bTo?.id ?? bTo?.ID;
                             if (toId) {
                                 const bres2 = await fetch(BASE + "/storekeeper/bins/" + toId, { credentials: 'include' });
                                 if (bres2.ok) {
@@ -200,41 +208,151 @@
                 }
             }));
 
-            let html = "";
-
-            list.forEach(o => {
-
-                const comps = getComponents(o);
-                let totalItems = comps.reduce((s, c) => s + (c.quantity ?? c.Quantity ?? c.qty ?? c.QuantityDouble ?? 0), 0);
-
-                let statusText = getStatusText(o.status);
-                let statusClass = o.status === 3
-                    ? "status-complete"
-                    : "status-pending";
-
-                const rowText = ((o.description ?? '') + ' ' + (o._fromWarehouseName ?? '') + ' ' + (o.bin_from?.location_in_warehouse ?? '') + ' ' + (o._toWarehouseName ?? '') + ' ' + (o.bin_to?.location_in_warehouse ?? '')).toLowerCase();
-                if (q && !rowText.includes(q)) return;
-
-                html += `
-<tr>
-<td>${o.description}</td>
-<td>${formatDate(o.creation_date)}</td>
-
-                <td>${o._fromWarehouseName ?? (o.bin_from && ((o.bin_from.warehouse?.name) ?? (o.bin_from.warehouse?.warehouseName))) ?? '-'}</td>
-<td>${o.bin_from?.location_in_warehouse ?? o.bin_from?.locationInWarehouse ?? o.bin_from?.binCode ?? '-'}</td>
-
-                <td>${o._toWarehouseName ?? (o.bin_to && ((o.bin_to.warehouse?.name) ?? (o.bin_to.warehouse?.warehouseName))) ?? '-'}</td>
-<td>${o.bin_to?.location_in_warehouse ?? o.bin_to?.locationInWarehouse ?? o.bin_to?.binCode ?? '-'}</td>
-
-<td>${totalItems}</td>
-<td class="${statusClass}">${statusText}</td>
-<td>
-<button class="detail-btn" onclick="viewDetail(${o.id})">Detail</button>
-</td>
-</tr>`;
+            // Group transfers by description and creation time to support multiple bins frontend-only
+            const groups = [];
+            list.forEach(t => {
+                const desc = (t.description ?? '').toString();
+                const createdTs = Date.parse(t.creation_date ?? t.creationDate ?? t.creationTime ?? '');
+                const creator = (t.creator_id ?? t.CreatorId ?? t.creator ?? t.Creator ?? '').toString();
+                
+                let foundGroup = groups.find(g => 
+                    g.desc === desc && 
+                    g.creator === creator && 
+                    (!isNaN(createdTs) && !isNaN(g.ts) ? Math.abs(g.ts - createdTs) <= 60000 : true)
+                );
+                
+                if (foundGroup) {
+                    foundGroup.items.push(t);
+                } else {
+                    groups.push({ desc, creator, ts: createdTs, items: [t] });
+                }
             });
 
+            globalGroups = groups;
+            searchFilter();
+        }
+
+        let globalGroups = [];
+        let filteredGroups = [];
+        let currentPage = 1;
+        const pageSize = 10;
+
+        function searchFilter() {
+            const q = (document.getElementById('q')?.value || '').toString().toLowerCase();
+            filteredGroups = globalGroups.filter(g => {
+                const group = g.items;
+                const fromWarehouses = new Set();
+                const fromBins = new Set();
+                const toWarehouses = new Set();
+                const toBins = new Set();
+                group.forEach(o => {
+                    const bFrom = o.bin_from ?? o.binFrom;
+                    const bTo = o.bin_to ?? o.binTo;
+                    const fw = o._fromWarehouseName ?? (bFrom?.warehouse?.name ?? bFrom?.warehouse?.warehouseName ?? bFrom?.warehouse) ?? '-';
+                    const fb = bFrom?.location_in_warehouse ?? bFrom?.locationInWarehouse ?? bFrom?.binCode ?? '-';
+                    if (fw !== '-') fromWarehouses.add(fw);
+                    if (fb !== '-') fromBins.add(fb);
+
+                    const tw = o._toWarehouseName ?? (bTo?.warehouse?.name ?? bTo?.warehouse?.warehouseName ?? bTo?.warehouse) ?? '-';
+                    const tb = bTo?.location_in_warehouse ?? bTo?.locationInWarehouse ?? bTo?.binCode ?? '-';
+                    if (tw !== '-') toWarehouses.add(tw);
+                    if (tb !== '-') toBins.add(tb);
+                });
+                const rowText = ((group[0].description ?? '') + ' ' + Array.from(fromWarehouses).join(' ') + ' ' + Array.from(fromBins).join(' ') + ' ' + Array.from(toWarehouses).join(' ') + ' ' + Array.from(toBins).join(' ')).toLowerCase();
+                return rowText.includes(q);
+            });
+            renderPage(1);
+        }
+
+        function renderPage(page) {
+            currentPage = page;
+            const start = (page - 1) * pageSize;
+            const end = start + pageSize;
+            const paginated = filteredGroups.slice(start, end);
+
+            let html = "";
+            if (paginated.length === 0) {
+                html = `<tr><td colspan="9" style="text-align:center; padding:24px; color:#64748b">Không có dữ liệu</td></tr>`;
+            } else {
+                paginated.forEach(groupObj => {
+                    const group = groupObj.items;
+                    const reqId = group[0].request_id ?? group[0].RequestId ?? group[0].requestId ?? group[0].id ?? group[0].ID;
+                    
+                    const fromWarehouses = new Set();
+                    const fromBins = new Set();
+                    const toWarehouses = new Set();
+                    const toBins = new Set();
+                    let totalItems = 0;
+                    const statuses = new Set();
+                    
+                    group.forEach(o => {
+                        const bFrom = o.bin_from ?? o.binFrom;
+                        const bTo = o.bin_to ?? o.binTo;
+                        const fw = o._fromWarehouseName ?? (bFrom?.warehouse?.name ?? bFrom?.warehouse?.warehouseName ?? bFrom?.warehouse) ?? '-';
+                        const fb = bFrom?.location_in_warehouse ?? bFrom?.locationInWarehouse ?? bFrom?.binCode ?? '-';
+                        if (fw !== '-') fromWarehouses.add(fw);
+                        if (fb !== '-') fromBins.add(fb);
+
+                        const tw = o._toWarehouseName ?? (bTo?.warehouse?.name ?? bTo?.warehouse?.warehouseName ?? bTo?.warehouse) ?? '-';
+                        const tb = bTo?.location_in_warehouse ?? bTo?.locationInWarehouse ?? bTo?.binCode ?? '-';
+                        if (tw !== '-') toWarehouses.add(tw);
+                        if (tb !== '-') toBins.add(tb);
+
+                        const comps = getComponents(o);
+                        totalItems += comps.reduce((s, c) => s + (c.quantity ?? c.Quantity ?? c.qty ?? c.QuantityDouble ?? 0), 0);
+                        statuses.add(o.status ?? o.Status ?? 0);
+                    });
+
+                    let statusText = statuses.size === 1 ? getStatusText(Array.from(statuses)[0]) : 'Multiple';
+                    let statusClass = "status-pending";
+                    if (statusText === "Unknown" || statusText === "Rejected") statusClass = "status-complete";
+                    if (statusText.toLowerCase().includes('confirm') || statusText.toLowerCase().includes('complete') || Array.from(statuses).includes(4)) statusClass = "status-complete";
+
+                    html += `<tr>
+                        <td>${group[0].description}</td>
+                        <td>${formatDate(group[0].creation_date ?? group[0].creationDate)}</td>
+                        <td>${Array.from(fromWarehouses).join(', ') || '-'}</td>
+                        <td>${Array.from(fromBins).join(', ') || '-'}</td>
+                        <td>${Array.from(toWarehouses).join(', ') || '-'}</td>
+                        <td>${Array.from(toBins).join(', ') || '-'}</td>
+                        <td>${totalItems}</td>
+                        <td class="${statusClass}">${statusText}</td>
+                        <td><button class="detail-btn action-btn" onclick="viewDetail(${reqId})">Detail</button></td>
+                    </tr>`;
+                });
+            }
+
             document.getElementById("data").innerHTML = html;
+
+            // Update stats
+            const totalItems = filteredGroups.length;
+            const s = totalItems === 0 ? 0 : start + 1;
+            const e = Math.min(start + pageSize, totalItems);
+            document.getElementById('pageInfo').innerText = `Hiển thị ${s}-${e} trong số ${totalItems}`;
+
+            // Render buttons
+            const totalPages = Math.ceil(totalItems / pageSize) || 1;
+            let btnHtml = "";
+            
+            // Prev button
+            btnHtml += `<button class="btn ghost" onclick="renderPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled style="opacity:0.5"' : ''}>&laquo; Trước</button>`;
+            
+            // Page numbers
+            for (let i = 1; i <= totalPages; i++) {
+                if (totalPages > 7) {
+                    if (i !== 1 && i !== totalPages && Math.abs(i - currentPage) > 1) {
+                        if (i === 2 || i === totalPages - 1) btnHtml += `<span style="padding:4px 8px">...</span>`;
+                        continue;
+                    }
+                }
+                const activeStyle = i === currentPage ? 'background:#e2e8f0;font-weight:bold;' : '';
+                btnHtml += `<button class="btn ghost" style="${activeStyle}" onclick="renderPage(${i})">${i}</button>`;
+            }
+
+            // Next button
+            btnHtml += `<button class="btn ghost" onclick="renderPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled style="opacity:0.5"' : ''}>Sau &raquo;</button>`;
+            
+            document.getElementById('pageButtons').innerHTML = btnHtml;
         }
 
         async function viewDetail(id) {
