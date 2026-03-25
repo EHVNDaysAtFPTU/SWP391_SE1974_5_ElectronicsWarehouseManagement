@@ -1,4 +1,3 @@
-using ElectronicsWarehouseManagement.WebAPI.Filters;
 using ElectronicsWarehouseManagement.Repositories.Entities;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Identity;
@@ -20,16 +19,11 @@ namespace ElectronicsWarehouseManagement.WebAPI
             string? connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
             builder.Services.AddDbContext<EWMDbCtx>(options => options.UseSqlServer(connectionString));
 
-            builder.Services.AddScoped<MaintenanceFilter>();
-
-            builder.Services.AddControllers(options =>
-            {
-                options.Filters.Add<MaintenanceFilter>();
-            })
-            .AddJsonOptions(options =>
-            {
-                options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
-            });
+            builder.Services.AddControllers()
+                .AddJsonOptions(options =>
+                {
+                    options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+                });
 
             builder.Services.AddDistributedMemoryCache();
             builder.Services.AddSession(options =>
@@ -61,7 +55,7 @@ namespace ElectronicsWarehouseManagement.WebAPI
                             context.Response.ContentType = "application/json; charset=utf-8";
                             ApiResult payload = new ApiResult(ApiResultCode.Unauthorized);
                             //if (!string.IsNullOrWhiteSpace(context.HttpContext.Session.GetString("User")))
-                                //payload = new ApiResult(ApiResultCode.SessionExpired);
+                            //payload = new ApiResult(ApiResultCode.SessionExpired);
                             await context.Response.WriteAsync(JsonSerializer.Serialize(payload));
                         }
                     };
@@ -71,7 +65,7 @@ namespace ElectronicsWarehouseManagement.WebAPI
 
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
-            
+
             builder.Services.AddDIService();
 
             builder.Services.AddRateLimiter(options =>
@@ -195,10 +189,9 @@ namespace ElectronicsWarehouseManagement.WebAPI
             //        ctx.Context.Response.StatusCode = StatusCodes.Status404NotFound;
             //        ctx.Context.Response.ContentLength = 0;
             //        ctx.Context.Response.Body = Stream.Null;
-            //    }using ElectronicsWarehouseManagement.WebAPI.Filters;
+            //    }
             //});
 
-            app.UseStaticFiles(); 
             app.MapControllers();
             app.Run();
         }
