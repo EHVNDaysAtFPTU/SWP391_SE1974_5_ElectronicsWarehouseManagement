@@ -1,5 +1,5 @@
 /**
- * Bin Inventory Javascript (Improved - giống Component UI)
+ * Bin Inventory Javascript
  */
 
 let currentPage = 1;
@@ -8,11 +8,17 @@ let totalPages = 1;
 let search = "";
 let sortBy = "";
 let sortDirection = "asc";
+let createBinModal;
+
 
 document.addEventListener("DOMContentLoaded", function () {
     loadBins(1);
+    const modalEl = document.getElementById("createBinModal");
+    if (modalEl) {
+        createBinModal = new bootstrap.Modal(modalEl);
+    }
 
-    // Page size nếu có select
+
     const pageSizeSelect = document.getElementById("pageSize");
     if (pageSizeSelect) {
         pageSizeSelect.addEventListener("change", function () {
@@ -154,14 +160,99 @@ function renderBinPagination(pages) {
 
 function getStatusBadge(status) {
     switch (status) {
-        case 0:
-            return '<span class="badge bg-secondary">Empty</span>';
         case 1:
-            return '<span class="badge bg-success">In Use</span>';
+            return '<span class="badge bg-secondary">Empty</span>';
         case 2:
-            return '<span class="badge bg-danger">Disabled</span>';
+            return '<span class="badge bg-success">Available</span>';
+        case 3:
+            return '<span class="badge bg-danger">Locked</span>';
         default:
             return '<span class="badge bg-light text-dark">Unknown</span>';
+    }
+}
+async function openCreateBinModal() {
+    if (!createBinModal) {
+        alert("Modal not ready");
+        return;
+    }
+
+    document.getElementById("binLocation").value = "";
+
+    await loadWarehouseOptions();
+
+    createBinModal.show();
+}
+async function loadWarehouseOptions() {
+    const select = document.getElementById("warehouseSelect");
+    select.innerHTML = `<option>Loading...</option>`;
+
+    try {
+        const result = await apiFetch("/api/manager/get-warehouses?pageNumber=1&pageSize=1000");
+
+        if (!result.success) {
+            select.innerHTML = `<option>Error loading</option>`;
+            return;
+        }
+
+        const warehouses = result.data.data;
+
+        if (!warehouses || warehouses.length === 0) {
+            select.innerHTML = `<option>No warehouses found</option>`;
+            return;
+        }
+
+        select.innerHTML = `<option value="">-- Select Warehouse --</option>`;
+
+        warehouses.forEach(w => {
+            const option = document.createElement("option");
+            option.value = w.id;
+            option.textContent = `${w.name} (${w.physical_location || "N/A"})`;
+            select.appendChild(option);
+        });
+
+    } catch (err) {
+        select.innerHTML = `<option>Error</option>`;
+    }
+}
+async function createBin() {
+    const location = document.getElementById("binLocation").value.trim();
+    const warehouseId = document.getElementById("warehouseSelect").value;
+
+    if (!location) {
+        alert("Location is required");
+        return;
+    }
+
+    if (!warehouseId || warehouseId === "") {
+        alert("Please select a warehouse");
+        return;
+    }
+
+    const request = {
+        warehouse_id: parseInt(warehouseId),            
+        location_in_warehouse: location                
+    };
+
+    try {
+        const result = await apiFetch("/api/manager/bins/create", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(request)
+        });
+
+        if (!result.success) {
+            alert(result.msg || "Create bin failed");
+            return;
+        }
+
+        alert("Create bin successfully!");
+        createBinModal.hide();
+        loadBins(currentPage);
+
+    } catch (error) {
+        alert("Error: " + error.message);
     }
 }
 

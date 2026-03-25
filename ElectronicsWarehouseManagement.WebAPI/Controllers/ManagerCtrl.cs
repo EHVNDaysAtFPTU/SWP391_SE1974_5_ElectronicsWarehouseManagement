@@ -222,5 +222,14 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
                 return Ok(result);
             return BadRequest(result);
         }
+        [HttpPost("upload-image")]
+        [RequestFormLimits(MultipartBodyLengthLimit = 1024 * 1024 * 10)]
+        public async Task<IActionResult> UploadImage(IFormFile image)
+        {
+            var result = await _managerService.UploadImageAsync(image);
+            if (result.Success)
+                return Ok(result);
+            return BadRequest(result);
+        }
     }
 }
