@@ -2,7 +2,6 @@
 using ElectronicsWarehouseManagement.WebAPI.DTO;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using System.Text.Json;
 
 namespace ElectronicsWarehouseManagement.WebAPI.Services
 {
@@ -17,9 +16,6 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
         Task<ApiResult<List<UserResp>>> SearchUsersAsync(string query);
         Task<ApiResult> SetStatusAsync(int userId, SetStatusReq setStatusReq);
         Task<ApiResult<int>> GetUserCountAsync();
-        Task<ApiResult<SystemConfigDto>> GetSystemConfigAsync();
-        Task<ApiResult> SaveSystemConfigAsync(SystemConfigDto config);
-        Task<ApiResult> ResetSystemConfigAsync();
     }
 
     public class AdminService : IAdminService
@@ -149,85 +145,10 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
 
         public async Task<ApiResult<int>> GetUserCountAsync()
         {
-#pragma warning disable CS0618 
+#pragma warning disable CS0618 // Type or member is obsolete
             int count = await _dbCtx.Users.CountAsync(u => u.StatusInt != (int)UserStatus.Deleted);
-#pragma warning restore CS0618 
+#pragma warning restore CS0618 // Type or member is obsolete
             return new ApiResult<int>(count);
         }
-
-        private readonly string ConfigPath = "systemconfig.json";
-
-        public async Task<ApiResult<SystemConfigDto>> GetSystemConfigAsync()
-        {
-            try
-            {
-                if (!File.Exists(ConfigPath))
-                {
-                    var defaultConfig = new SystemConfigDto();
-                    var json = JsonSerializer.Serialize(defaultConfig, new JsonSerializerOptions { WriteIndented = true });
-                    await File.WriteAllTextAsync(ConfigPath, json);
-                    return new ApiResult<SystemConfigDto>(defaultConfig);
-                }
-
-                var content = await File.ReadAllTextAsync(ConfigPath);
-                var cfg = JsonSerializer.Deserialize<SystemConfigDto>(content)!;
-
-                if (cfg.ScheduledEnd != null && cfg.ScheduledEnd <= DateTime.UtcNow)
-                {
-                    cfg.MaintenanceMode = false;
-                    cfg.ScheduledEnd = null;
-                    var json = JsonSerializer.Serialize(cfg, new JsonSerializerOptions { WriteIndented = true });
-                    await File.WriteAllTextAsync(ConfigPath, json);
-                }
-
-                return new ApiResult<SystemConfigDto>(cfg);
-            }
-            catch (Exception ex)
-            {
-                return new ApiResult<SystemConfigDto>(ApiResultCode.ServerError, ex.Message);
-            }
-        }
-
-        public async Task<ApiResult> SaveSystemConfigAsync(SystemConfigDto cfg)
-        {
-            try
-            {
-                // Nếu bật Maintenance mà không có ScheduledEnd -> báo lỗi
-                if (cfg.MaintenanceMode && cfg.ScheduledEnd == null)
-                {
-                    return new ApiResult(ApiResultCode.InvalidRequest, "ScheduledEnd must be set when enabling MaintenanceMode.");
-                }
-
-                // Nếu ScheduledEnd < now -> cũng invalid
-                if (cfg.ScheduledEnd != null && cfg.ScheduledEnd <= DateTime.UtcNow)
-                {
-                    return new ApiResult(ApiResultCode.InvalidRequest, "ScheduledEnd must be in the future.");
-                }
-
-                var json = JsonSerializer.Serialize(cfg, new JsonSerializerOptions { WriteIndented = true });
-                await File.WriteAllTextAsync(ConfigPath, json);
-                return new ApiResult();
-            }
-            catch (Exception ex)
-            {
-                return new ApiResult(ApiResultCode.ServerError, ex.Message);
-            }
-        }
-
-        public async Task<ApiResult> ResetSystemConfigAsync()
-        {
-            try
-            {
-                var defaultConfig = new SystemConfigDto();
-                var json = JsonSerializer.Serialize(defaultConfig, new JsonSerializerOptions { WriteIndented = true });
-                await File.WriteAllTextAsync(ConfigPath, json);
-                return new ApiResult();
-            }
-            catch (Exception ex)
-            {
-                return new ApiResult(ApiResultCode.ServerError, ex.Message);
-            }
-        }
-
     }
 }
