@@ -23,22 +23,16 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
         Task<ApiResult<PagedResult<CustomerResp>>> GetCustomerListAsync(PagingRequest request);
         // Crud 
         Task<ApiResult> PostTransferDecisionAsync(int transferId, TransferDecisionType decision, int? approverId);
-        Task<ApiResult<ComponentResp>> CreateComponent(CreateComponentReq request);
-        Task<ApiResult<ComponentResp>> UpdateComponent();
-        Task<ApiResult<BinResp>> CreateBin();
-        Task<ApiResult<BinResp>> UpdateBin();
-        Task<ApiResult<WarehouseResp>> CreateWareHouse();
-        Task<ApiResult<WarehouseResp>> UpdateWareHouse();
         Task<ApiResult> CreateCustomerAsync(CustomerReq customerReq);
         Task<ApiResult<CustomerResp>> UpdateCustomerAsync(int customerId, CustomerReq customerReq);
+        Task<ApiResult<BinResp>> CreateBinAsync(CreateBinReq request);
+        Task<ApiResult<WarehouseResp>> CreateWarehouseAsync(CreateWarehouseReq request);
 
         // Dashboard
         Task<ApiResult<DashboardSummaryResp>> GetSummaryAsync();
         Task<ApiResult<DashboardChartResp>> GetChartDataAsync(int days);
-        //Task<byte[]> ExportStatisticsPdfAsync(int days);
 
-        Task<ApiResult<BinResp>> CreateBinAsync(CreateBinReq request);
-        Task<ApiResult<WarehouseResp>> CreateWarehouseAsync(CreateWarehouseReq request);
+        Task<ApiResult<string>> UploadImageAsync(IFormFile image);
 
     }
 
@@ -482,39 +476,6 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
                 });
         }
 
-
-
-
-        public Task<ApiResult<ComponentResp>> CreateComponent(CreateComponentReq request)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task<ApiResult<ComponentResp>> UpdateComponent()
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task<ApiResult<BinResp>> CreateBin()
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task<ApiResult<BinResp>> UpdateBin()
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task<ApiResult<WarehouseResp>> CreateWareHouse()
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task<ApiResult<WarehouseResp>> UpdateWareHouse()
-        {
-            throw new NotImplementedException();
-        }
-
         public async Task<ApiResult> CreateCustomerAsync(CustomerReq customerReq)
         {
             if (!customerReq.Verify(out string failedreason))
@@ -655,6 +616,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             return new ApiResult<WarehouseResp>(new WarehouseResp(warehouse, true));
         }
 
+
         public async Task<ApiResult<BinResp>> CreateBinAsync(CreateBinReq request)
         {
             if (!request.Verify(out string failedReason))
@@ -674,6 +636,21 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             await _dbCtx.Entry(bin).Collection(b => b.ComponentBins).LoadAsync();
 
             return new ApiResult<BinResp>(new BinResp(bin, true));
+        }
+        public async Task<ApiResult<string>> UploadImageAsync(IFormFile image)
+        {
+            if (image is null || image.Length == 0)
+                return new ApiResult<string>(ApiResultCode.InvalidRequest);
+            var ext = Path.GetExtension(image.FileName).ToLower();
+            if (ext != ".jpg" && ext != ".jpeg" && ext != ".png" && ext != ".bmp" && ext != ".gif" && ext != ".webp")
+                return new ApiResult<string>(ApiResultCode.InvalidRequest, $"Image format '{ext}' is not supported.");
+            string filePath = Path.Combine("uploads", "img");
+            if (!Directory.Exists(filePath))
+                Directory.CreateDirectory(filePath);
+            filePath = Path.Combine(filePath, $"{Guid.NewGuid()}{ext}");
+            using (var stream = new FileStream(filePath, FileMode.Create))
+                await image.CopyToAsync(stream);
+            return new ApiResult<string>(filePath.Replace('\\', '/'));
         }
     }
 }

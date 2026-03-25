@@ -31,7 +31,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
         Task<ApiResult<TransferRequestResp>> GetTransferRequestAsync(int requestId, int creatorId);
         Task<ApiResult<TransferRequestResp>> CreateTransferRequestAsync(CreateTransferRequestReq request, TransferType type, int creatorId);
         Task<ApiResult<TransferRequestResp>> ConfirmTransferRequestAsync(ConfirmTransferRequestReq request, int approverId);
-   
+
         Task<ApiResult<List<ComponentResp>>> GetComponentsInWarehouseAsync(int warehouseId);
 
         Task<ApiResult<int>> GetWarehouseCountAsync();
@@ -293,6 +293,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             await _dbCtx.SaveChangesAsync();
 
             await _dbCtx.Entry(transferRequest).Reference(tr => tr.Creator).LoadAsync();
+            await _dbCtx.Entry(transferRequest).Reference(tr => tr.Customer).LoadAsync();
             await _dbCtx.Entry(transferRequest).Reference(tr => tr.BinFrom).LoadAsync();
             await _dbCtx.Entry(transferRequest).Reference(tr => tr.BinTo).LoadAsync();
             await _dbCtx.Entry(transferRequest).Collection(tr => tr.TransferRequestComponents).LoadAsync();
@@ -364,14 +365,20 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
                 }
             }
 
+            bool missing = false;
             foreach (ConfirmTransferRequestComponentReq confirmComponent in confirmComponentsAddToBin.Concat(confirmComponentsTakeFromBin))
             {
                 var originalComponent = originalComponentsInTransferRequest.First(c => c.ComponentId == confirmComponent.ComponentId);
-                if (confirmComponent.Quantity != originalComponent.Quantity)
-                    return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Confirmed quantity for component with ID '{confirmComponent.ComponentId}' does not match the original transfer request.");
+                if (confirmComponent.Quantity > originalComponent.Quantity)
+                    return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Confirmed quantity for component with ID '{confirmComponent.ComponentId}' exceeds quantity in the original transfer request.");
+                else if (confirmComponent.Quantity < originalComponent.Quantity)
+                    missing = true;
             }
 
-            transferRequest.Status = TransferStatus.Confirmed;
+            if (missing)
+                transferRequest.Status = TransferStatus.MissingComponents;
+            else
+                transferRequest.Status = TransferStatus.Confirmed;
             transferRequest.ExecutionTime = DateTime.UtcNow;
 
             // add/remove/update components in bins
