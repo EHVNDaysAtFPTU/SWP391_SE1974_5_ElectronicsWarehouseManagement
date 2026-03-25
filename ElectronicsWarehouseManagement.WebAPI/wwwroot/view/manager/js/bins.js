@@ -160,12 +160,12 @@ function renderBinPagination(pages) {
 
 function getStatusBadge(status) {
     switch (status) {
-        case 0:
-            return '<span class="badge bg-secondary">Empty</span>';
         case 1:
-            return '<span class="badge bg-success">In Use</span>';
+            return '<span class="badge bg-secondary">Empty</span>';
         case 2:
-            return '<span class="badge bg-danger">Disabled</span>';
+            return '<span class="badge bg-success">Available</span>';
+        case 3:
+            return '<span class="badge bg-danger">Locked</span>';
         default:
             return '<span class="badge bg-light text-dark">Unknown</span>';
     }

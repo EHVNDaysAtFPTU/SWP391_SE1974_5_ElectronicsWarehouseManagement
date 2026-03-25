@@ -127,10 +127,14 @@ function renderBins(bins) {
 
 function getBinStatusBadge(status) {
     switch (status) {
-        case 0: return '<span class="badge bg-secondary rounded-pill px-3">Empty</span>';
-        case 1: return '<span class="badge bg-success rounded-pill px-3">In Use</span>';
-        case 2: return '<span class="badge bg-danger rounded-pill px-3">Disabled</span>';
-        default: return `<span class="badge bg-light text-dark rounded-pill px-3">Status ${status}</span>`;
+        case 1:
+            return '<span class="badge bg-secondary">Empty</span>';
+        case 2:
+            return '<span class="badge bg-success">Available</span>';
+        case 3:
+            return '<span class="badge bg-danger">Locked</span>';
+        default:
+            return '<span class="badge bg-light text-dark">Unknown</span>';
     }
 }
 
