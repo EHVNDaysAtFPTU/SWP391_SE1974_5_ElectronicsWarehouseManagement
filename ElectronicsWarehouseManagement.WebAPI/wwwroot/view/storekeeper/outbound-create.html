@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
@@ -230,7 +230,12 @@
             if (!tr) return;
             const compId = tr.cells[1].dataset.id;
             const chosen = selectEl.value;
-            const avail = (binAvailabilityByBin[chosen] && binAvailabilityByBin[chosen][compId]) ? binAvailabilityByBin[chosen][compId] : 0;
+            let avail = 0;
+            if (chosen) {
+                avail = (binAvailabilityByBin[chosen] && binAvailabilityByBin[chosen][compId]) ? binAvailabilityByBin[chosen][compId] : 0;
+            } else {
+                avail = aggregatedAvailability[compId] || 0;
+            }
             tr.dataset.available = avail;
             const inp = tr.querySelector('input[type=number]');
             if (inp) {
@@ -335,10 +340,44 @@ function getSelectedBins() {
                 // after loading, re-render product list (if modal open) so availability shows new totals
                 try{ if(document.getElementById('modal').style.display === 'flex') renderList(); }catch(e){}
                 // also update any existing rows' available values based on their selected per-row bin
+                const selectedBins = getSelectedBins();
                 document.querySelectorAll('#tableBody tr').forEach(r => {
                     const compId = r.cells[1].dataset.id;
-                    const selEl = r.querySelector('select[data-row-bin]');
-                    if(selEl){
+                    let selEl = r.querySelector('select[data-row-bin]');
+                    
+                    if (selectedBins.length > 1) {
+                        const filtered = selectedBins.filter(b => (binAvailabilityByBin[b.id] && binAvailabilityByBin[b.id][compId]) > 0);
+                        if (filtered.length > 1) {
+                            if (!selEl) {
+                                selEl = document.createElement('select');
+                                selEl.setAttribute('data-row-bin', 'true');
+                                selEl.style.width = '100%';
+                                selEl.onchange = function() { onRowBinChange(this); };
+                                r.cells[3].innerHTML = ''; // clear existing text
+                                r.cells[3].appendChild(selEl);
+                            }
+                            const oldVal = selEl.value;
+                            selEl.innerHTML = '<option value="">-- Tự động tối ưu --</option>';
+                            filtered.forEach(b => {
+                                const opt = document.createElement('option');
+                                opt.value = b.id;
+                                opt.innerText = b.label;
+                                selEl.appendChild(opt);
+                            });
+                            if (oldVal && filtered.some(b => b.id == oldVal)) selEl.value = oldVal;
+                            else selEl.value = '';
+                        } else if (selEl) {
+                            selEl.remove();
+                            selEl = null;
+                            r.cells[3].innerHTML = '';
+                        }
+                    } else if (selEl) {
+                        selEl.remove();
+                        selEl = null;
+                        r.cells[3].innerHTML = '';
+                    }
+
+                    if (selEl) {
                         const chosen = selEl.value;
                         const avail = (binAvailabilityByBin[chosen] && binAvailabilityByBin[chosen][compId]) ? binAvailabilityByBin[chosen][compId] : 0;
                         r.dataset.available = avail;
@@ -465,24 +504,21 @@ onclick="addItemAsync(${id},'${name}','${unit}', ${totalAvail})">
             // if multiple bins selected, include a per-row select to choose which bin to take from
             let binCellHtml = '';
             let initialAvail = avail;
-            if (selectedBins && selectedBins.length > 1) {
-                // filter selected bins to those that actually contain this component
-                const filtered = selectedBins.filter(b => {
-                    const q = (binAvailabilityByBin[b.id] && binAvailabilityByBin[b.id][id]) ? binAvailabilityByBin[b.id][id] : 0;
-                    return q > 0;
-                });
-                if (filtered.length === 0) {
-                    alert('Sản phẩm "' + name + '" không có trong các bin đã chọn. Vui lòng chọn bin khác.');
-                    return;
+            if(selectedBins && selectedBins.length > 1){
+                const filtered = selectedBins.filter(b => (binAvailabilityByBin[b.id] && binAvailabilityByBin[b.id][id]) > 0);
+                if(filtered.length === 0){
+                    return alert('Sản phẩm "'+name+'" không có trong các bin đã chọn.');
                 }
-                binCellHtml = '<select data-row-bin onchange="onRowBinChange(this)">';
-                for (const b of filtered) binCellHtml += `<option value="${b.id}">${b.label}</option>`;
-                binCellHtml += '</select>';
-                // set initial availability to the first filtered bin
-                const firstBinId = filtered[0].id;
-                initialAvail = (binAvailabilityByBin[firstBinId] && binAvailabilityByBin[firstBinId][id]) ? binAvailabilityByBin[firstBinId][id] : avail;
+                if (filtered.length > 1) {
+                    binCellHtml = '<select data-row-bin style="width:100%" onchange="onRowBinChange(this)"><option value="">-- Tự động tối ưu --</option>';
+                    filtered.forEach(b => { binCellHtml += `<option value="${b.id}">${b.label}</option>`; });
+                    binCellHtml += '</select>';
+                    initialAvail = available;
+                } else {
+                    const firstBinId = filtered[0].id;
+                    initialAvail = (binAvailabilityByBin[firstBinId] && binAvailabilityByBin[firstBinId][id]) ? binAvailabilityByBin[firstBinId][id] : available;
+                }
             }
-
             const row = `
 <tr id="${rowId}" data-available="${initialAvail}">
 <td style="text-align:center">${count}</td>
@@ -554,32 +590,76 @@ onclick="addItemAsync(${id},'${name}','${unit}', ${totalAvail})">
             const rows = document.querySelectorAll("#tableBody tr");
             if (rows.length === 0) return alert("Chưa có sản phẩm");
 
-            // Build grouped payloads per source bin. If user used multiple source bins in rows,
-            // create one transfer request per bin (server accepts single bin_from_id per request).
+            // Build grouped payloads per source bin, auto-distributing if quantity exceeds single bin
             const payloadByBin = {}; // binId -> { desc, bin_from_id, bin_to_id, components: [] }
+            const selectedFrom = getSelectedBins().map(b => b.id);
+            let binTracker = 0;
 
-            rows.forEach(r => {
+            for (const r of rows) {
                 const compId = parseInt(r.cells[1].dataset.id);
-                const qty = parseInt(r.querySelector('input[type=number]').value);
-                const perRowBinSel = r.querySelector('select[data-row-bin]');
-                const chosenBin = perRowBinSel ? perRowBinSel.value : (getSelectedBins()[0]?.id);
+                let qtyRemaining = parseInt(r.querySelector('input[type=number]').value);
+                
                 const avail = parseFloat(r.dataset.available) || Infinity;
-                if (qty > avail) {
-                    return alert('Số lượng yêu cầu (' + qty + ") vượt quá tồn kho trong BIN cho sản phẩm ID " + compId + ". Có: " + avail);
+                if (qtyRemaining > avail) {
+                    alert('Số lượng yêu cầu (' + qtyRemaining + ") vượt quá tổng tồn kho cho sản phẩm ID " + compId + ". Có: " + avail);
+                    return;
                 }
-                // also validate against component total quantity (server-side uses component.TotalQuantity)
-                try{
-                    const compObj = components.find(c => (c.componentId ?? c.id) == compId) || {};
-                    const total = parseFloat(compObj.quantity ?? compObj.TotalQuantity ?? compObj.totalQuantity ?? Infinity);
-                    if (qty > total) {
-                        return alert('Số lượng yêu cầu (' + qty + ") vượt quá tổng tồn kho cho sản phẩm ID " + compId + ". Tổng: " + total);
-                    }
-                }catch(e){ /* ignore */ }
 
-                if(!chosenBin) return alert('Chưa chọn bin nguồn cho một hoặc nhiều sản phẩm.');
-                if(!payloadByBin[chosenBin]) payloadByBin[chosenBin] = { desc: document.getElementById("desc").value, bin_from_id: parseInt(chosenBin), bin_to_id: null, components: [] };
-                payloadByBin[chosenBin].components.push({ component_id: compId, quantity: qty });
-            });
+                const perRowBinSel = r.querySelector('select[data-row-bin]');
+                
+                if (perRowBinSel && perRowBinSel.value) {
+                    const cb = perRowBinSel.value;
+                    const stockInCb = (binAvailabilityByBin[cb] && binAvailabilityByBin[cb][compId]) ? binAvailabilityByBin[cb][compId] : 0;
+                    const take = Math.min(qtyRemaining, stockInCb);
+                    if (take > 0) {
+                        if(!payloadByBin[cb]) payloadByBin[cb] = { desc: document.getElementById("desc").value, bin_from_id: parseInt(cb), bin_to_id: null, components: [] };
+                        payloadByBin[cb].components.push({ component_id: compId, quantity: take });
+                        qtyRemaining -= take;
+                    }
+                }
+
+                let startIdx = binTracker % selectedFrom.length;
+                let sfCount = selectedFrom.length;
+
+                for (let i = 0; i < sfCount; i++) {
+                    if (qtyRemaining <= 0) break;
+                    const sf = selectedFrom[(startIdx + i) % sfCount];
+                    
+                    const stock = (binAvailabilityByBin[sf] && binAvailabilityByBin[sf][compId]) ? binAvailabilityByBin[sf][compId] : 0;
+                    if (stock > 0) {
+                        let alreadyTaken = 0;
+                        if (payloadByBin[sf]) {
+                            const existingComp = payloadByBin[sf].components.find(c => c.component_id === compId);
+                            if (existingComp) alreadyTaken = existingComp.quantity;
+                        }
+                        const actualAvail = stock - alreadyTaken;
+                        if (actualAvail > 0) {
+                            const take = Math.min(qtyRemaining, actualAvail);
+                            if(!payloadByBin[sf]) payloadByBin[sf] = { desc: document.getElementById("desc").value, bin_from_id: parseInt(sf), bin_to_id: null, components: [] };
+                            
+                            const existingComp = payloadByBin[sf].components.find(c => c.component_id === compId);
+                            if (existingComp) existingComp.quantity += take;
+                            else payloadByBin[sf].components.push({ component_id: compId, quantity: take });
+                            
+                            qtyRemaining -= take;
+                        }
+                    }
+                }
+                
+                binTracker++;
+
+                if (qtyRemaining > 0) {
+                    const fallbackBin = selectedFrom[0];
+                    if(!fallbackBin) {
+                        alert('Chưa chọn bin nguồn cho sản phẩm.');
+                        return;
+                    }
+                    if(!payloadByBin[fallbackBin]) payloadByBin[fallbackBin] = { desc: document.getElementById("desc").value, bin_from_id: parseInt(fallbackBin), bin_to_id: null, components: [] };
+                    const existingComp = payloadByBin[fallbackBin].components.find(c => c.component_id === compId);
+                    if (existingComp) existingComp.quantity += qtyRemaining;
+                    else payloadByBin[fallbackBin].components.push({ component_id: compId, quantity: qtyRemaining });
+                }
+            }
 
             // attach customer/recipient info and warehouse id
             try{
@@ -650,50 +730,7 @@ onclick="addItemAsync(${id},'${name}','${unit}', ${totalAvail})">
         setCreatorAndDate();
 
     </script>
-    <script>
-        async function submitOutbound(){
-            const rows = document.querySelectorAll('#tableBody tr');
-            if(rows.length === 0) return alert('Chưa có sản phẩm');
 
-            // require customer selected
-            try{
-                const selReq = document.getElementById('customerSelect');
-                if (!selReq || !selReq.value) {
-                    return alert('Vui lòng chọn customer trước khi tạo phiếu (bắt buộc).');
-                }
-            }catch(e){ /* ignore */ }
-
-            // build payload similar to inbound
-            const componentList = [];
-            document.querySelectorAll('#tableBody tr').forEach(r => {
-                const compId = r.cells[1].dataset.id;
-                const qty = parseFloat(r.querySelector('input[type=number]')?.value) || 0;
-                componentList.push({ component_id: parseInt(compId), quantity: qty });
-            });
-
-            const payload = {
-                desc: document.getElementById('desc')?.value || '',
-                warehouse_from_id: parseInt(document.getElementById('warehouse')?.value) || null,
-                bin_from_id: null,
-                components: componentList
-            };
-
-            try{
-                const sel = document.getElementById('customerSelect');
-                const opt = sel.options[sel.selectedIndex];
-                if(opt && opt.value){ payload.customer_id = parseInt(opt.value); }
-            }catch(e){}
-
-            // send
-            const res = await fetch(BASE + '/transfers/outbound/create', {
-                method: 'POST', headers: { 'Content-Type':'application/json' }, credentials: 'include', body: JSON.stringify(payload)
-            });
-            if(!res.ok){ alert('Tạo thất bại'); return; }
-            const j = await res.json(); if(!j.success) return alert('Tạo thất bại: ' + (j.msg || ''));
-            alert('Tạo phiếu xuất thành công'); location.reload();
-        }
-    </script>
-    <!-- removed duplicate/simple submitOutbound; use grouped submitOutbound above which handles multi-bin payloads -->
 
     <script>
         // Non-intrusive: set createdBy (prefer username cookie) and createdAt

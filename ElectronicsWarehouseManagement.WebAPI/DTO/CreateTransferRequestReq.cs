@@ -1,4 +1,4 @@
-﻿using ElectronicsWarehouseManagement.Repositories.Entities;
+using ElectronicsWarehouseManagement.Repositories.Entities;
 using System.Text.Json.Serialization;
 
 namespace ElectronicsWarehouseManagement.WebAPI.DTO
@@ -18,6 +18,14 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         [JsonPropertyName("warehouse_to_id")]
         public int? WarehouseToId { get; set; }
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        [JsonPropertyName("bin_from_id")]
+        public int? BinFromId { get; set; }
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        [JsonPropertyName("bin_to_id")]
+        public int? BinToId { get; set; }
 
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         [JsonPropertyName("customer_id")]

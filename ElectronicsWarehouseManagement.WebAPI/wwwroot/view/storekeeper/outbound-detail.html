@@ -72,17 +72,18 @@
                         const baseDesc = (transfer.description ?? '').toString();
                         const baseCreated = Date.parse(transfer.creation_date ?? transfer.creationDate ?? transfer.creationTime ?? transfer.CreationDate ?? '');
                         const baseCreator = transfer.creator_id ?? transfer.CreatorId ?? transfer.creator ?? transfer.Creator ?? null;
-                        // match by same description and creation time within 60s (or same creator). This groups transfers created together.
                         related = all.filter(t => {
                             try {
                                 if ((t.description ?? '').toString() !== baseDesc) return false;
+                                const tCreator = (t.creator_id ?? t.CreatorId ?? t.creator ?? t.Creator ?? '').toString();
+                                const baseCreatorStr = (baseCreator ?? '').toString();
+                                if (baseCreatorStr && tCreator && baseCreatorStr !== tCreator) return false;
+                                
                                 const tCreated = Date.parse(t.creation_date ?? t.creationDate ?? t.creationTime ?? '');
-                                const tCreator = t.creator_id ?? t.CreatorId ?? t.creator ?? t.Creator ?? null;
                                 if (!isNaN(baseCreated) && !isNaN(tCreated)) {
-                                    if (Math.abs(baseCreated - tCreated) <= 60000) return true;
+                                    return Math.abs(baseCreated - tCreated) <= 60000;
                                 }
-                                if (baseCreator && tCreator && String(baseCreator) === String(tCreator)) return true;
-                                return false;
+                                return true;
                             } catch (e) { return false; }
                         });
                     }
@@ -154,7 +155,19 @@
         async function resolveWarehouses(t) {
             if (!t) return;
             try {
-                const binFrom = t.bin_from ?? t.binFrom ?? null;
+                // bin_from
+                let binFrom = t.bin_from ?? t.binFrom ?? null;
+                const binFromId = binFrom?.id ?? binFrom?.ID ?? t.bin_from_id ?? t.binFromId;
+                if (binFromId && (!binFrom || !(binFrom.location_in_warehouse || binFrom.locationInWarehouse || binFrom.binCode))) {
+                    try {
+                        const bres = await fetch(BASE + '/storekeeper/bins/' + binFromId, { credentials: 'include' });
+                        if (bres.ok) {
+                            const bjson = await bres.json();
+                            if (bjson?.success && bjson.data) { t.bin_from = bjson.data; binFrom = bjson.data; }
+                        }
+                    } catch (e) { }
+                }
+                
                 if (binFrom) {
                     const w = binFrom.warehouse ?? binFrom.Warehouse ?? null;
                     const wid = (typeof binFrom.warehouse === 'object') ? (binFrom.warehouse?.id) : (binFrom.warehouse ?? binFrom.warehouse_id ?? binFrom.warehouseId ?? binFrom.WarehouseId);
@@ -166,20 +179,24 @@
                                 const wjson = await wres.json();
                                 if (wjson?.success && wjson.data) warehouseCache[wid] = wjson.data;
                             }
-                        } catch (e) { console.error('warehouse fetch failed', e); }
+                        } catch (e) { }
                     }
                     if (warehouseCache[wid]) binFrom.warehouse = warehouseCache[wid];
                 }
-                // if binFrom exists but lacks location, try fetch full bin
-                try{
-                    const binFromId = binFrom?.id ?? binFrom?.ID ?? t.bin_from_id ?? t.binFromId;
-                    if(binFromId && !(binFrom.location_in_warehouse || binFrom.locationInWarehouse || binFrom.binCode)){
-                        const bres = await fetch(BASE + '/storekeeper/bins/' + binFromId, { credentials: 'include' });
-                        if(bres.ok){ const bjson = await bres.json(); if(bjson?.success && bjson.data) t.bin_from = bjson.data; }
-                    }
-                }catch(e){ /* ignore */ }
-                // also resolve bin_to if present
-                const binTo = t.bin_to ?? t.binTo ?? null;
+
+                // bin_to
+                let binTo = t.bin_to ?? t.binTo ?? null;
+                const binToId = binTo?.id ?? binTo?.ID ?? t.bin_to_id ?? t.binToId;
+                if (binToId && (!binTo || !(binTo.location_in_warehouse || binTo.locationInWarehouse || binTo.binCode))) {
+                    try {
+                        const bres2 = await fetch(BASE + '/storekeeper/bins/' + binToId, { credentials: 'include' });
+                        if (bres2.ok) {
+                            const bjson2 = await bres2.json();
+                            if (bjson2?.success && bjson2.data) { t.bin_to = bjson2.data; binTo = bjson2.data; }
+                        }
+                    } catch (e) { }
+                }
+
                 if (binTo) {
                     const w3 = binTo.warehouse ?? binTo.Warehouse ?? null;
                     const wid3 = (typeof binTo.warehouse === 'object') ? (binTo.warehouse?.id) : (binTo.warehouse ?? binTo.warehouse_id ?? binTo.warehouseId ?? binTo.WarehouseId);
@@ -191,17 +208,9 @@
                                 const wjson3 = await wres3.json();
                                 if (wjson3?.success && wjson3.data) warehouseCache[wid3] = wjson3.data;
                             }
-                        } catch (e) { console.error('warehouse fetch failed', e); }
+                        } catch (e) { }
                     }
                     if (warehouseCache[wid3]) binTo.warehouse = warehouseCache[wid3];
-                    // if binTo exists but lacks location, try fetch full bin
-                    try{
-                        const binToId = binTo?.id ?? binTo?.ID ?? t.bin_to_id ?? t.binToId;
-                        if(binToId && !(binTo.location_in_warehouse || binTo.locationInWarehouse || binTo.binCode)){
-                            const bres2 = await fetch(BASE + '/storekeeper/bins/' + binToId, { credentials: 'include' });
-                            if(bres2.ok){ const bjson2 = await bres2.json(); if(bjson2?.success && bjson2.data) t.bin_to = bjson2.data; }
-                        }
-                    }catch(e){ /* ignore */ }
                 }
             } catch (e) { console.error('resolveWarehouses failed', e); }
         }
@@ -346,34 +355,61 @@
         async function confirmOrder() {
             if (!confirm('Xác nhận đơn?')) return;
 
-            const requestId = transfer.id ?? transfer.ID ?? transfer.request_id ?? transfer.RequestId ?? 0;
             const related = transfer._related ?? [transfer];
+            let allSuccess = true;
+            let errMsg = '';
+            let skipCount = 0;
 
-            const binsFrom = [];
             for (const t of related) {
+                const reqId = t.id ?? t.ID ?? t.request_id ?? t.RequestId;
+                if (!reqId || t.status === 4 || t.status === 0 || t.status === 3) { skipCount++; continue; }
+
+                const payload = { request_id: reqId };
+                const binsFrom = [];
+
                 const binId = t.bin_from_id ?? t.binFromId ?? t.bin_from?.id ?? t.bin_from?.ID;
-                if (!binId) continue;
                 const comps = getComponents(t) || [];
-                const compsPayload = comps.map(c => ({ component_id: c.component_id ?? c.componentId ?? c.component?.id, quantity: c.quantity ?? c.qty ?? c.Quantity }));
-                if (compsPayload.length > 0) binsFrom.push({ bin_id: binId, components: compsPayload });
+                const compsPayload = comps.map(c => ({ component_id: c.component_id ?? c.componentId ?? c.component?.id, quantity: Number((c.quantity ?? c.qty ?? c.Quantity) || 0) }));
+                
+                if (compsPayload.length === 0) { skipCount++; continue; }
+                if (binId) binsFrom.push({ bin_id: binId, components: compsPayload });
+                if (binsFrom.length > 0) payload.bins_from = binsFrom;
+
+                try {
+                    const res = await fetch(BASE + '/storekeeper/transfers/confirm', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(payload)
+                    });
+                    if (!res.ok) {
+                        const txt = await res.text().catch(()=>null);
+                        allSuccess = false;
+                        let msg = txt || res.statusText;
+                        try { const obj=JSON.parse(txt); if(obj.msg || obj.message) msg = obj.msg || obj.message; } catch(e){}
+                        errMsg = msg;
+                        break;
+                    }
+                    const json = await res.json();
+                    if (!json?.success) {
+                        allSuccess = false;
+                        errMsg = json?.msg || json?.message || 'Lỗi xử lý';
+                        break;
+                    }
+                } catch(e) {
+                    allSuccess = false;
+                    errMsg = e.message;
+                    break;
+                }
             }
 
-            if (binsFrom.length === 0) return alert('Không có bin nguồn hợp lệ để xác nhận.');
-
-            const payload = { request_id: requestId, bins_from: binsFrom };
-
-            const res = await fetch(BASE + '/storekeeper/transfers/confirm', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(payload)
-            });
-            if (!res.ok) {
-                const txt = await res.text().catch(()=>null);
-                console.error('confirm error', txt || res.statusText);
-                return alert('Tạo thất bại: ' + (txt || res.statusText));
+            if (allSuccess) {
+                if (skipCount === related.length && related.length > 0) {
+                    alert('Các đơn xuất này đã xử lý hoặc không hợp lệ.');
+                } else {
+                    alert('Đã xác nhận thành công!');
+                }
+                location.href='outbound-list.html';
+            } else {
+                alert('Xác nhận một phần thất bại: ' + errMsg);
             }
-            let json;
-            try { json = await res.json(); } catch(e) { return alert('Server returned invalid response'); }
-            if (json?.success) { alert('Confirmed'); location.href='outbound-list.html'; }
-            else alert(json?.msg || json?.message || 'Error');
         }
 
         load();

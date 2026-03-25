@@ -1,9 +1,9 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Phiếu Nhập Kho</title>
+    <title>Phiếu nhập kho</title>
     <style>
         :root{--bg:#f7fafc;--card:#fff;--muted:#6b7280;--primary:#2563eb;--success:#16a34a;--danger:#ef4444;--radius:10px;--shadow:0 8px 30px rgba(15,23,42,0.08);--max-width:1100px}
         html,body{height:100%;margin:0;font-family:Inter, 'Segoe UI', Roboto, sans-serif;background:var(--bg);color:#0f172a}
@@ -46,8 +46,8 @@
         <div class="card">
             <div class="header">
                 <div class="title">
-                    <h2>📥 Phiếu Nhập Kho</h2>
-                    <p>Tạo phiếu nhập mới, lưu trữ thông tin và cập nhật tồn kho.</p>
+                    <h2>📥 Warehouse Receipt</h2>
+                    <p>Create a new receipt, save the information, and update the inventory..</p>
                 </div>
                 <div class="actions">
                     <button class="btn ghost" onclick="location.href='home.html'">⬅ Quay lại</button>
@@ -134,7 +134,7 @@
         </div>
     </div>
 
-    <!-- Note: script block intentionally unchanged per request -->
+
     <script>
         const BASE = "https://localhost:7297/api/storekeeper";
         let components = [];
@@ -202,29 +202,6 @@
                 binSelect.innerHTML += `<option value="${id}">${code}</option>`;
             });
         }
-        /* LOAD BIN THEO WAREHOUSE */
-        async function loadBinsByWarehouse() {
-
-            const warehouseId = document.getElementById("warehouse").value;
-
-            if (!warehouseId) return;
-
-                const res = await fetch(BASE.replace('/storekeeper','') + "/storekeeper/warehouses/" + warehouseId, { credentials: "include" });
-            if (!res.ok) { console.log(await res.text()); return alert("API bins lỗi"); }
-
-            const json = await res.json();
-                if (!json.success || !json.data) return alert("Không load được bin");
-
-                const binSelect = document.getElementById("binTo");
-                binSelect.innerHTML = "";
-
-                const bins = json.data.bins ?? json.data;
-                bins.forEach(b => {
-                    const id = b.id ?? b.binId ?? b.ID;
-                    const code = b.location_in_warehouse ?? b.locationInWarehouse ?? b.binCode ?? "Bin #" + id;
-                    binSelect.innerHTML += `<option value="${id}">${code}</option>`;
-                });
-        }
 
         /* LOAD COMPONENT */
         async function loadComponents() {
@@ -256,9 +233,9 @@
                         opt.text = ci.name ?? ci.Name ?? ci.displayName ?? ci.customerName ?? ci.CustomerName ?? (ci.contact ?? 'Nhà cung cấp');
                         opt.dataset.raw = JSON.stringify(ci);
                         select.appendChild(opt);
-                    }catch(e){ /* ignore this item */ }
+                    }catch(e){  }
                 });
-                // update quick info when selection changes
+              
                 select.addEventListener('change', function(){
                     const el = document.getElementById('customerInfo');
                     const opt = this.options[this.selectedIndex];
@@ -334,17 +311,25 @@
             calc();
         }
 
+        function clearAll() {
+            document.getElementById("tableBody").innerHTML = "";
+            document.getElementById("desc").value = "";
+            count = 0;
+            calc();
+        }
+
         /* CALCULATE TOTAL */
         function calc() {
 
             let total = 0;
+            const rows = document.querySelectorAll("#tableBody tr");
 
-            document.querySelectorAll("#tableBody tr").forEach(r => {
+            rows.forEach(r => {
 
                 const qty = parseFloat(r.cells[3].querySelector("input").value) || 0;
                 let price = parseFloat(r.cells[4].querySelector("input").value) || 0;
 
-                // enforce non-negative price
+               
                 if (price < 0) {
                     price = 0;
                     const inp = r.cells[4].querySelector("input");
@@ -359,9 +344,15 @@
             });
 
             document.getElementById("totalMoney").innerText = total;
+            
+            const countItemsEl = document.getElementById("countItems");
+            if(countItemsEl) countItemsEl.innerText = rows.length;
+            
+            const emptyStateEl = document.getElementById("emptyState");
+            if(emptyStateEl) emptyStateEl.style.display = rows.length === 0 ? "block" : "none";
         }
 
-        // ensure number inputs respect minimums
+
         function validateRow(inputEl) {
             try {
                 const v = parseFloat(inputEl.value);
@@ -370,7 +361,7 @@
                 if (min !== null && v < min) {
                     inputEl.value = min;
                 }
-            } catch (e) { /* ignore */ }
+            } catch (e) {  }
         }
 
         /* SUBMIT */
@@ -379,13 +370,13 @@
             const rows = document.querySelectorAll("#tableBody tr");
             if (rows.length === 0) return alert("Chưa có sản phẩm");
 
-            // require customer selected
+          
             try{
                 const selReq = document.getElementById('customerSelect');
                 if (!selReq || !selReq.value) {
                     return alert('Vui lòng chọn supplier trước khi tạo phiếu (bắt buộc).');
                 }
-            }catch(e){ /* ignore */ }
+            }catch(e){ }
 
             const componentList = [];
 
@@ -401,12 +392,12 @@
                 desc: document.getElementById("desc").value,
                 bin_from_id: null,
                 bin_to_id: parseInt(document.getElementById("binTo").value),
-                // include warehouse id so backend can validate/update correctly
+             
                 warehouse_to_id: parseInt(document.getElementById("warehouse").value) || null,
                 components: componentList
             };
 
-            // attach selected customer id (and optional full info) if available
+         
             try{
                 const sel = document.getElementById('customerSelect');
                 const opt = sel.options[sel.selectedIndex];
@@ -415,10 +406,9 @@
                     if(!isNaN(id)) payload.customer_id = id;
                 }
                 if(opt && opt.dataset && opt.dataset.raw){
-                    // keep legacy customer_info_json for backward compatibility
                     try{ payload.customer_info_json = JSON.parse(opt.dataset.raw); } catch(e){}
                 }
-            }catch(e){ /* ignore */ }
+            }catch(e){  }
 
             console.log("SEND:", payload);
 
@@ -448,7 +438,7 @@
             location.reload();
         }
 
-        // Set created date and creator name (non-intrusive)
+      
         function _getCookie(name) {
             const v = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
             return v ? decodeURIComponent(v.pop()) : null;
@@ -461,7 +451,7 @@
 
                 const elBy = document.getElementById('createdBy');
 
-                // Try to get current user from backend /me/info first (preferred)
+             
                 try{
                     const apiRoot = BASE.replace('/storekeeper','');
                     const res = await fetch(apiRoot + '/me/info', { credentials: 'include' });
@@ -472,7 +462,7 @@
                             const display = u.display_name ?? u.DisplayName ?? u.username ?? u.Username ?? u.fullname ?? u.FullName;
                             if(elBy) elBy.innerText = (display || '').toString() || elBy.innerText || 'Auto';
                         } else {
-                            // fallback to cookies/local storage
+                          
                             const name = _getCookie('username') || _getCookie('displayName') || _getCookie('fullname') || elBy.innerText || 'Auto';
                             if(elBy) elBy.innerText = name;
                         }
@@ -485,7 +475,6 @@
                     if(elBy) elBy.innerText = name;
                 }
 
-                // try parse customer info from cookie or localStorage if provided by server
                 try{
                     const raw = _getCookie('customer_info_json') || localStorage.getItem('customer_info_json');
                     if(raw){
@@ -493,10 +482,10 @@
                         const elCust = document.getElementById('customerInfo');
                         if(elCust){ elCust.innerText = obj.name ?? obj.contact ?? '-'; elCust.dataset.raw = raw; }
                     }
-                }catch(e){ /* ignore */ }
-            }catch(e){ /* ignore */ }
+                }catch(e){  }
+            }catch(e){ }
         }
-        /* INIT */
+       
         setCreatorAndDate();
         loadWarehouses();
         loadComponents();

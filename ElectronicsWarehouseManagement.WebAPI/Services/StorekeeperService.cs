@@ -1,4 +1,4 @@
-﻿using ElectronicsWarehouseManagement.Repositories.Entities;
+using ElectronicsWarehouseManagement.Repositories.Entities;
 using ElectronicsWarehouseManagement.WebAPI.DTO;
 using Microsoft.EntityFrameworkCore;
 
@@ -339,8 +339,8 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
                 Status = TransferStatus.Pending,
                 CreationTime = DateTime.UtcNow,
                 CreatorId = creatorId,
-                BinFromId = warehouseFrom?.Bins.ElementAt(0).BinId,
-                BinToId = warehouseTo?.Bins.ElementAt(0).BinId,
+                BinFromId = request.BinFromId ?? warehouseFrom?.Bins.FirstOrDefault()?.BinId,
+                BinToId = request.BinToId ?? warehouseTo?.Bins.FirstOrDefault()?.BinId,
                 TransferRequestComponents = tComponents,
                 CustomerId = request.CustomerId
             };

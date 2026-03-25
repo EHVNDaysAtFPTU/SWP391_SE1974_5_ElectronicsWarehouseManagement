@@ -103,7 +103,18 @@
             if (!t) return;
             try {
                 // bin_from
-                const binFrom = t.bin_from ?? t.binFrom ?? null;
+                let binFrom = t.bin_from ?? t.binFrom ?? null;
+                const binFromId = binFrom?.id ?? binFrom?.ID ?? t.bin_from_id ?? t.binFromId;
+                if (binFromId && (!binFrom || !(binFrom.location_in_warehouse || binFrom.locationInWarehouse || binFrom.binCode))) {
+                    try {
+                        const bres = await fetch(BASE + '/storekeeper/bins/' + binFromId, { credentials: 'include' });
+                        if (bres.ok) {
+                            const bjson = await bres.json();
+                            if (bjson?.success && bjson.data) { t.bin_from = bjson.data; binFrom = bjson.data; }
+                        }
+                    } catch (e) { }
+                }
+                
                 if (binFrom) {
                     const wid = typeof binFrom.warehouse === 'object' ? binFrom.warehouse?.id : (binFrom.warehouse ?? binFrom.warehouse_id ?? binFrom.warehouseId);
                     if (wid && !warehouseCache[wid]) {
@@ -119,7 +130,18 @@
                 }
 
                 // bin_to
-                const binTo = t.bin_to ?? t.binTo ?? null;
+                let binTo = t.bin_to ?? t.binTo ?? null;
+                const binToId = binTo?.id ?? binTo?.ID ?? t.bin_to_id ?? t.binToId;
+                if (binToId && (!binTo || !(binTo.location_in_warehouse || binTo.locationInWarehouse || binTo.binCode))) {
+                    try {
+                        const bres2 = await fetch(BASE + '/storekeeper/bins/' + binToId, { credentials: 'include' });
+                        if (bres2.ok) {
+                            const bjson2 = await bres2.json();
+                            if (bjson2?.success && bjson2.data) { t.bin_to = bjson2.data; binTo = bjson2.data; }
+                        }
+                    } catch (e) { }
+                }
+
                 if (binTo) {
                     const wid2 = typeof binTo.warehouse === 'object' ? binTo.warehouse?.id : (binTo.warehouse ?? binTo.warehouse_id ?? binTo.warehouseId);
                     if (wid2 && !warehouseCache[wid2]) {
@@ -143,9 +165,64 @@
                 const json = await res.json();
                 if (!json.success || !json.data) throw new Error(json.msg || 'Không có dữ liệu');
                 transfer = json.data;
-                const comps = getComponents(transfer);
-                await resolveComponentNames(comps);
-                await resolveWarehouses(transfer);
+
+                // find related transfers (grouping)
+                let related = [];
+                try {
+                    const listRes = await fetch(BASE + '/storekeeper/transfers', { credentials: 'include' });
+                    if (listRes.ok) {
+                        const listJson = await listRes.json();
+                        if (listJson?.success && Array.isArray(listJson.data)) {
+                            const all = listJson.data.filter(t => t.type === 3);
+                            const baseDesc = (transfer.description ?? '').toString();
+                            const baseCreated = Date.parse(transfer.creation_date ?? transfer.creationDate ?? transfer.creationTime ?? '');
+                            const baseCreator = transfer.creator_id ?? transfer.CreatorId ?? transfer.creator ?? transfer.Creator ?? null;
+                            const baseCreatorStr = (baseCreator ?? '').toString();
+
+                            related = all.filter(t => {
+                                try {
+                                    if ((t.description ?? '').toString() !== baseDesc) return false;
+                                    const tCreator = (t.creator_id ?? t.CreatorId ?? t.creator ?? t.Creator ?? '').toString();
+                                    if (baseCreatorStr && tCreator && baseCreatorStr !== tCreator) return false;
+                                    
+                                    const tCreated = Date.parse(t.creation_date ?? t.creationDate ?? t.creationTime ?? '');
+                                    if (!isNaN(baseCreated) && !isNaN(tCreated)) {
+                                        return Math.abs(baseCreated - tCreated) <= 60000;
+                                    }
+                                    return true;
+                                } catch (e) { return false; }
+                            });
+                        }
+                    }
+                } catch (e) { }
+
+                const relatedDetails = [];
+                const seen = new Set();
+                const mainId = transfer.request_id ?? transfer.RequestId ?? transfer.id ?? transfer.ID ?? null;
+                if (mainId) { relatedDetails.push(transfer); seen.add(String(mainId)); }
+
+                for (const r of related) {
+                    try {
+                        const idToFetch = r.request_id ?? r.RequestId ?? r.id ?? r.ID;
+                        if (!idToFetch || seen.has(String(idToFetch))) continue;
+                        const dres = await fetch(BASE + '/storekeeper/transfers/' + idToFetch, { credentials: 'include' });
+                        if (dres.ok) {
+                            const djson = await dres.json();
+                            if (djson?.success && djson.data) { relatedDetails.push(djson.data); seen.add(String(idToFetch)); }
+                        }
+                    } catch (e) { }
+                }
+
+                if (!seen.has(String(mainId))) relatedDetails.unshift(transfer);
+                transfer._related = relatedDetails;
+
+                const allComps = [];
+                for (const t of relatedDetails) {
+                    try { await resolveWarehouses(t); } catch (e) { }
+                    const compsT = getComponents(t) || [];
+                    compsT.forEach(c => allComps.push(c));
+                }
+                await resolveComponentNames(allComps);
                 render();
                 
                 // Set creator info
@@ -182,11 +259,38 @@
                 }
             }
 
-            const fromWarehouse = transfer.bin_from?.warehouse?.warehouseName ?? transfer.bin_from?.warehouse?.name ?? '-';
-            const fromBin = transfer.bin_from?.location_in_warehouse ?? transfer.bin_from?.locationInWarehouse ?? transfer.bin_from?.binCode ?? transfer.bin_from?.code ?? '-';
-            const toWarehouse = transfer.bin_to?.warehouse?.warehouseName ?? transfer.bin_to?.warehouse?.name ?? '-';
-            const toBin = transfer.bin_to?.location_in_warehouse ?? transfer.bin_to?.locationInWarehouse ?? transfer.bin_to?.binCode ?? transfer.bin_to?.code ?? '-';
-            const statusText = getStatusText(transfer.status);
+            const related = transfer._related ?? [transfer];
+
+            const fromBinsPairs = new Set();
+            const fromBinsArr = [];
+            const toBinsPairs = new Set();
+            const toBinsArr = [];
+            const productsMap = {};
+            const statuses = new Set();
+
+            related.forEach(t => {
+                const fw = t.bin_from?.warehouse?.warehouseName ?? t.bin_from?.warehouse?.name ?? '-';
+                const fb = t.bin_from?.location_in_warehouse ?? t.bin_from?.locationInWarehouse ?? t.bin_from?.binCode ?? t.bin_from?.code ?? '-';
+                const fKey = `${fw}||${fb}`;
+                if (!fromBinsPairs.has(fKey)) { fromBinsPairs.add(fKey); fromBinsArr.push(`${fw} / <b>${fb}</b>`); }
+
+                const tw = t.bin_to?.warehouse?.warehouseName ?? t.bin_to?.warehouse?.name ?? '-';
+                const tb = t.bin_to?.location_in_warehouse ?? t.bin_to?.locationInWarehouse ?? t.bin_to?.binCode ?? t.bin_to?.code ?? '-';
+                const tKey = `${tw}||${tb}`;
+                if (!toBinsPairs.has(tKey)) { toBinsPairs.add(tKey); toBinsArr.push(`${tw} / <b>${tb}</b>`); }
+
+                const comps = getComponents(t);
+                comps.forEach(c => {
+                    const cid = c.component_id ?? c.componentId ?? c.component?.id ?? 'unknown';
+                    const name = getComponentName(c);
+                    const qty = parseFloat(c.quantity ?? c.Quantity ?? c.qty ?? 0) || 0;
+                    if (!productsMap[cid]) productsMap[cid] = { name: name, total: 0 };
+                    productsMap[cid].total += qty;
+                });
+                statuses.add(t.status ?? t.Status ?? 0);
+            });
+
+            const statusText = statuses.size === 1 ? getStatusText(Array.from(statuses)[0]) : 'Multiple';
 
             let html = `
                 <div class="info-grid">
@@ -199,10 +303,10 @@
                     </div>
                     <div class="info-block">
                         <div style="font-weight:700;margin-bottom:6px;color:#0f172a">Từ Kho / Bin xuất</div>
-                        <div class="meta" style="font-size:14px">${fromWarehouse} / <b>${fromBin}</b></div>
+                        <div class="meta" style="font-size:14px">${fromBinsArr.join('<br>')}</div>
                         <div style="height:16px"></div>
                         <div style="font-weight:700;margin-bottom:6px;color:#0f172a">Đến Kho / Bin nhập</div>
-                        <div class="meta" style="font-size:14px">${toWarehouse} / <b>${toBin}</b></div>
+                        <div class="meta" style="font-size:14px">${toBinsArr.join('<br>')}</div>
                     </div>
                 </div>
                 <hr />
@@ -215,14 +319,13 @@
                         <tbody>
 `;
 
-            const comps = getComponents(transfer);
-            if (comps.length === 0) {
+            const prodKeys = Object.keys(productsMap);
+            if (prodKeys.length === 0) {
                 html += `<tr><td colspan="2" style="text-align:center;color:#64748b;padding:20px">Không có sản phẩm nào</td></tr>`;
             } else {
-                comps.forEach(c => {
-                    const name = getComponentName(c);
-                    const qty = c.quantity ?? c.Quantity ?? c.qty ?? 0;
-                    html += `<tr><td style="font-weight:500">${name}</td><td>${qty}</td></tr>`;
+                prodKeys.forEach(k => {
+                    const p = productsMap[k];
+                    html += `<tr><td style="font-weight:500">${p.name}</td><td>${p.total}</td></tr>`;
                 });
             }
 
@@ -240,49 +343,74 @@
         async function confirmOrder() {
             if (!confirm('Xác nhận phiếu chuyển kho này?')) return;
             
-            const requestId = transfer.id ?? transfer.request_id ?? transfer.RequestId ?? transfer.ID;
-            const payload = { request_id: requestId };
+            const related = transfer._related ?? [transfer];
+            let allSuccess = true;
+            let errMsg = '';
+            let skipCount = 0;
 
-            const binFromId = transfer.bin_from_id ?? transfer.binFromId ?? transfer.bin_from?.id ?? transfer.bin_from?.ID;
-            if (binFromId) {
-                const comps = getComponents(transfer) || [];
+            for (const t of related) {
+                const reqId = t.id ?? t.request_id ?? t.RequestId ?? t.ID;
+                if (!reqId || t.status === 4 || t.status === 0 || t.status === 3) { skipCount++; continue; }
+
+                const payload = { request_id: reqId };
+                const binsFrom = [];
+                const binsTo = [];
+
+                const comps = getComponents(t) || [];
                 const pComps = comps.map(c => ({ component_id: c.component_id ?? c.componentId ?? c.component?.id, quantity: Number((c.quantity ?? c.qty ?? c.Quantity) || 0) }));
-                payload.bins_from = [{ bin_id: binFromId, components: pComps }];
-            }
+                if (pComps.length === 0) { skipCount++; continue; }
 
-            const binToId = transfer.bin_to_id ?? transfer.binToId ?? transfer.bin_to?.id ?? transfer.bin_to?.ID;
-            if (binToId) {
-                const comps = getComponents(transfer) || [];
-                const pComps = comps.map(c => ({ component_id: c.component_id ?? c.componentId ?? c.component?.id, quantity: Number((c.quantity ?? c.qty ?? c.Quantity) || 0) }));
-                payload.bins_to = [{ bin_id: binToId, components: pComps }];
-            }
+                const binFromId = t.bin_from_id ?? t.binFromId ?? t.bin_from?.id ?? t.bin_from?.ID;
+                if (binFromId) binsFrom.push({ bin_id: binFromId, components: pComps });
 
-            const res = await fetch(BASE + '/storekeeper/transfers/confirm', {
-                method: 'POST', 
-                headers: { 'Content-Type': 'application/json' }, 
-                credentials: 'include', 
-                body: JSON.stringify(payload)
-            });
-            
-            if (!res.ok) {
-                const txt = await res.text().catch(()=>null);
-                console.error('confirm error', txt || res.statusText);
-                let errMsg = txt || res.statusText;
+                const binToId = t.bin_to_id ?? t.binToId ?? t.bin_to?.id ?? t.bin_to?.ID;
+                if (binToId) binsTo.push({ bin_id: binToId, components: pComps });
+
+                if (binsFrom.length > 0) payload.bins_from = binsFrom;
+                if (binsTo.length > 0) payload.bins_to = binsTo;
+
                 try {
-                    const obj = JSON.parse(txt);
-                    if(obj.msg || obj.message) errMsg = obj.msg || obj.message;
-                } catch(e) {}
-                return alert('Xác nhận thất bại: ' + errMsg);
+                    const res = await fetch(BASE + '/storekeeper/transfers/confirm', {
+                        method: 'POST', 
+                        headers: { 'Content-Type': 'application/json' }, 
+                        credentials: 'include', 
+                        body: JSON.stringify(payload)
+                    });
+                    
+                    if (!res.ok) {
+                        const txt = await res.text().catch(()=>null);
+                        let msg = txt || res.statusText;
+                        try {
+                            const obj = JSON.parse(txt);
+                            if(obj.msg || obj.message) msg = obj.msg || obj.message;
+                        } catch(e) {}
+                        allSuccess = false;
+                        errMsg = msg;
+                        break;
+                    }
+                    
+                    const json = await res.json();
+                    if (!json?.success) {
+                        allSuccess = false;
+                        errMsg = json?.msg || json?.message || 'Có lỗi xảy ra';
+                        break;
+                    }
+                } catch (e) {
+                    allSuccess = false;
+                    errMsg = e.message;
+                    break;
+                }
             }
-            
-            let json;
-            try { json = await res.json(); } catch(e) { return alert('Server trả về phản hồi không hợp lệ'); }
-            
-            if (json?.success) { 
-                alert('Đã xác nhận phiếu chuyển thành công!'); 
-                location.href='transfer-list.html'; 
+
+            if (allSuccess) {
+                if (skipCount === related.length && related.length > 0) {
+                    alert('Các phiếu này đã được xác nhận hoặc không hợp lệ để xác nhận!');
+                } else {
+                    alert('Đã xác nhận phiếu chuyển thành công!');
+                }
+                location.href='transfer-list.html';
             } else {
-                alert('Xác nhận thất bại: ' + (json?.msg || json?.message || 'Có lỗi xảy ra'));
+                alert('Xác nhận một phần thất bại: ' + errMsg);
             }
         }
 
