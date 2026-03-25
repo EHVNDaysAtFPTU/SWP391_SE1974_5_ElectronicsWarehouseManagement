@@ -202,5 +202,6 @@ input:checked + .slider {
     }
 
     .sidebar nav a.active {
+ 
         font-weight: bold;
     }
