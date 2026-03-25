@@ -219,7 +219,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
         public async Task<ApiResult<TransferRequestResp>> GetTransferRequestAsync(int requestId, int creatorId)
         {
             var entity = await _dbCtx.TransferRequests.AsNoTracking()
-                .Include(tr => tr.Creator).Include(tr => tr.Approver)
+                .Include(tr => tr.Creator).Include(tr => tr.Approver).Include(tr => tr.Customer)
                 .Include(tr => tr.BinFrom).Include(tr => tr.BinTo)
                 .Include(tr => tr.TransferRequestComponents).ThenInclude(c => c.Component)
                 .Where(tr => tr.RequestId == requestId && tr.CreatorId == creatorId)
@@ -292,8 +292,8 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
                 Status = TransferStatus.Pending,
                 CreationTime = DateTime.UtcNow,
                 CreatorId = creatorId,
-                BinFromId = request.BinFromId ?? warehouseFrom?.Bins.FirstOrDefault()?.BinId,
-                BinToId = request.BinToId ?? warehouseTo?.Bins.FirstOrDefault()?.BinId,
+                BinFromId = warehouseFrom?.Bins.FirstOrDefault()?.BinId,
+                BinToId = warehouseTo?.Bins.FirstOrDefault()?.BinId,
                 TransferRequestComponents = tComponents,
                 CustomerId = request.CustomerId
             };
@@ -303,6 +303,8 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             await _dbCtx.Entry(transferRequest).Reference(tr => tr.Creator).LoadAsync();
             await _dbCtx.Entry(transferRequest).Reference(tr => tr.BinFrom).LoadAsync();
             await _dbCtx.Entry(transferRequest).Reference(tr => tr.BinTo).LoadAsync();
+            if (transferRequest.CustomerId is not null)
+                await _dbCtx.Entry(transferRequest).Reference(tr => tr.Customer).LoadAsync();
             await _dbCtx.Entry(transferRequest).Collection(tr => tr.TransferRequestComponents).LoadAsync();
 
             return new ApiResult<TransferRequestResp>(new TransferRequestResp(transferRequest, true));
@@ -448,6 +450,8 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             await _dbCtx.Entry(transferRequest).Reference(tr => tr.Approver).LoadAsync();
             await _dbCtx.Entry(transferRequest).Reference(tr => tr.BinFrom).LoadAsync();
             await _dbCtx.Entry(transferRequest).Reference(tr => tr.BinTo).LoadAsync();
+            if (transferRequest.CustomerId is not null)
+                await _dbCtx.Entry(transferRequest).Reference(tr => tr.Customer).LoadAsync();
             await _dbCtx.Entry(transferRequest).Collection(tr => tr.TransferRequestComponents).LoadAsync();
 
             return new ApiResult<TransferRequestResp>(new TransferRequestResp(transferRequest, true));

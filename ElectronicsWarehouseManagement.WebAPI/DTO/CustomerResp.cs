@@ -1,4 +1,4 @@
-﻿using ElectronicsWarehouseManagement.Repositories.Entities;
+using ElectronicsWarehouseManagement.Repositories.Entities;
 using System.Text.Json.Serialization;
 
 namespace ElectronicsWarehouseManagement.WebAPI.DTO
@@ -30,6 +30,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
         
         public CustomerResp(Customer customer, bool fullInfo)
         {
+            if (customer == null) return;
             ID = customer.CustomerId;
             Name = customer.CustomerName;
             Phone = customer.Phone;
