@@ -15,5 +15,6 @@ namespace ElectronicsWarehouseManagement.Repositories.Entities
         ApprovedAndWaitForConfirm,
         Rejected,
         Confirmed,
+        MissingComponents
     }
 }

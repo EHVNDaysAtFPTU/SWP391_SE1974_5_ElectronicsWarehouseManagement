@@ -21,11 +21,9 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
 
         Task<ApiResult<List<BinResp>>> GetBinsAsync();
         Task<ApiResult<BinResp>> GetBinAsync(int binId);
-        Task<ApiResult<BinResp>> CreateBinAsync(CreateBinReq request);
 
         Task<ApiResult<List<WarehouseResp>>> GetWarehousesAsync();
         Task<ApiResult<WarehouseResp>> GetWarehouseAsync(int warehouseId);
-        Task<ApiResult<WarehouseResp>> CreateWarehouseAsync(CreateWarehouseReq request);
 
         Task<ApiResult<BinResp>> UpdateBinStatusAsync(int binId, BinStatus status);
 
@@ -33,7 +31,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
         Task<ApiResult<TransferRequestResp>> GetTransferRequestAsync(int requestId, int creatorId);
         Task<ApiResult<TransferRequestResp>> CreateTransferRequestAsync(CreateTransferRequestReq request, TransferType type, int creatorId);
         Task<ApiResult<TransferRequestResp>> ConfirmTransferRequestAsync(ConfirmTransferRequestReq request, int approverId);
-   
+
         Task<ApiResult<List<ComponentResp>>> GetComponentsInWarehouseAsync(int warehouseId);
 
         Task<ApiResult<int>> GetWarehouseCountAsync();
@@ -172,27 +170,6 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             return new ApiResult<BinResp>(bin);
         }
 
-        public async Task<ApiResult<BinResp>> CreateBinAsync(CreateBinReq request)
-        {
-            if (!request.Verify(out string failedReason))
-                return new ApiResult<BinResp>(ApiResultCode.InvalidRequest, failedReason);
-            if (!await _dbCtx.Warehouses.AnyAsync(w => w.WarehouseId == request.WarehouseID))
-                return new ApiResult<BinResp>(ApiResultCode.InvalidRequest, $"Warehouse with ID '{request.WarehouseID}' does not exist.");
-            var bin = new Bin
-            {
-                WarehouseId = request.WarehouseID,
-                LocationInWarehouse = request.LocationInWarehouse,
-                Status = BinStatus.Empty
-            };
-            _dbCtx.Bins.Add(bin);
-            await _dbCtx.SaveChangesAsync();
-
-            await _dbCtx.Entry(bin).Reference(b => b.Warehouse).LoadAsync();
-            await _dbCtx.Entry(bin).Collection(b => b.ComponentBins).LoadAsync();
-
-            return new ApiResult<BinResp>(new BinResp(bin, true));
-        }
-
 
         public async Task<ApiResult<List<WarehouseResp>>> GetWarehousesAsync()
         {
@@ -206,30 +183,6 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             if (warehouse is null)
                 return new ApiResult<WarehouseResp>(ApiResultCode.NotFound);
             return new ApiResult<WarehouseResp>(warehouse);
-        }
-
-        public async Task<ApiResult<WarehouseResp>> CreateWarehouseAsync(CreateWarehouseReq request)
-        {
-            if (!request.Verify(out string failedReason))
-                return new ApiResult<WarehouseResp>(ApiResultCode.InvalidRequest, failedReason);
-            var warehouse = new Warehouse
-            {
-                WarehouseName = request.Name,
-                Description = request.Description,
-                PhysicalLocation = request.PhysicalLocation,
-                ImageUrl = request.ImageUrl
-            };
-            warehouse.Bins.Add(new Bin
-            {
-                LocationInWarehouse = "Default Bin",
-                Status = BinStatus.Empty
-            });
-            _dbCtx.Warehouses.Add(warehouse);
-            await _dbCtx.SaveChangesAsync();
-
-            await _dbCtx.Entry(warehouse).Collection(w => w.Bins).LoadAsync();
-
-            return new ApiResult<WarehouseResp>(new WarehouseResp(warehouse, true));
         }
 
 
@@ -419,14 +372,20 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
                 }
             }
 
+            bool missing = false;
             foreach (ConfirmTransferRequestComponentReq confirmComponent in confirmComponentsAddToBin.Concat(confirmComponentsTakeFromBin))
             {
                 var originalComponent = originalComponentsInTransferRequest.First(c => c.ComponentId == confirmComponent.ComponentId);
-                if (confirmComponent.Quantity != originalComponent.Quantity)
-                    return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Confirmed quantity for component with ID '{confirmComponent.ComponentId}' does not match the original transfer request.");
+                if (confirmComponent.Quantity > originalComponent.Quantity)
+                    return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Confirmed quantity for component with ID '{confirmComponent.ComponentId}' exceeds quantity in the original transfer request.");
+                else if (confirmComponent.Quantity < originalComponent.Quantity)
+                    missing = true;
             }
 
-            transferRequest.Status = TransferStatus.Confirmed;
+            if (missing)
+                transferRequest.Status = TransferStatus.MissingComponents;
+            else
+                transferRequest.Status = TransferStatus.Confirmed;
             transferRequest.ExecutionTime = DateTime.UtcNow;
 
             // add/remove/update components in bins

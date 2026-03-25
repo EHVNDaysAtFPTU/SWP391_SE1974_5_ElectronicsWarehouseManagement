@@ -79,11 +79,9 @@ function logout() {
     })
         .then(res => {
             if (res.success) {
-                // Xóa local data nếu có
                 localStorage.clear();
                 sessionStorage.clear();
 
-                // Redirect về login
                 window.location.href = "login.html";
             } else {
                 alert(res.msg || "Logout failed");
