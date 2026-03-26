@@ -1,142 +1,157 @@
 /**
- * Transfer Detail JS
+ * Transfer Detail JS (Refactored for HTML templates)
  */
 
 const STATUS = {
+    UNKNOWN: 0,
     PENDING: 1,
     APPROVED: 2,
     REJECTED: 3,
-    CONFIRMED: 4,
-    MISSING_COMPONENTS: 5
+    FINISHED: 4,
+    MISSING_COMPONENTS: 5,
+    CANCELED: 6
 };
+
+let currentTransferId = null;
 
 document.addEventListener("DOMContentLoaded", function () {
     const id = new URLSearchParams(window.location.search).get("id");
     if (!id) {
-        showMessage("Missing transfer ID in URL", "danger");
+        showError("Missing transfer ID in URL");
         return;
     }
+    currentTransferId = id;
     loadTransferDetail(id);
 });
 
 async function loadTransferDetail(id) {
-    const infoSection = document.getElementById("infoSection");
-    
-    // Loading state
-    infoSection.innerHTML = `
-        <div class="text-center py-5">
-            <div class="spinner-border text-primary" role="status"></div>
-            <p class="mt-2 text-muted">Fetching transfer specifics...</p>
-        </div>
-    `;
-
     try {
         const result = await apiFetch(`/api/manager/get-transfer/${id}?fullInfo=true`);
-
         if (!result.success) {
-            showMessage(result.msg || "Load failed", "danger");
+            showError(result.msg || "Load failed");
             return;
         }
 
-        renderTransferInfo(result.data);
-        await renderComponents(result.data);
+        const t = result.data;
+        displayTransferInfo(t);
+        await displayComponents(t);
+        
+        // Finalize visibility
+        document.getElementById("loader").classList.add("d-none");
+        document.getElementById("transferInfo").classList.remove("d-none");
+        document.getElementById("componentsCard").classList.remove("d-none");
+
     } catch (error) {
-        showMessage("Connection error: " + error.message, "danger");
+        showError("Connection error: " + error.message);
     }
 }
 
-async function renderTransferInfo(t) {
-    const container = document.getElementById("infoSection");
+function displayTransferInfo(t) {
+    document.getElementById("tId").textContent = t.id;
+    document.getElementById("tStatusBadge").innerHTML = getStatusBadge(t);
+    document.getElementById("tDesc").textContent = t.description || "Internal movement request";
+    document.getElementById("tType").textContent = getTypeText(t.type);
+    document.getElementById("tCustomer").textContent = t.customer?.name || "Internal";
+    document.getElementById("tCreator").textContent = t.creator?.username || "System";
+    document.getElementById("tCreatedDate").textContent = formatDate(t.creation_date);
+    document.getElementById("tExecutedDate").textContent = t.execution_date ? formatDate(t.execution_date) : "Not Yet";
+    
+    document.getElementById("tOrigin").textContent = t.warehouse_from?.name || "-";
+    document.getElementById("tDest").textContent = t.warehouse_to?.name || "-";
 
-    const fromWarehouseName = t.bin_from
-        ? await getWarehouseName(t.bin_from.warehouse_id)
-        : "-";
-
-    const toWarehouseName = t.bin_to
-        ? await getWarehouseName(t.bin_to.warehouse_id)
-        : "-";
-
-    container.innerHTML = `
-        <div class="row g-4">
-            <div class="col-md-7">
-                <div class="glass-card p-4 h-100">
-                    <div class="d-flex justify-content-between align-items-start mb-4">
-                        <div>
-                            <small class="text-muted text-uppercase fw-bold ls-1">Transfer ID</small>
-                            <h3 class="fw-bold mb-0">#${t.id}</h3>
-                        </div>
-                        <div class="d-flex gap-2">
-                             ${getStatusBadge(t.status)}
-                        </div>
-                    </div>
-                    
-                    <div class="mb-4">
-                        <label class="small text-muted text-uppercase d-block ls-1 mb-1">Description</label>
-                        <p class="mb-0 fs-5 fw-medium text-dark">${t.description || "Internal movement request"}</p>
-                    </div>
-
-                    <div class="row g-3">
-                        <div class="col-6">
-                            <label class="small text-muted text-uppercase d-block ls-1">Movement Type</label>
-                            <span class="fw-semibold text-primary">${getTypeText(t.type)}</span>
-                        </div>
-                        <div class="col-6">
-                            <label class="small text-muted text-uppercase d-block ls-1">Supplier / Customer</label>
-                            <span class="fw-bold text-success">${t.customer.name || "Internal"}</span>
-                        </div>
-                        <div class="col-6">
-                            <label class="small text-muted text-uppercase d-block ls-1">Creator</label>
-                            <span class ="fw-bold text-info">${t.creator?.username || "System"}</span>
-                        </div>
-                        <div class="col-6">
-                            <label class="small text-muted text-uppercase d-block ls-1">Created Date</label>
-                            <span class="fs-5 text-primary fw-bold">${formatDate(t.creation_date)}</span>
-                        </div>
-                        <div class="col-6">
-                            <label class="small text-muted text-uppercase d-block ls-1">Executed Date</label>
-                            <span class="fs-5 text-primary fw-bold">${t.execution_date ? formatDate(t.execution_date) : "Not Yet"}</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-md-5">
-                <div class="glass-card p-4 h-100">
-                    <h6 class="fw-bold text-uppercase ls-1 text-muted mb-4">Logistics Route</h6>
-                    
-                    <div class="route-step mb-4 ps-3 border-start border-2 border-primary">
-                        <label class="small text-muted text-uppercase d-block ls-1">Origin Bin</label>
-                        <div class="fw-bold">${t.bin_from ? t.bin_from.location_in_warehouse : "External / New"}</div>
-                        <div class="small text-primary">${fromWarehouseName}</div>
-                    </div>
-
-                    <div class="route-step ps-3 border-start border-2 border-success">
-                        <label class="small text-muted text-uppercase d-block ls-1">Destination Bin</label>
-                        <div class="fw-bold">${t.bin_to ? t.bin_to.location_in_warehouse : "External / Out"}</div>
-                        <div class="small text-success">${toWarehouseName}</div>
-                    </div>
-
-                    ${t.status === STATUS.PENDING ? `
-                        <div class="mt-5 pt-3 border-top d-flex gap-2">
-                            <button class="btn btn-primary rounded-pill px-4" onclick="updateTransferStatus(${t.id}, ${STATUS.APPROVED})">Approve Movement</button>
-                            <button class="btn btn-outline-danger rounded-pill px-4" onclick="updateTransferStatus(${t.id}, ${STATUS.REJECTED})">Reject</button>
-                        </div>
-                    ` : ""}
-                </div>
-            </div>
-        </div>
-    `;
+    // Approval buttons
+    if (t.status === STATUS.PENDING) {
+        document.getElementById("approvalSection").classList.remove("d-none");
+    }
 }
 
-async function updateTransferStatus(transferId, decision) {
-    if (!confirm(`Are you sure you want to ${decision === STATUS.APPROVED ? 'APPROVE' : 'REJECT'} this request?`)) return;
+async function displayComponents(t) {
+    const tbody = document.getElementById("itemsBody");
+    tbody.innerHTML = "";
+
+    const hasFinishedData = t.finished_components && t.finished_components.length > 0;
+    const shouldShowRealQty = t.status === STATUS.FINISHED || t.status === STATUS.MISSING_COMPONENTS || hasFinishedData;
+
+    // Toggle column headers
+    if (shouldShowRealQty) {
+        document.getElementById("binHeader").classList.remove("d-none");
+        document.getElementById("actualHeader").classList.remove("d-none");
+        document.getElementById("footerLabelColspan").setAttribute("colspan", "6");
+    }
+
+    // Map finished items
+    const finishedMap = {};
+    (t.finished_components || []).forEach(fc => {
+        if (!finishedMap[fc.component_id]) {
+            finishedMap[fc.component_id] = { qty: 0, bins: new Set() };
+        }
+        finishedMap[fc.component_id].qty += fc.quantity;
+        if (fc.bin?.location_in_warehouse) finishedMap[fc.component_id].bins.add(fc.bin.location_in_warehouse);
+    });
+
+    // Fetch and render
+    let totalRequested = 0;
+    let totalReal = 0;
+
+    for (const c of (t.components || [])) {
+        const metadata = await fetchComponentMetadata(c.component_id);
+        const finishedInfo = finishedMap[c.component_id] || { qty: 0, bins: new Set() };
+        const realQty = finishedInfo.qty;
+        const binList = Array.from(finishedInfo.bins).join(", ") || "-";
+        
+        const price = c.unit_price || 0;
+        const extRequested = price * c.quantity;
+        const extReal = price * realQty;
+
+        totalRequested += extRequested;
+        totalReal += extReal;
+
+        const row = `
+            <tr>
+                <td>
+                    <img src="${metadata.image_url || '/uploads/img/default-component.png'}" 
+                         style="width:60px;height:60px;object-fit:contain" 
+                         onerror="this.src='/uploads/img/default-component.png'">
+                </td>
+                <td>
+                    <div class="fw-bold">${metadata.name || "Unknown"}</div>
+                    <small class="text-muted">ID: ${c.component_id} | ${metadata.manufacturer || "N/A"}</small>
+                </td>
+                ${shouldShowRealQty ? `<td class="text-center font-monospace small"><span class="badge bg-light text-dark border fs-5 fw-bold">${binList}</span></td>` : ""}
+                <td class="text-center fs-5 fw-bold">${c.quantity}</td>
+                ${shouldShowRealQty ? `<td class="text-center fs-5 fw-bold ${realQty < c.quantity ? 'text-danger' : 'text-success'}">${realQty}</td>` : ""}
+                <td class="text-end text-success fs-5 fw-bold">${formatCurrency(price)}</td>
+                <td class="text-end text-success fs-5 fw-bold">${formatCurrency(shouldShowRealQty ? extReal : extRequested)}</td>
+            </tr>
+        `;
+        tbody.insertAdjacentHTML("beforeend", row);
+    }
+
+    document.getElementById("grandTotal").textContent = formatCurrency(shouldShowRealQty ? totalReal : totalRequested);
+    
+    if (t.status === STATUS.MISSING_COMPONENTS) {
+        document.getElementById("missingAlert").classList.remove("d-none");
+    }
+}
+
+async function fetchComponentMetadata(id) {
+    try {
+        const result = await apiFetch(`/api/manager/get-component/${id}?fullInfo=true`);
+        return result.success ? result.data.metadata : {};
+    } catch {
+        return {};
+    }
+}
+
+async function updateTransferStatus(decision) {
+    const action = decision === STATUS.APPROVED ? 'APPROVE' : 'REJECT';
+    if (!confirm(`Are you sure you want to ${action} this request?`)) return;
 
     try {
-        const result = await apiFetch(`/api/manager/transfer-requests/${transferId}/decisions`, {
+        const result = await apiFetch(`/api/manager/transfer-requests/${currentTransferId}/decisions`, {
             method: "POST",
             body: JSON.stringify({ decision: decision })
         });
-
         if (result.success) {
             alert("Decision recorded successfully");
             location.reload();
@@ -148,31 +163,19 @@ async function updateTransferStatus(transferId, decision) {
     }
 }
 
-function getStatusBadge(status) {
+function approveTransfer() { updateTransferStatus(STATUS.APPROVED); }
+function rejectTransfer() { updateTransferStatus(STATUS.REJECTED); }
+
+function getStatusBadge(t) {
+    const status = t.status;
     switch (status) {
-        case STATUS.PENDING:
-            return '<span class="badge text-muted border rounded-pill">Waiting</span>';
-
-        case STATUS.APPROVED:
-            return '<span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 rounded-pill">Processing</span>';
-
-        case STATUS.REJECTED:
-            return '<span class="badge bg-light text-muted border rounded-pill">Canceled</span>';
-
-        case STATUS.FINISHED:
-            if (t.execution_date) {
-                return '<span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill">Done</span>';
-            }
-            return '<span class="badge bg-success bg-opacity-10 text-success rounded-pill">Finished</span>';
-
-        case STATUS.MISSING_COMPONENTS:
-            return '<span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 rounded-pill">Missing Components</span>';
-
-        case STATUS.CANCELED:
-            return '<span class="badge bg-light text-muted border rounded-pill">Canceled</span>';
-
-        default:
-            return '<span class="badge bg-light text-muted rounded-pill">Unknown</span>';
+        case STATUS.PENDING: return '<span class="badge text-muted border rounded-pill">Waiting</span>';
+        case STATUS.APPROVED: return '<span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 rounded-pill">Processing</span>';
+        case STATUS.REJECTED: return '<span class="badge bg-light text-muted border rounded-pill">Rejected</span>';
+        case STATUS.FINISHED: return '<span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill">Done</span>';
+        case STATUS.MISSING_COMPONENTS: return '<span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 rounded-pill">Missing</span>';
+        case STATUS.CANCELED: return '<span class="badge bg-light text-muted border rounded-pill">Canceled</span>';
+        default: return '<span class="badge bg-border text-muted rounded-pill">Unknown</span>';
     }
 }
 
@@ -183,117 +186,13 @@ function getTypeText(type) {
     return "Custom Movement";
 }
 
-async function getWarehouseName(id) {
-    if (!id) return "-";
-    try {
-        const result = await apiFetch(`/api/manager/get-warehouse/${id}?fullInfo=false`);
-        return result.success ? result.data?.name || "Warehouse #" + id : "-";
-    } catch {
-        return "Warehouse #" + id;
-    }
+function showError(msg) {
+    const loader = document.getElementById("loader");
+    loader.innerHTML = `<div class="alert alert-danger shadow-sm mx-auto" style="max-width: 500px">
+        <h5 class="alert-heading">Error</h5>
+        <p class="mb-0">${msg}</p>
+        <button class="btn btn-sm btn-outline-danger mt-3" onclick="location.reload()">Retry</button>
+    </div>`;
 }
 
-async function renderComponents(t) {
-    const container = document.getElementById("componentSection");
-    
-    if (t.components && t.components.length > 0) {
-        // Initial state for components section
-        container.innerHTML = `
-            <div class="text-center py-4">
-                <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
-                <p class="small text-muted mt-2">Loading product specifications...</p>
-            </div>
-        `;
-
-        // Fetch full info for each component using the get-component API
-        const componentFullData = await Promise.all(
-            t.components.map(async (c) => {
-                try {
-                    const result = await apiFetch(`/api/manager/get-component/${c.component_id}?fullInfo=true`);
-                    return result.success ? result.data : null;
-                } catch (e) {
-                    console.error("Failed to fetch component info", e);
-                    return null;
-                }
-            })
-        );
-
-        container.innerHTML = `
-            <div class="glass-card p-4 mt-4">
-                <h6 class="fw-bold text-uppercase ls-1 text-muted mb-4">Transfer Line Items</h6>
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle">
-                        <thead class="table-light">
-                            <tr class="small text-muted text-uppercase ls-1">
-                                <th style="width: 80px">Product</th>
-                                <th>Specification</th>
-                                <th class="text-center">Quantity</th>
-                                <th class="text-end">Unit Price</th>
-                                <th class="text-end">Ext. Price</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${t.components.map((c, index) => {
-                                const fullInfo = componentFullData[index];
-                                const metadata = fullInfo?.metadata || {};
-                                const name = metadata.name || "Unknown Product";
-                                const manufacturer = metadata.manufacturer || "N/A";
-                                const imageUrl = metadata.image_url;
-                                const unitPrice = c.unit_price || 0;
-                                const totalPrice = unitPrice * c.quantity;
-
-                                const imageHtml = imageUrl 
-                                    ? `<img src="${imageUrl}" alt="${name}" class="img-fluid rounded" style="object-fit: contain; width: 100%; height: 100%;" onerror="this.style.display='none'">`
-                                    : `<div class="d-flex align-items-center justify-content-center h-100 text-muted small bg-light rounded"><i class="bi bi-image"></i></div>`;
-
-                                return `
-                                <tr>
-                                    <td>
-                                        <div class="product-img-wrapper shadow-sm rounded bg-white p-1" style="width: 60px; height: 60px; overflow: hidden;">
-                                            ${imageHtml}
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div class="fw-bold text-dark">${name}</div>
-                                        <div class="small text-muted">
-                                            <span class="badge bg-light text-dark border me-1">ID: #${c.component_id}</span>
-                                            <span>MFR: ${manufacturer}</span>
-                                        </div>
-                                    </td>
-                                    <td class="text-center">
-                                        <span class="badge bg-primary-soft rounded-pill px-3 py-2 fw-bold fs-5 text-dark">
-                                            ${c.quantity} items
-                                         </span>
-                                    </td>
-
-                                    <td class="text-end fw-bold text-success fs-5">${formatCurrency(unitPrice)}</td>
-                                    <td class="text-end fw-bold text-primary text-success fs-5">${formatCurrency(totalPrice)}</td>
-                                </tr>
-                                `;
-                            }).join('')}
-                        </tbody>
-                        <tfoot class="table-light border-top-0">
-                            <tr>
-                                <td colspan="4" class="text-end fw-bold text-uppercase small ls-1">Total Estimated Value</td>
-                                <td class="text-end fw-bold fs-5 text-success">
-                                    ${formatCurrency(t.components.reduce((sum, c) => sum + (c.unit_price * c.quantity), 0))}
-                                </td>
-                            </tr>
-                        </tfoot>
-                    </table>
-                </div>
-            </div>
-        `;
-    } else {
-         container.innerHTML = "";
-    }
-}
-
-function showMessage(msg, type = "info") {
-    const container = document.getElementById("infoSection");
-    container.innerHTML = `<div class="alert alert-${type} shadow-sm" role="alert"><h5 class="alert-heading">Notice</h5><p class="mb-0">${msg}</p></div>`;
-}
-
-function goBack() {
-    window.history.back();
-}
+function goBack() { window.history.back(); }

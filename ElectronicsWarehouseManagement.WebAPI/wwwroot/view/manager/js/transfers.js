@@ -3,12 +3,13 @@
  */
 
 const STATUS = {
+    UNKNOWN: 0,
     PENDING: 1,
     APPROVED: 2,
     REJECTED: 3,
-    FINISHED:4,
-    MISSING_COMPONENTS:5,
-    CANCELED:6,
+    FINISHED: 4,
+    MISSING_COMPONENTS: 5,
+    CANCELED: 6
 };
 
 let search = "";
@@ -83,14 +84,12 @@ function renderTable(data) {
             <td class="align-middle">${getTypeBadge(t.type)}</td>
             <td class="align-middle small text-muted">${formatDate(t.creation_date)}</td>
             <td class="align-middle small text-muted">${t.execution_date ? formatDate(t.execution_date) : "-"}</td>
-            <td class="align-middle">${getStatusBadge(t.status)}</td>
+            <td class="align-middle">${getStatusBadge(t)}</td>
             <td class="align-middle">
-                <div class="d-flex gap-1">
-                    <button class="btn btn-sm btn-outline-primary rounded-pill px-3" onclick="viewTransfer(${t.id})">Details</button>
+                <div class="d-flex align-items-center gap-2">
+                    <button class="btn btn-sm btn-primary rounded-pill px-3" onclick="viewTransfer(${t.id})">Details</button>
+                    ${renderDecisionButtons(t)}
                 </div>
-            </td>
-            <td class="align-middle">
-                ${renderDecisionButtons(t)}
             </td>
         `;
 
@@ -99,7 +98,7 @@ function renderTable(data) {
 }
 
 function renderDecisionButtons(t) {
-    if (t.status !== STATUS.PENDING) return '<span class="text-muted small">N/A</span>';
+    if (t.status !== STATUS.PENDING) return "";
 
     return `
         <div class="btn-group btn-group-sm">
@@ -127,7 +126,8 @@ async function updateTransferStatus(transferId, decision) {
     }
 }
 
-function getStatusBadge(status) {
+function getStatusBadge(t) {
+    const status = t.status;
     switch (status) {
         case STATUS.PENDING:
             return '<span class="badge text-muted border rounded-pill">Waiting</span>';
@@ -136,13 +136,10 @@ function getStatusBadge(status) {
             return '<span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 rounded-pill">Processing</span>';
 
         case STATUS.REJECTED:
-            return '<span class="badge bg-light text-muted border rounded-pill">Canceled</span>';
+            return '<span class="badge bg-light text-muted border rounded-pill">Rejected</span>';
 
         case STATUS.FINISHED:
-            if (t.execution_date) {
-                return '<span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill">Done</span>';
-            }
-            return '<span class="badge bg-success bg-opacity-10 text-success rounded-pill">Finished</span>';
+            return '<span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill">Done</span>';
 
         case STATUS.MISSING_COMPONENTS:
             return '<span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 rounded-pill">Missing Components</span>';

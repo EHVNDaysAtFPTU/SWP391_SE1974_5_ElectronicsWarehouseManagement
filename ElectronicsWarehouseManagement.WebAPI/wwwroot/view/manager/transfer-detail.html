@@ -58,13 +58,108 @@
             </div>
 
             <!-- Info Section -->
-            <div id="infoSection">
-                <!-- JS content -->
+            <div id="transferInfo" class="row g-4 d-none">
+                <div class="col-md-7">
+                    <div class="glass-card p-4 h-100">
+                        <div class="d-flex justify-content-between align-items-start mb-4">
+                            <div>
+                                <small class="text-muted text-uppercase fw-bold ls-1">Transfer ID</small>
+                                <h3 class="fw-bold mb-0">#<span id="tId"></span></h3>
+                            </div>
+                            <div id="tStatusBadge"></div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label class="small text-muted text-uppercase d-block ls-1 mb-1">Description</label>
+                            <p id="tDesc" class="mb-0 fs-5 fw-medium text-dark"></p>
+                        </div>
+
+                        <div class="row g-3">
+                            <div class="col-6">
+                                <label class="small text-muted text-uppercase d-block ls-1">Movement Type</label>
+                                <span id="tType" class="fw-semibold text-primary"></span>
+                            </div>
+                            <div class="col-6">
+                                <label class="small text-muted text-uppercase d-block ls-1">Supplier / Customer</label>
+                                <span id="tCustomer" class="fw-bold text-success"></span>
+                            </div>
+                            <div class="col-6">
+                                <label class="small text-muted text-uppercase d-block ls-1">Creator</label>
+                                <span id="tCreator" class="fw-bold text-info"></span>
+                            </div>
+                            <div class="col-6">
+                                <label class="small text-muted text-uppercase d-block ls-1">Created Date</label>
+                                <span id="tCreatedDate" class="fs-6 text-primary fw-bold"></span>
+                            </div>
+                            <div class="col-6">
+                                <label class="small text-muted text-uppercase d-block ls-1">Executed Date</label>
+                                <span id="tExecutedDate" class="fs-6 text-primary fw-bold"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-5">
+                    <div class="glass-card p-4 h-100">
+                        <h6 class="fw-bold text-uppercase ls-1 text-muted mb-4">Logistics Route</h6>
+                        
+                        <div class="route-step mb-4 ps-3 border-start border-2 border-primary">
+                            <label class="small text-muted text-uppercase d-block ls-1">Origin Warehouse</label>
+                            <div id="tOrigin" class="fw-bold"></div>
+                        </div>
+
+                        <div class="route-step ps-3 border-start border-2 border-success">
+                            <label class="small text-muted text-uppercase d-block ls-1">Destination Warehouse</label>
+                            <div id="tDest" class="fw-bold"></div>
+                        </div>
+
+                        <div id="approvalSection" class="mt-5 pt-3 border-top d-none">
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-primary rounded-pill px-4" onclick="approveTransfer()">Approve</button>
+                                <button class="btn btn-outline-danger rounded-pill px-4" onclick="rejectTransfer()">Reject</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            <!-- Components Section -->
-            <div id="componentSection" class="mt-4">
-                <!-- JS content -->
+            <!-- Components Table -->
+            <div id="componentsCard" class="glass-card p-4 mt-4 d-none">
+                <h6 class="fw-bold text-muted mb-3">Transfer Line Items</h6>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle" id="itemsTable">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width:80px">Product</th>
+                                <th>Specification</th>
+                                <th id="binHeader" class="text-center d-none">Target Bin(s)</th>
+                                <th class="text-center">Requested Qty</th>
+                                <th id="actualHeader" class="text-center d-none">Actual Qty</th>
+                                <th class="text-end">Unit Price</th>
+                                <th class="text-end">Subtotal</th>
+                            </tr>
+                        </thead>
+                        <tbody id="itemsBody">
+                            <!-- Rows -->
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td id="footerLabelColspan" colspan="4" class="text-end fw-bold">Grand Total</td>
+                                <td id="grandTotal" class="text-end fw-bold text-success fs-5"></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+                <div id="missingAlert" class="alert alert-warning mt-3 mb-0 d-none">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    <strong>Attention:</strong> Some components are missing from this transfer!
+                </div>
+            </div>
+
+            <!-- Loading indicator -->
+            <div id="loader" class="text-center py-5">
+                <div class="spinner-border text-primary" role="status"></div>
+                <p class="mt-2 text-muted">Loading transfer data...</p>
             </div>
             
         </div>
