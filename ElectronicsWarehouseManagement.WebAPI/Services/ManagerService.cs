@@ -432,16 +432,16 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
 
                 InboundToday = await _dbCtx.TransferRequests
                     .Where(tr => tr.TypeInt == (int)TransferType.Inbound
-                        && tr.CreationTime >= start
-                        && tr.CreationTime < end)
-                    .SelectMany(tr => tr.TransferRequestComponents)
+                        && tr.ExecutionTime >= start
+                        && tr.ExecutionTime < end)
+                    .SelectMany(tr => tr.FinishedTransferRequestComponents)
                     .SumAsync(c => c.Quantity),
 
                 OutboundToday = await _dbCtx.TransferRequests
                     .Where(tr => tr.TypeInt == (int)TransferType.Outbound
-                        && tr.CreationTime >= start
-                        && tr.CreationTime < end)
-                    .SelectMany(tr => tr.TransferRequestComponents)
+                        && tr.ExecutionTime >= start
+                        && tr.ExecutionTime < end)
+                    .SelectMany(tr => tr.FinishedTransferRequestComponents)
                     .SumAsync(c => c.Quantity)
             };
 
@@ -453,11 +453,11 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             var start = DateTime.Today.AddDays(-days);
 
             var data = await _dbCtx.TransferRequests
-                .Where(tr => tr.CreationTime >= start)
-                .SelectMany(tr => tr.TransferRequestComponents,
+                .Where(tr => tr.ExecutionTime >= start)
+                .SelectMany(tr => tr.FinishedTransferRequestComponents,
                     (tr, c) => new
                     {
-                        Date = tr.CreationTime.Date,
+                        Date = tr.ExecutionTime.Value.Date,
                         Type = tr.TypeInt,
                         Quantity = c.Quantity
                     })
