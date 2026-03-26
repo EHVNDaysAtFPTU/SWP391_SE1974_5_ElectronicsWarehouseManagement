@@ -3,7 +3,6 @@ using ElectronicsWarehouseManagement.WebAPI.Helpers;
 using ElectronicsWarehouseManagement.WebAPI.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.IdentityModel.Tokens;
 
 namespace ElectronicsWarehouseManagement.WebAPI.Controllers
 {
