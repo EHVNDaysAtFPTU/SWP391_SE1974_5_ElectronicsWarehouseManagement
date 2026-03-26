@@ -9,7 +9,6 @@
             --muted: #64748b;
             --accent: #ef4444
         }
-
         body {
             font-family: Inter, 'Segoe UI', Roboto, Arial, sans-serif;
             padding: 24px;
@@ -146,6 +145,7 @@
             <div class="actions">
                 <button id="confirmBtn" class="btn danger" onclick="confirmOrder(false)" style="display:none">Confirm</button>
                 <button id="missingBtn" class="btn ghost" onclick="confirmOrder(true)" style="display:none;margin-left:8px;background:#f59e0b;color:#fff">Mark Missing</button>
+                <button id="cancelBtn" class="btn ghost" onclick="cancelOutboundDetail()" style="display:none;margin-left:8px;background:#ef4444;color:#fff">Cancel</button>
                 <button class="btn ghost" onclick="location.href='outbound-list.html'">Back</button>
             </div>
         </div>
@@ -252,6 +252,9 @@
                 const mb = document.getElementById('missingBtn'); if (mb) mb.style.display = 'inline-block';
                 loadBinsForConfirm();
             }
+
+            // show cancel when pending
+            const cancelBtn = document.getElementById('cancelBtn'); if (cancelBtn) cancelBtn.style.display = (transfer.status === 1 ? 'inline-block' : 'none');
 
             async function resolveCustomers(transfers) {
                 if (!Array.isArray(transfers) || transfers.length === 0) return;
@@ -407,7 +410,9 @@
                     case 1: return 'Pending';
                     case 2: return 'Approved - Waiting Confirm';
                     case 3: return 'Rejected';
+                    case 4: return 'Confirmed';
                     case 5: return 'Missing components';
+                    case 6: return 'Canceled';
                     default: return 'Completed';
                 }
             }
@@ -706,6 +711,19 @@
         }
 
         load();
+
+        async function cancelOutboundDetail() {
+            if (!confirm('Are you sure you want to cancel this outbound request?')) return;
+            try {
+                const reqId = transfer.id ?? transfer.ID ?? transfer.request_id ?? transfer.requestId ?? transfer.RequestId;
+                if (!reqId) return alert('Invalid id');
+                const res = await fetch(BASE + '/storekeeper/transfers/' + reqId + '/cancel', { method: 'POST', credentials: 'include' });
+                if (!res.ok) { const txt = await res.text().catch(()=>null); return alert('Cancel failed: ' + (txt || res.statusText)); }
+                const json = await res.json();
+                if (json?.success) { alert('Canceled successfully'); try { transfer.status = 6; render(); } catch(e){ location.reload(); } }
+                else alert('Cancel failed: ' + (json?.msg || json?.message || 'Unknown'));
+            } catch(e) { alert('Cancel failed: ' + e.message); }
+        }
     </script>
 </body>
 

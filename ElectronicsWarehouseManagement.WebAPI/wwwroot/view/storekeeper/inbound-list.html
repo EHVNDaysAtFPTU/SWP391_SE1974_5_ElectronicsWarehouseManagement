@@ -112,6 +112,9 @@
                 case 1: return "Pending";
                 case 2: return "Approved - Waiting Confirm";
                 case 3: return "Rejected";
+                case 4: return "Confirmed";
+                case 5: return "Missing components";
+                case 6: return "Canceled";
                 default: return "Completed";
             }
         }
@@ -180,8 +183,11 @@
 
             let html = "";
             items.forEach(o => {
-                let statusText = getStatusText(o.status ?? o.Status);
-                let statusClass = (o.status === 3 || o.Status === 3) ? "status-complete" : "status-pending";
+                // determine status text and class using numeric priority
+                const st = o.status ?? o.Status ?? 0;
+                let statusText = getStatusText(st);
+                let statusClass = (st === 4 || st === 3) ? "status-complete" : "status-pending";
+                if (st === 6) statusClass = 'status-canceled';
 
                 const binTo = o['bin_to'] ?? o.bin_to ?? null;
                 let warehouse = o._toWarehouseName ?? (binTo?.warehouse?.name ?? binTo?.warehouse?.warehouseName) ?? '-';
@@ -194,6 +200,9 @@
                 const totalItems = comps.reduce((s, c) => s + (c.quantity ?? c.Quantity ?? c.qty ?? 0), 0);
 
                 let action = `<button class="action-btn" onclick="goDetail('${getId(o)}')">Detail</button>`;
+                if (o.status === 1 || o.Status === 1) {
+                    action += ` <button class="btn ghost" style="margin-left:8px;border-color:#ef4444;color:#ef4444" onclick="cancelInbound('${getId(o)}')">Cancel</button>`;
+                }
 
                 html += `
                 <tr>
@@ -245,6 +254,20 @@
         }
 
         load();
+
+        async function cancelInbound(id) {
+            if (!confirm('Are you sure you want to cancel this inbound receipt?')) return;
+            try {
+                const res = await fetch(BASE + '/storekeeper/transfers/' + id + '/cancel', { method: 'POST', credentials: 'include' });
+                if (!res.ok) {
+                    const txt = await res.text().catch(()=>null);
+                    return alert('Cancel failed: ' + (txt || res.statusText));
+                }
+                const json = await res.json();
+                if (json?.success) { alert('Canceled successfully'); load(); }
+                else alert('Cancel failed: ' + (json?.msg || json?.message || 'Unknown'));
+            } catch(e) { alert('Cancel failed: ' + e.message); }
+        }
 
     </script>
 

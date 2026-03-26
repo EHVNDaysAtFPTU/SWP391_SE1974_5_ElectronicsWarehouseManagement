@@ -20,6 +20,7 @@
         tr:hover td{background:#fbfdff}
         .status-complete{color:#16a34a;font-weight:700}
         .status-pending{color:#f59e0b;font-weight:700}
+        .status-canceled{color:#ef4444;font-weight:700}
         .action-btn{background:#2563eb;color:#fff;padding:6px 10px;border-radius:8px;border:none;cursor:pointer}
         .search{display:flex;gap:8px;align-items:center}
         .search input{padding:8px;border-radius:8px;border:1px solid #eef2f6}
@@ -119,6 +120,7 @@
                 case 3: return "Rejected";
                 case 4: return "Confirmed";
                 case 5: return "Missing components";
+                case 6: return "Canceled";
                 default: return "Unknown";
             }
         }
@@ -208,26 +210,8 @@
                 }
             }));
 
-            // Group transfers by description and creation time to support multiple bins frontend-only
-            const groups = [];
-            list.forEach(t => {
-                const desc = (t.description ?? '').toString();
-                const createdTs = Date.parse(t.creation_date ?? t.creationDate ?? t.creationTime ?? '');
-                const creator = (t.creator_id ?? t.CreatorId ?? t.creator ?? t.Creator ?? '').toString();
-                
-                let foundGroup = groups.find(g => 
-                    g.desc === desc && 
-                    g.creator === creator && 
-                    (!isNaN(createdTs) && !isNaN(g.ts) ? Math.abs(g.ts - createdTs) <= 60000 : true)
-                );
-                
-                if (foundGroup) {
-                    foundGroup.items.push(t);
-                } else {
-                    groups.push({ desc, creator, ts: createdTs, items: [t] });
-                }
-            });
-
+            // Do not merge/group transfers. Each transfer is shown as its own row so detail allocation will handle multi-bin behavior.
+            const groups = list.map(t => ({ desc: (t.description ?? '').toString(), creator: (t.creator_id ?? t.CreatorId ?? t.creator ?? t.Creator ?? '').toString(), ts: Date.parse(t.creation_date ?? t.creationDate ?? t.creationTime ?? ''), items: [t] }));
             globalGroups = groups;
             searchFilter();
         }
@@ -300,13 +284,14 @@
 
                         const comps = getComponents(o);
                         totalItems += comps.reduce((s, c) => s + (c.quantity ?? c.Quantity ?? c.qty ?? c.QuantityDouble ?? 0), 0);
-                        statuses.add(o.status ?? o.Status ?? 0);
+                        statuses.add(Number(o.status ?? o.Status ?? 0));
                     });
 
                     let statusText = statuses.size === 1 ? getStatusText(Array.from(statuses)[0]) : 'Multiple';
                     let statusClass = "status-pending";
                     if (statusText === "Unknown" || statusText === "Rejected") statusClass = "status-complete";
                     if (statusText.toLowerCase().includes('confirm') || statusText.toLowerCase().includes('complete') || Array.from(statuses).includes(4)) statusClass = "status-complete";
+                    if (Array.from(statuses).includes(6)) statusClass = "status-complete";
 
                     html += `<tr>
                         <td>${group[0].description}</td>
@@ -317,7 +302,10 @@
                         <td>${Array.from(toBins).join(', ') || '-'}</td>
                         <td>${totalItems}</td>
                         <td class="${statusClass}">${statusText}</td>
-                        <td><button class="detail-btn action-btn" onclick="viewDetail(${reqId})">Detail</button></td>
+                        <td>
+                            <button class="detail-btn action-btn" onclick="viewDetail(${reqId})">Detail</button>
+                            ${statuses.size === 1 && Array.from(statuses)[0] === 1 ? `<button class="btn ghost" style="margin-left:8px;border-color:#f87171;color:#ef4444" onclick="cancelTransfer(${reqId})">Cancel</button>` : ''}
+                        </td>
                     </tr>`;
                 });
             }
@@ -366,6 +354,27 @@
 
         function formatDate(d) {
             return new Date(d).toLocaleString();
+        }
+
+        async function cancelTransfer(id) {
+            if (!confirm('Are you sure you want to cancel this transfer request? This cannot be undone.')) return;
+            try {
+                const res = await fetch(BASE + '/storekeeper/transfers/' + id + '/cancel', { method: 'POST', credentials: 'include' });
+                if (!res.ok) {
+                    const txt = await res.text().catch(()=>null);
+                    alert('Cancel failed: ' + (txt || res.statusText));
+                    return;
+                }
+                const json = await res.json();
+                if (json?.success) {
+                    alert('Transfer canceled successfully');
+                    load();
+                } else {
+                    alert('Cancel failed: ' + (json?.msg || json?.message || 'Unknown'));
+                }
+            } catch (e) {
+                alert('Cancel failed: ' + e.message);
+            }
         }
 
         load();

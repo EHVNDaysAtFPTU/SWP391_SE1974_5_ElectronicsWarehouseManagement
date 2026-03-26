@@ -568,88 +568,47 @@ Unit: ${unit} · Available: ${totalAvail}
             const rows = document.querySelectorAll("#tableBody tr");
             if (rows.length === 0) return alert("No products added");
 
-            // group by source bin and auto-distribute quantities if needed
-            const payloadByBin = {};
-            let binTracker = 0; // for round-robin distribution to naturally split rows across checked bins
+            // Create a single transfer request using one temporary source bin (first selected) and aggregate components.
+            const tempSourceBin = selectedFrom[0];
+            if (!tempSourceBin) return alert('No source bin selected to act as temporary source.');
+            if (selectedFrom.length > 1) {
+                // inform user that only the first selected bin will be used as temporary; actual allocation happens in detail view
+                if (!confirm('Multiple source bins selected. The transfer request will be created with the first selected bin as a temporary source. You can allocate from other bins later in the detail view. Proceed?')) return;
+            }
 
+            // aggregate components across rows
+            const agg = {}; // compId -> qty
             for (const r of rows) {
                 const compId = parseInt(r.cells[1].dataset.id);
                 const inp = r.querySelector('input[type=number]');
-                let qtyRemaining = parseInt(inp?.value) || 0;
-                
+                const qty = parseInt(inp?.value) || 0;
                 const avail = parseFloat(r.dataset.available) || Infinity;
-                if (qtyRemaining > avail) return alert('Requested quantity (' + qtyRemaining + ") exceeds total available stock for product ID " + compId + ". Available: " + avail);
-
-                const perRowBinSel = r.querySelector('select[data-row-bin]');
-                
-                // If user specifies a specific bin via dropdown, try to take from it first
-                if (perRowBinSel && perRowBinSel.value) {
-                    const cb = perRowBinSel.value;
-                    const stockInCb = (binAvailabilityByBin[cb] && binAvailabilityByBin[cb][compId]) ? binAvailabilityByBin[cb][compId] : 0;
-                    const take = Math.min(qtyRemaining, stockInCb);
-                    if (take > 0) {
-                        if (!payloadByBin[cb]) payloadByBin[cb] = { desc: document.getElementById('desc').value, bin_from_id: parseInt(cb), bin_to_id: binTo, warehouse_from_id: parseInt(document.getElementById('warehouseFrom').value) || null, warehouse_to_id: parseInt(document.getElementById('warehouseTo').value) || null, components: [] };
-                        payloadByBin[cb].components.push({ component_id: compId, quantity: take });
-                        qtyRemaining -= take;
-                    }
-                }
-
-                // If still quantity remaining, auto-distribute across other selected bins in round-robin fashion
-                let startIdx = binTracker % selectedFrom.length;
-                let sfCount = selectedFrom.length;
-
-                for (let i = 0; i < sfCount; i++) {
-                    if (qtyRemaining <= 0) break;
-                    const sf = selectedFrom[(startIdx + i) % sfCount];
-                    
-                    const stock = (binAvailabilityByBin[sf] && binAvailabilityByBin[sf][compId]) ? binAvailabilityByBin[sf][compId] : 0;
-                    if (stock > 0) {
-                        let alreadyTaken = 0;
-                        if (payloadByBin[sf]) {
-                            const existingComp = payloadByBin[sf].components.find(c => c.component_id === compId);
-                            if (existingComp) alreadyTaken = existingComp.quantity;
-                        }
-                        const actualAvail = stock - alreadyTaken;
-                        if (actualAvail > 0) {
-                            const take = Math.min(qtyRemaining, actualAvail);
-                            if (!payloadByBin[sf]) payloadByBin[sf] = { desc: document.getElementById('desc').value, bin_from_id: parseInt(sf), bin_to_id: binTo, warehouse_from_id: parseInt(document.getElementById('warehouseFrom').value) || null, warehouse_to_id: parseInt(document.getElementById('warehouseTo').value) || null, components: [] };
-                            
-                            const existingComp = payloadByBin[sf].components.find(c => c.component_id === compId);
-                            if (existingComp) existingComp.quantity += take;
-                            else payloadByBin[sf].components.push({ component_id: compId, quantity: take });
-                            
-                            qtyRemaining -= take;
-                        }
-                    }
-                }
-                
-                // advance round-robin so next row targets the next checked bin natively
-                binTracker++;
-
-                // fallback if somehow still remaining
-                if (qtyRemaining > 0) {
-                    const fallbackBin = selectedFrom[0];
-                    if (!payloadByBin[fallbackBin]) payloadByBin[fallbackBin] = { desc: document.getElementById('desc').value, bin_from_id: parseInt(fallbackBin), bin_to_id: binTo, warehouse_from_id: parseInt(document.getElementById('warehouseFrom').value) || null, warehouse_to_id: parseInt(document.getElementById('warehouseTo').value) || null, components: [] };
-                    const existingComp = payloadByBin[fallbackBin].components.find(c => c.component_id === compId);
-                    if (existingComp) existingComp.quantity += qtyRemaining;
-                    else payloadByBin[fallbackBin].components.push({ component_id: compId, quantity: qtyRemaining });
-                }
+                if (qty > avail) return alert('Requested quantity (' + qty + ") exceeds total available stock for product ID " + compId + ". Available: " + avail);
+                agg[compId] = (agg[compId] || 0) + qty;
             }
 
-            // send one internal transfer request per source bin
-            for (const binId of Object.keys(payloadByBin)) {
-                const payload = payloadByBin[binId];
-                const res = await fetch(BASE + "/transfers/transfer/create", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    credentials: "include",
-                    body: JSON.stringify(payload)
-                });
-                if(!res.ok){ const txt = await res.text().catch(()=>null); console.error('server error', txt || res.statusText); return alert('Creation failed for bin ' + binId + ': ' + (txt || res.statusText)); }
-                const json = await res.json().catch(()=>null);
-                if(!json || !json.success) return alert('Creation failed for bin ' + binId + ': ' + (json?.msg || 'unknown'));
-            }
-            alert('Transfer request(s) created successfully for ' + Object.keys(payloadByBin).length + ' bin(s).');
+            const componentsPayload = Object.keys(agg).map(k => ({ component_id: parseInt(k), quantity: agg[k] }));
+            if (componentsPayload.length === 0) return alert('No components to create transfer');
+
+            const payload = {
+                desc: document.getElementById('desc').value,
+                bin_from_id: parseInt(tempSourceBin),
+                bin_to_id: binTo,
+                warehouse_from_id: parseInt(document.getElementById('warehouseFrom').value) || null,
+                warehouse_to_id: parseInt(document.getElementById('warehouseTo').value) || null,
+                components: componentsPayload
+            };
+
+            const res = await fetch(BASE + "/transfers/transfer/create", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify(payload)
+            });
+            if(!res.ok){ const txt = await res.text().catch(()=>null); console.error('server error', txt || res.statusText); return alert('Creation failed: ' + (txt || res.statusText)); }
+            const json = await res.json().catch(()=>null);
+            if(!json || !json.success) return alert('Creation failed: ' + (json?.msg || 'unknown'));
+            alert('Transfer request created successfully (single request). Please open the detail to allocate from other bins and confirm or mark missing.');
             location.reload();
         }
 

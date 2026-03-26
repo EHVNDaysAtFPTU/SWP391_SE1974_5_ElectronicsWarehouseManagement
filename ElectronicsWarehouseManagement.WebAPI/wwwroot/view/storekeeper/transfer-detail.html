@@ -66,8 +66,10 @@
             <div class="actions">
                 <button id="confirmBtn" class="btn primary" onclick="confirmOrder(false)" style="display:none">Confirm Transfer</button>
                 <button id="missingBtn" class="btn ghost" onclick="confirmOrder(true)" style="display:none;margin-left:8px;background:#f59e0b;color:#fff">Mark Missing</button>
+                <button id="cancelBtn" class="btn ghost" onclick="window.cancelTransferDetail()" style="display:none;margin-left:8px;background:#ef4444;color:#fff">Cancel Transfer</button>
                 <button class="btn ghost" onclick="location.href='transfer-list.html'">Back to List</button>
             </div>
+
         </div>
     </div>
 
@@ -83,6 +85,40 @@
         let availableDestBins = [];
         let orderProducts = [];
         let binAvailabilityByBin = {};
+let binCache = {}; // cache bin details by id for allocation display
+let pendingClientAllocations = null; // preserve client allocations across background reloads
+
+        async function resolveAllocationBins(t) {
+            if (!t) return;
+            const ids = new Set();
+            try {
+                const bFrom = t.bins_from ?? t.binsFrom ?? t.bins_from ?? null;
+                const bTo = t.bins_to ?? t.binsTo ?? null;
+                if (Array.isArray(bFrom)) bFrom.forEach(b => { const id = b.bin_id ?? b.binId ?? b.bin_id; if (id) ids.add(String(id)); });
+                if (Array.isArray(bTo)) bTo.forEach(b => { const id = b.bin_id ?? b.binId ?? b.bin_id; if (id) ids.add(String(id)); });
+                // also check nested arrays named differently
+                for (const k of Object.keys(t)) {
+                    const v = t[k];
+                    if (Array.isArray(v)) {
+                        if (v.length>0 && (v[0].bin_id !== undefined || v[0].binId !== undefined)) {
+                            v.forEach(b => { const id = b.bin_id ?? b.binId ?? b.bin_id; if (id) ids.add(String(id)); });
+                        }
+
+
+                    }
+                }
+
+                for (const id of Array.from(ids)) {
+                    if (binCache[id]) continue;
+                    try {
+                        const bres = await fetch(BASE + '/storekeeper/bins/' + id, { credentials: 'include' });
+                        if (!bres.ok) continue;
+                        const bjson = await bres.json();
+                        if (bjson?.success && bjson.data) binCache[id] = bjson.data;
+                    } catch (e) { console.warn('fetch bin failed', id, e); }
+                }
+            } catch (e) { console.warn('resolveAllocationBins err', e); }
+        }
 
         function getComponents(obj) {
             if (!obj) return [];
@@ -103,7 +139,9 @@
             if (!Array.isArray(comps)) return;
             await Promise.all(comps.map(async c => {
                 const currentName = getComponentName(c);
-                if (currentName && !currentName.startsWith('Sản phẩm #')) return;
+                // If a name already exists and it's not a placeholder, skip fetching.
+                // Accept both English and Vietnamese placeholder prefixes.
+                if (currentName && !currentName.startsWith('Sản phẩm #') && !currentName.startsWith('Product #')) return;
                 const cid = c.component_id ?? c.componentId ?? c.component?.id;
                 if (!cid) return;
                 if (componentCache[cid]) {
@@ -192,6 +230,15 @@
                 const json = await res.json();
                 if (!json.success || !json.data) throw new Error(json.msg || 'No data');
                 transfer = json.data;
+                // loaded transfer
+                // If we have pending client allocations from a recent confirm, attach them
+                try {
+                    if (pendingClientAllocations && (!transfer.bins_to || !Array.isArray(transfer.bins_to) || transfer.bins_to.length === 0)) {
+                        transfer._clientAllocations = pendingClientAllocations;
+                    }
+                    // clear pending after attaching
+                    pendingClientAllocations = null;
+                } catch(e) {}
 
                 // find related transfers (grouping)
                 let related = [];
@@ -250,6 +297,8 @@
                     compsT.forEach(c => allComps.push(c));
                 }
                 await resolveComponentNames(allComps);
+                // ensure bin details used in allocations are resolved so render can show labels
+                try { await resolveAllocationBins(transfer); } catch(e) { console.warn('resolveAllocationBins failed', e); }
                 render();
                 
                 // Set creator info
@@ -262,6 +311,36 @@
                             const ujson = await ures.json();
                             if (ujson?.success && ujson.data) createdBy = ujson.data.display_name ?? ujson.data.username ?? ujson.data.fullname ?? ujson.data.Username ?? uid;
                         }
+
+        async function resolveAllocationBins(t) {
+            if (!t) return;
+            const ids = new Set();
+            try {
+                const bFrom = t.bins_from ?? t.binsFrom ?? t.bins_from ?? null;
+                const bTo = t.bins_to ?? t.binsTo ?? null;
+                if (Array.isArray(bFrom)) bFrom.forEach(b => { const id = b.bin_id ?? b.binId ?? b.bin_id; if (id) ids.add(String(id)); });
+                if (Array.isArray(bTo)) bTo.forEach(b => { const id = b.bin_id ?? b.binId ?? b.bin_id; if (id) ids.add(String(id)); });
+                // also check nested arrays named differently
+                for (const k of Object.keys(t)) {
+                    const v = t[k];
+                    if (Array.isArray(v)) {
+                        if (v.length>0 && (v[0].bin_id !== undefined || v[0].binId !== undefined)) {
+                            v.forEach(b => { const id = b.bin_id ?? b.binId ?? b.bin_id; if (id) ids.add(String(id)); });
+                        }
+                    }
+                }
+
+                for (const id of Array.from(ids)) {
+                    if (binCache[id]) continue;
+                    try {
+                        const bres = await fetch(BASE + '/storekeeper/bins/' + id, { credentials: 'include' });
+                        if (!bres.ok) continue;
+                        const bjson = await bres.json();
+                        if (bjson?.success && bjson.data) binCache[id] = bjson.data;
+                    } catch (e) { console.warn('fetch bin failed', id, e); }
+                }
+            } catch (e) { console.warn('resolveAllocationBins err', e); }
+        }
                     } catch(e) {}
                 }
                 if (!createdBy) createdBy = '-';
@@ -273,9 +352,9 @@
             }
         }
 
+        // Removed duplicate nested definition of resolveAllocationBins
         function render() {
             if (!transfer) return;
-
     function getStatusText(status){
                 switch(status){
                     case 0: return 'Unknown';
@@ -284,11 +363,13 @@
                     case 3: return 'Rejected';
                     case 4: return 'Confirmed';
                     case 5: return 'Missing components';
+                    case 6: return 'Canceled';
                     default: return 'Unknown';
                 }
             }
 
-            const related = transfer._related ?? [transfer];
+            // Do not treat requests as grouped/multiple here. Always show the main transfer only.
+            const related = [transfer];
 
             const fromBinsPairs = new Set();
             const fromBinsArr = [];
@@ -316,11 +397,16 @@
                     if (!productsMap[cid]) productsMap[cid] = { name: name, total: 0 };
                     productsMap[cid].total += qty;
                 });
-                statuses.add(t.status ?? t.Status ?? 0);
+                statuses.add(Number(t.status ?? t.Status ?? 0));
             });
             globalProductsMap = productsMap;
 
-            const statusText = statuses.size === 1 ? getStatusText(Array.from(statuses)[0]) : 'Multiple';
+            // choose representative status by priority when multiple statuses exist
+            const priority = [6,4,2,1,3,5,0];
+            let chosenStatus = null;
+            for (const p of priority) { if (statuses.has(p)) { chosenStatus = p; break; } }
+            if (chosenStatus === null) chosenStatus = Array.from(statuses)[0] ?? 0;
+            const statusText = getStatusText(chosenStatus);
 
             let html = `
                 <div class="info-grid">
@@ -360,6 +446,235 @@
             }
 
             html += `</tbody></table></div>`;
+            // If allocations (bins_from / bins_to) exist on the transfer, show detailed allocation list
+            // Determine if we should show allocations: hide when Pending(1) or Approved(2)
+            const statusNum = Number(transfer.status ?? transfer.Status ?? 0);
+            const showAllocations = (statusNum !== 1 && statusNum !== 2);
+            if (showAllocations) {
+                try {
+                // helper to find arrays of bins in transfer object
+                function findBinsArrays(t) {
+                    const arrays = [];
+                    for (const k of Object.keys(t || {})) {
+                        const v = t[k];
+                        if (Array.isArray(v) && v.length > 0 && (v[0].bin_id !== undefined || v[0].binId !== undefined || (v[0].bin && (v[0].bin.id !== undefined || v[0].bin.ID !== undefined || v[0].bin.binId !== undefined || v[0].bin.bin_id !== undefined)))) {
+                            arrays.push({ key: k, arr: v });
+                        }
+                    }
+                    return arrays;
+                }
+
+                const binsArrays = findBinsArrays(transfer);
+                let binsFrom = transfer.bins_from ?? transfer.binsFrom ?? null;
+                let binsTo = transfer.bins_to ?? transfer.binsTo ?? null;
+                // If server didn't return bins arrays but client submitted allocations earlier,
+                // use clientAllocations as a fallback so UI shows what was moved.
+                if (( !Array.isArray(binsFrom) || binsFrom.length === 0 || !Array.isArray(binsTo) || binsTo.length === 0 ) && Array.isArray(transfer._clientAllocations) && transfer._clientAllocations.length>0) {
+                    binsFrom = transfer._clientAllocations.map(a => ({ bin_id: a.srcId, components: a.components }));
+                    binsTo = transfer._clientAllocations.map(a => ({ bin_id: a.destId, components: a.components }));
+                    // schedule background fetch to populate binCache for these client allocations
+                    (async function(){
+                        try{
+                            for (const ca of transfer._clientAllocations) {
+                                if (ca.srcId) {
+                                    const key = String(ca.srcId);
+                                    if (!binCache[key]) {
+                                        try {
+                                            const r = await fetch(BASE + '/storekeeper/bins/' + ca.srcId, { credentials: 'include' });
+                                            if (r.ok) {
+                                                const j = await r.json(); if (j?.success) binCache[key] = j.data;
+                                            }
+                                        } catch(e){}
+                                    }
+                                }
+                                if (ca.destId) {
+                                    const key2 = String(ca.destId);
+                                    if (!binCache[key2]) {
+                                        try {
+                                            const r2 = await fetch(BASE + '/storekeeper/bins/' + ca.destId, { credentials: 'include' });
+                                            if (r2.ok) {
+                                                const j2 = await r2.json(); if (j2?.success) binCache[key2] = j2.data;
+                                            }
+                                        } catch(e){}
+                                    }
+                                }
+                            }
+                        } catch(e){}
+                    })();
+                }
+                if ((!binsFrom || !Array.isArray(binsFrom) || binsFrom.length===0) && binsArrays.length >= 1) binsFrom = binsArrays[0].arr;
+                if ((!binsTo || !Array.isArray(binsTo) || binsTo.length===0) && binsArrays.length >= 2) binsTo = binsArrays[1].arr;
+                // Note: do NOT synthesize allocations from transfer.bin_from/bin_to alone.
+                // Allocations must come from bins_from/bins_to arrays or clientAllocations to be considered reliable.
+
+                if (Array.isArray(binsFrom) && binsFrom.length > 0) {
+                    let allocHtml = '<h4 style="margin-top:18px">Allocations</h4><div class="table-card">';
+                    allocHtml += '<table><thead><tr><th>From Bin</th><th>To Bin</th><th>Components</th></tr></thead><tbody>';
+                    for (let i = 0; i < binsFrom.length; i++) {
+                        const bf = binsFrom[i] || {};
+                        const bt = (Array.isArray(binsTo) && binsTo[i]) ? binsTo[i] : (binsTo && binsTo.length>0 ? binsTo[0] : null);
+                        function extractBinId(b){
+                            if (!b) return null;
+                            // Check explicit bin_id content, then nested bin object, then direct id references
+                            return b.bin_id ?? b.binId ?? b.bin_id ?? b.bin?.id ?? b.bin?.ID ?? b.bin?.binId ?? b.bin?.bin_id ?? b.id ?? b.ID ?? null;
+                        }
+                        let fromId = extractBinId(bf);
+                        let toId = extractBinId(bt);
+
+                        // Fallback to transfer defaults if specific allocation doesn't specify bin
+                        if (!fromId) fromId = transfer.bin_from_id ?? transfer.binFromId ?? transfer.bin_from?.id ?? null;
+
+                        // If toId not found in paired array, try to find destination info in source array item (row)
+                        if (!toId && bf) {
+                             toId = bf.to_bin_id ?? bf.toBinId ?? bf.destination_bin_id ?? bf.destBinId ?? bf.to_bin?.id ?? bf.destination_bin?.id ?? bf.toBin?.id ?? null;
+                        }
+                        if (!toId) toId = transfer.bin_to_id ?? transfer.binToId ?? transfer.bin_to?.id ?? null;
+
+                        function getBinLabel(bid, fallbackObj) {
+                            try {
+                                if (bid === null || bid === undefined || bid === '') return '-';
+                                const key = String(bid);
+                                if (binCache[key]) return binCache[key].location_in_warehouse ?? binCache[key].locationInWarehouse ?? binCache[key].binCode ?? ('Bin ' + bid);
+                                // try fallback object if cache miss
+                                if (fallbackObj && (fallbackObj.id == bid || fallbackObj.ID == bid)) {
+                                    return fallbackObj.location_in_warehouse ?? fallbackObj.locationInWarehouse ?? fallbackObj.binCode ?? ('Bin ' + bid);
+                                }
+                                const b = (availableSourceBins.find(x=> (x.id||x.ID||x.binId)==bid) || availableDestBins.find(x=> (x.id||x.ID||x.binId)==bid));
+                                return b ? (b.location_in_warehouse||b.locationInWarehouse||b.binCode) : ('Bin ' + bid);
+                            } catch(e){ return ('Bin ' + bid); }
+                        }
+
+                        const fromLabel = getBinLabel(fromId, transfer.bin_from);
+                        const toLabel = getBinLabel(toId, transfer.bin_to);
+                        let compList = '';
+                        const comps = bf.components || [];
+                        comps.forEach(c => {
+                            function getCompId(c){
+                                return c.component_id ?? c.componentId ?? c.component?.id ?? c.component?.component_id ?? c.component?.componentId ?? null;
+                            }
+                            function getCompQty(c){
+                                return Number(c.quantity ?? c.qty ?? c.Quantity ?? c.component?.quantity ?? c.component?.qty ?? 0) || 0;
+                            }
+                            const cid = getCompId(c);
+                            const qty = getCompQty(c);
+                            const name = (function(id){
+                                try {
+                                    const found = Object.values(componentCache).find(x => (x.id==id || x.componentId==id));
+                                    if (found) return found.metadata?.name ?? found.name ?? found.Metadata?.name ?? ('Product #' + id);
+                                } catch(e){}
+                                const anyc = (getComponents(transfer) || []).find(x => (x.component_id==id || x.componentId==id || x.component?.id==id));
+                                return anyc ? getComponentName(anyc) : ('Product #' + id);
+                            })(cid);
+                            compList += `<div style="margin-bottom:6px">${name} — ${qty}</div>`;
+                        });
+                        allocHtml += `<tr><td style="vertical-align:top">${fromLabel}</td><td style="vertical-align:top">${toLabel}</td><td>${compList || '-'}</td></tr>`;
+                    }
+                    allocHtml += '</tbody></table></div>';
+                    html += allocHtml;
+                    // build per-product transferred/remaining summary
+                    try {
+                        const transferred = {};
+                        function addCompsToMap(arr){
+                            if(!Array.isArray(arr)) return;
+                            arr.forEach(item => {
+                                // Use getComponents to support different shapes returned by the API
+                                const comps = getComponents(item) || [];
+                                comps.forEach(c => {
+                                    const cid = String(c.component_id ?? c.componentId ?? c.component?.id ?? c.component?.component_id ?? c.component?.componentId ?? '');
+                                    const q = Number(c.quantity ?? c.qty ?? c.Quantity ?? c.component?.quantity ?? c.component?.qty ?? 0) || 0;
+                                    if (!cid) return;
+                                    transferred[cid] = (transferred[cid] || 0) + q;
+                                });
+                            });
+                        }
+                        // Count transferred. Prefer actual confirmed moves (binsTo).
+                        if (binsTo && binsTo.length > 0) {
+                            addCompsToMap(binsTo);
+                        } else {
+                            // If current transfer doesn't include bins_to, attempt to collect bins_to from related requests
+                            try {
+                                const relatedArr = Array.isArray(transfer._related) ? transfer._related : [];
+                                for (const rel of relatedArr) {
+                                    if (!rel) continue;
+                                    // try common properties first
+                                    let relBinsTo = rel.bins_to ?? rel.binsTo ?? rel.bins_to ?? null;
+                                    // fallback: find arrays that look like bins arrays
+                                    if ((!relBinsTo || !Array.isArray(relBinsTo) || relBinsTo.length === 0)) {
+                                        const ra = (function findBinsArraysLocal(t) {
+                                            const arrays = [];
+                                            for (const k of Object.keys(t || {})) {
+                                                const v = t[k];
+                                                if (Array.isArray(v) && v.length > 0 && (v[0].bin_id !== undefined || v[0].binId !== undefined || (v[0].bin && (v[0].bin.id !== undefined || v[0].bin.ID !== undefined || v[0].bin.binId !== undefined || v[0].bin.bin_id !== undefined)))) {
+                                                    arrays.push({ key: k, arr: v });
+                                                }
+                                            }
+                                            return arrays;
+                                        })(rel);
+                                        if (ra.length >= 2) relBinsTo = ra[1].arr;
+                                    }
+                                    // fallback to clientAllocations attached to related
+                                    if ((!relBinsTo || !Array.isArray(relBinsTo) || relBinsTo.length === 0) && Array.isArray(rel._clientAllocations) && rel._clientAllocations.length>0) {
+                                        relBinsTo = rel._clientAllocations.map(a => ({ bin_id: a.destId, components: a.components }));
+                                    }
+                                    if (relBinsTo && Array.isArray(relBinsTo) && relBinsTo.length>0) addCompsToMap(relBinsTo);
+                                }
+                            } catch (e) { console.warn('collect related bins_to failed', e); }
+                        }
+
+                        // If nothing counted as transferred yet, as a best-effort fallback use binsFrom arrays
+                        try {
+                            const anyTransferred = Object.keys(transferred).length > 0;
+                            if (!anyTransferred) {
+                                if (Array.isArray(binsFrom) && binsFrom.length>0) {
+                                    addCompsToMap(binsFrom);
+                                } else {
+                                    const relatedArr2 = Array.isArray(transfer._related) ? transfer._related : [];
+                                    for (const rel of relatedArr2) {
+                                        if (!rel) continue;
+                                        let relBinsFrom = rel.bins_from ?? rel.binsFrom ?? null;
+                                        if ((!relBinsFrom || !Array.isArray(relBinsFrom) || relBinsFrom.length === 0)) {
+                                            const ra = (function findBinsArraysLocal(t) {
+                                                const arrays = [];
+                                                for (const k of Object.keys(t || {})) {
+                                                    const v = t[k];
+                                                    if (Array.isArray(v) && v.length > 0 && (v[0].bin_id !== undefined || v[0].binId !== undefined || v[0].components !== undefined)) {
+                                                        arrays.push({ key: k, arr: v });
+                                                    }
+                                                }
+                                                return arrays;
+                                            })(rel);
+                                            if (ra.length >= 1) relBinsFrom = ra[0].arr;
+                                        }
+                                        if ((!relBinsFrom || !Array.isArray(relBinsFrom) || relBinsFrom.length === 0) && Array.isArray(rel._clientAllocations) && rel._clientAllocations.length>0) {
+                                            relBinsFrom = rel._clientAllocations.map(a => ({ bin_id: a.srcId, components: a.components }));
+                                        }
+                                        if (relBinsFrom && Array.isArray(relBinsFrom) && relBinsFrom.length>0) addCompsToMap(relBinsFrom);
+                                    }
+                                }
+                            }
+                        } catch(e){ console.warn('fallback binsFrom collect failed', e); }
+
+                        // Do not assume transferred = requested when execution exists.
+                        // Keep transferred counts only from explicit bins_to/bins_from or client allocations.
+                        // debug: transferred map (hidden in production)
+                        // summary table
+                        let sumHtml = '<h4 style="margin-top:16px">Transfer Summary</h4><div class="table-card"><table><thead><tr><th>Product</th><th>Requested</th><th>Transferred</th><th>Remaining</th></tr></thead><tbody>';
+                        const anyTransferred = Object.keys(transferred).length > 0;
+                        Object.keys(productsMap).forEach(k => {
+                            const req = Number(productsMap[k].total) || 0;
+                            const trNum = anyTransferred ? (Number(transferred[k] || 0) || 0) : null;
+                            const trDisplay = trNum === null ? '-' : trNum;
+                            const remDisplay = trNum === null ? '-' : Math.max(0, req - trNum);
+                            const pname = productsMap[k].name || ('Product #' + k);
+                            sumHtml += `<tr><td style="font-weight:500">${pname}</td><td>${req}</td><td>${trDisplay}</td><td>${remDisplay}</td></tr>`;
+                        });
+                        sumHtml += '</tbody></table></div>';
+                        html += sumHtml;
+                    } catch (e) { console.warn('summary render err', e); }
+                }
+            } catch (e) { console.warn('alloc render err', e); }
+            } // End if (showAllocations) block
+
             document.getElementById('detail').innerHTML = html;
 
             // show confirm and missing buttons for appropriate statuses
@@ -367,11 +682,14 @@
                 document.getElementById('confirmSection').style.display = 'block';
                 document.getElementById('confirmBtn').style.display = 'inline-block';
                 const mb = document.getElementById('missingBtn'); if (mb) mb.style.display = 'inline-block';
+                const cancelBtn = document.getElementById('cancelBtn'); if (cancelBtn) cancelBtn.style.display = 'none';
                 loadBinsForConfirm();
             } else {
                 if (document.getElementById('confirmSection')) document.getElementById('confirmSection').style.display = 'none';
                 document.getElementById('confirmBtn').style.display = 'none';
                 const mb = document.getElementById('missingBtn'); if (mb) mb.style.display = 'none';
+                // Show Cancel button only when Pending
+                const cancelBtn = document.getElementById('cancelBtn'); if (cancelBtn) cancelBtn.style.display = (transfer.status === 1 ? 'inline-block' : 'none');
             }
         }
 
@@ -424,8 +742,11 @@
                         }
                     } catch(e) {}
                 }
+                // no missing-bin select needed; allocations will be submitted directly
             } catch (e) { console.error('loadBins err', e); }
         }
+
+        // missing-panel helper removed: pressing Missing will submit allocations as missing immediately
 
         function addAllocationRow(defaultProductId = '', defaultQty = '') {
             const tbody = document.getElementById('allocationBody');
@@ -462,8 +783,12 @@
 
         async function confirmOrder(allowPartial = false) {
             const confirmMsg = allowPartial ? 'Mark this transfer as MissingComponents and apply the provided allocations?' : 'Confirm allocation and transfer?';
-            if (!confirm(confirmMsg)) return;
-            const related = transfer._related ?? [transfer];
+            // For missing-components flow, we'll first validate allocations and then show a detailed summary
+            if (!allowPartial) {
+                if (!confirm(confirmMsg)) return;
+            }
+            // do not process grouped related requests here; operate on the single transfer
+            const related = [transfer];
             const isValidStatus = related.some(t => t.status === 2);
             if (!isValidStatus) return alert('This transfer is not in a confirmable status.');
 
@@ -516,8 +841,11 @@
                 }
             }
 
+            // If allowPartial (mark missing) we proceed immediately without extra summary prompt
+
             let errMsg = '';
             let allSuccess = true;
+            const clientAllocations = []; // collect allocations we submit so UI can show them if server doesn't return bins_to
 
             for (const t of related) {
                 const reqId = t.id ?? t.ID ?? t.request_id ?? t.requestId ?? t.RequestId;
@@ -574,9 +902,14 @@
                     const compsToSubmit = JSON.parse(JSON.stringify(pair.components));
                     payload.bins_from.push({ bin_id: pair.srcId, components: compsToSubmit });
                     payload.bins_to.push({ bin_id: pair.destId, components: compsToSubmit });
+                    // also add to clientAllocations for UI fallback
+                    clientAllocations.push({ srcId: pair.srcId, destId: pair.destId, components: compsToSubmit });
                 }
 
+                // no missing-bin extra info required; server will mark missing based on allocations when allowPartial === true
+
                 try {
+                    try { console.debug('DEBUG submitting confirm payload for reqId=' + reqId, payload); } catch(e) {}
                     const res = await fetch(BASE + '/storekeeper/transfers/confirm', {
                         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(payload)
                     });
@@ -589,6 +922,7 @@
                         break;
                     }
                     const json = await res.json();
+                    try { console.debug('DEBUG confirm response for reqId=' + reqId, json); } catch(e) {}
                     if (!json?.success) {
                         allSuccess = false;
                         errMsg = json?.msg || json?.message || 'An error occurred';
@@ -603,13 +937,45 @@
 
             if (allSuccess) {
                 alert('Transfer allocation and move confirmed successfully!');
-                location.href = 'transfer-list.html';
+                // If server does not return bins_to/bins_from in transfer, use clientAllocations to display what we submitted
+                try {
+                    if (!transfer.bins_to || transfer.bins_to.length === 0) {
+                        transfer._clientAllocations = clientAllocations;
+                    }
+                } catch (e) { console.warn('attach clientAllocations failed', e); }
+                // re-render to show allocations (do not force refetch because server may not provide allocations)
+                try { render(); } catch(e) { console.warn('render after confirm failed', e); }
+                // preserve client allocations across background reload and then reload fresh data
+                try { pendingClientAllocations = clientAllocations; load().catch(()=>{}); } catch(e) {}
             } else {
                 alert('Confirmation failed: ' + errMsg);
                 location.reload();
             }
         }
         load();
+
+        // Cancel transfer (global) - called by Cancel Transfer button
+        window.cancelTransferDetail = async function() {
+            if (!confirm('Are you sure you want to cancel this transfer request?')) return;
+            try {
+                const reqId = transfer.id ?? transfer.ID ?? transfer.request_id ?? transfer.requestId ?? transfer.RequestId;
+                if (!reqId) return alert('Invalid transfer id');
+                const res = await fetch(BASE + '/storekeeper/transfers/' + reqId + '/cancel', { method: 'POST', credentials: 'include' });
+                if (!res.ok) {
+                    const txt = await res.text().catch(()=>null);
+                    return alert('Cancel failed: ' + (txt || res.statusText));
+                }
+                const json = await res.json();
+                if (json?.success) {
+                    alert('Transfer canceled successfully');
+                    try { transfer.status = 6; render(); } catch(e) { location.reload(); }
+                } else {
+                    alert('Cancel failed: ' + (json?.msg || json?.message || 'Unknown'));
+                }
+            } catch (e) {
+                alert('Cancel failed: ' + e.message);
+            }
+        }
     </script>
 </body>
 </html>
