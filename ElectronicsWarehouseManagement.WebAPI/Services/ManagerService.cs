@@ -101,7 +101,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
                 });
             }
 
-            var data = await query.ApplyPaging(request).Select(i => new ComponentResp(i, false)).ToListAsync();
+            var data = await query.Include(i => i.ComponentBins).ApplyPaging(request).Select(i => new ComponentResp(i, true)).ToListAsync();
 
             var pagedResult = new PagedResult<ComponentResp>
             {
@@ -395,7 +395,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
 
             var data = await query
                 .ApplyPaging(request)
-                .Select(b => new BinResp(b, false))
+                .Select(b => new BinResp(b, true))
                 .ToListAsync();
 
             var pagedResult = new PagedResult<BinResp>
@@ -422,26 +422,24 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
 
                 CurrentStock = await _dbCtx.ComponentBins.SumAsync(cb => cb.Quantity),
 
-                LowStockItems = await _dbCtx.ComponentBins
-                    .Where(cb => cb.Quantity < 10)
+                LowStockItems = await _dbCtx.Components
+                    .Where(c => c.ComponentBins.Sum(cb => cb.Quantity) < 10 && c.ComponentBins.Sum(cb => cb.Quantity) > 0)
                     .CountAsync(),
 
-                OutOfStockItems = await _dbCtx.ComponentBins
-                    .Where(cb => cb.Quantity == 0)
+                OutOfStockItems = await _dbCtx.Components
+                    .Where(c => !c.ComponentBins.Any() || c.ComponentBins.Sum(cb => cb.Quantity) == 0)
                     .CountAsync(),
 
-                InboundToday = await _dbCtx.TransferRequests
-                    .Where(tr => tr.TypeInt == (int)TransferType.Inbound
-                        && tr.CreationTime >= start
-                        && tr.CreationTime < end)
-                    .SelectMany(tr => tr.TransferRequestComponents)
+                InboundToday = await _dbCtx.FinishedTransferRequestComponents
+                    .Where(ftr => ftr.TypeInt == (int)FinishedTransferRequestComponentType.In
+                        && ftr.Request.ExecutionTime >= start
+                        && ftr.Request.ExecutionTime < end)
                     .SumAsync(c => c.Quantity),
 
-                OutboundToday = await _dbCtx.TransferRequests
-                    .Where(tr => tr.TypeInt == (int)TransferType.Outbound
-                        && tr.CreationTime >= start
-                        && tr.CreationTime < end)
-                    .SelectMany(tr => tr.TransferRequestComponents)
+                OutboundToday = await _dbCtx.FinishedTransferRequestComponents
+                    .Where(ftr => ftr.TypeInt == (int)FinishedTransferRequestComponentType.Out
+                        && ftr.Request.ExecutionTime >= start
+                        && ftr.Request.ExecutionTime < end)
                     .SumAsync(c => c.Quantity)
             };
 
@@ -452,23 +450,23 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
         {
             var start = DateTime.Today.AddDays(-days);
 
-            var data = await _dbCtx.TransferRequests
-                .Where(tr => tr.CreationTime >= start)
-                .SelectMany(tr => tr.TransferRequestComponents,
-                    (tr, c) => new
-                    {
-                        Date = tr.CreationTime.Date,
-                        Type = tr.TypeInt,
-                        Quantity = c.Quantity
-                    })
+            var data = await _dbCtx.FinishedTransferRequestComponents
+                .Include(ftr => ftr.Request)
+                .Where(ftr => ftr.Request.ExecutionTime >= start)
+                .Select(ftr => new
+                {
+                    Date = ftr.Request.ExecutionTime.Value.Date,
+                    Type = ftr.TypeInt,
+                    Quantity = ftr.Quantity
+                })
                 .GroupBy(x => x.Date)
                 .Select(g => new ImportExportChart
                 {
                     Date = g.Key,
-                    Import = g.Where(x => x.Type == (int)TransferType.Inbound)
+                    Import = g.Where(x => x.Type == (int)FinishedTransferRequestComponentType.In)
                               .Sum(x => x.Quantity),
 
-                    Export = g.Where(x => x.Type == (int)TransferType.Outbound)
+                    Export = g.Where(x => x.Type == (int)FinishedTransferRequestComponentType.Out)
                               .Sum(x => x.Quantity)
                 })
                 .OrderBy(x => x.Date)
