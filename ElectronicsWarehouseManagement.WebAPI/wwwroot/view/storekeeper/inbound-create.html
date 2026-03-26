@@ -32,7 +32,7 @@
         .total{display:flex;justify-content:flex-end;align-items:center;margin-top:14px;gap:12px;font-weight:700}
         .modal{position:fixed;inset:0;background:rgba(2,6,23,0.4);display:none;justify-content:center;align-items:center;padding:20px}
         .modal.show{display:flex}
-        .modal-box{background:var(--card);width:100%;max-width:820px;border-radius:10px;padding:16px}
+        .modal-box{background:var(--card);width:100%;max-width:820px;border-radius:10px;padding:16px;max-height:80vh;overflow:auto}
         .search{display:flex;gap:8px;margin-bottom:10px}
         .list{max-height:380px;overflow:auto;border-radius:8px;border:1px solid #eef2f6}
         .list-item{display:flex;justify-content:space-between;padding:10px 12px;border-bottom:1px solid #f1f5f9;cursor:pointer}
@@ -123,7 +123,7 @@
     <div id="modal" class="modal">
         <div class="modal-box">
             <h3>Product List</h3>
-            <div id="productList"></div>
+            <div id="productList" class="list"></div>
             <br>
             <button onclick="closeModal()">Close</button>
         </div>

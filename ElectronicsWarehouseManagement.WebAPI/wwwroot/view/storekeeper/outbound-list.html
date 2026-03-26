@@ -116,11 +116,20 @@
                 case 1: return "Pending";
                 case 2: return "Approved - Waiting Confirm";
                 case 3: return "Rejected";
-                case 4: return "Confirmed";
+                case 4: return "Finished";
                 case 5: return "Missing components";
+                case 6: return "Canceled";
                 default: return "Unknown";
             }
         }
+
+        // state used by paging and filtering
+        let globalGroups = [];
+        let filteredGroups = [];
+        let currentPage = 1;
+        const pageSize = 10;
+// cache for warehouse details (so UI can list warehouse.bins)
+let globalWarehouseCache = {};
 
         async function load() {
 
@@ -173,6 +182,56 @@
                         continue;
                     }
 
+                    // If transfer detail includes finished_components, assign separate finish bins for from/to when possible
+                    const finishedArr = t0.finished_components ?? t0.finishedComponents ?? t0.finished_components_list ?? t0.finishedComponentsList;
+                    if (Array.isArray(finishedArr) && finishedArr.length > 0) {
+                        t0.bin_finish_from = null;
+                        t0.bin_finish_to = null;
+                        for (const fc of finishedArr) {
+                            const binObj = fc.bin ?? fc.Bin ?? null;
+                            const binRef = binObj ? binObj : ((fc.bin_id || fc.binId) ? { id: fc.bin_id ?? fc.binId } : null);
+                            if (!binRef) continue;
+                            if (fc.type === 1) t0.bin_finish_from = binRef;
+                            else if (fc.type === 0) t0.bin_finish_to = binRef;
+                            else if (!t0.bin_finish_to) t0.bin_finish_to = binRef;
+                        }
+                        // resolve warehouses for finish_from / finish_to if present
+                        if (t0.bin_finish_from) {
+                            const bfFromId = t0.bin_finish_from?.warehouse ?? t0.bin_finish_from?.warehouse_id ?? t0.bin_finish_from?.warehouseId ?? (typeof t0.bin_finish_from?.warehouse === 'object' ? t0.bin_finish_from.warehouse.id : null) ?? t0.warehouse_from_id;
+                            if (bfFromId && (!t0.bin_finish_from?.warehouse || typeof t0.bin_finish_from.warehouse !== 'object')) {
+                                try {
+                                    const wresF = await fetch(BASE + "/storekeeper/warehouses/" + bfFromId, { credentials: 'include' });
+                                    if (wresF.ok) {
+                                        const wjsonF = await wresF.json();
+                                        if (wjsonF?.success && wjsonF.data) {
+                                            t0._finishFromWarehouseName = wjsonF.data.name ?? wjsonF.data.warehouseName;
+                                            t0.bin_finish_from.warehouse = wjsonF.data;
+                                        }
+                                    }
+                                } catch (e) { console.error('bin_finish_from warehouse fetch failed', e); }
+                            } else if (t0.bin_finish_from?.warehouse && typeof t0.bin_finish_from.warehouse === 'object') {
+                                t0._finishFromWarehouseName = t0.bin_finish_from.warehouse.name ?? t0.bin_finish_from.warehouse.warehouseName;
+                            }
+                        }
+                        if (t0.bin_finish_to) {
+                            const bfToId = t0.bin_finish_to?.warehouse ?? t0.bin_finish_to?.warehouse_id ?? t0.bin_finish_to?.warehouseId ?? (typeof t0.bin_finish_to?.warehouse === 'object' ? t0.bin_finish_to.warehouse.id : null) ?? t0.warehouse_to_id;
+                            if (bfToId && (!t0.bin_finish_to?.warehouse || typeof t0.bin_finish_to.warehouse !== 'object')) {
+                                try {
+                                    const wresT = await fetch(BASE + "/storekeeper/warehouses/" + bfToId, { credentials: 'include' });
+                                    if (wresT.ok) {
+                                        const wjsonT = await wresT.json();
+                                        if (wjsonT?.success && wjsonT.data) {
+                                            t0._finishToWarehouseName = wjsonT.data.name ?? wjsonT.data.warehouseName;
+                                            t0.bin_finish_to.warehouse = wjsonT.data;
+                                        }
+                                    }
+                                } catch (e) { console.error('bin_finish_to warehouse fetch failed', e); }
+                            } else if (t0.bin_finish_to?.warehouse && typeof t0.bin_finish_to.warehouse === 'object') {
+                                t0._finishToWarehouseName = t0.bin_finish_to.warehouse.name ?? t0.bin_finish_to.warehouse.warehouseName;
+                            }
+                        }
+                    }
+
                     const binId = t0.bin_from_id ?? t0.binFromId ?? t0.bin_from?.id ?? t0.bin_from?.ID ?? t0.binFrom?.id;
                     if (!binId) { detailedTransfers.push(t0); continue; }
 
@@ -209,6 +268,41 @@
                     detailedTransfers.push(t0);
                 }
             }
+            // Precompute possible warehouse ids per transfer and prefetch warehouse details so UI can show all bins of a warehouse
+            const localWarehouseCache = {};
+            try {
+                const allWarehouseIds = new Set();
+                detailedTransfers.forEach(t => {
+                    const ids = new Set();
+                    try {
+                        const binFrom = t.bin_from ?? t.binFrom ?? null;
+                        const binFinishFrom = t.bin_finish_from ?? t.binFinishFrom ?? null;
+                        const wid1 = (binFrom && (typeof binFrom.warehouse === 'object')) ? (binFrom.warehouse?.id) : (binFrom?.warehouse ?? binFrom?.warehouse_id ?? binFrom?.warehouseId ?? null);
+                        const wid2 = (binFinishFrom && (typeof binFinishFrom.warehouse === 'object')) ? (binFinishFrom.warehouse?.id) : (binFinishFrom?.warehouse ?? binFinishFrom?.warehouse_id ?? binFinishFrom?.warehouseId ?? null);
+                        const wid3 = t.warehouse_from_id ?? t.warehouseFromId ?? null;
+                        if (wid1) ids.add(wid1);
+                        if (wid2) ids.add(wid2);
+                        if (wid3) ids.add(wid3);
+                    } catch(e) { }
+                    t._possibleWarehouseIds = Array.from(ids);
+                    t._possibleWarehouseIds.forEach(i => { if (i) allWarehouseIds.add(i); });
+                });
+
+                // fetch warehouses once and cache (so we can list all bins from the warehouse)
+                await Promise.all(Array.from(allWarehouseIds).map(async wid => {
+                    try {
+                        const wres = await fetch(BASE + "/storekeeper/warehouses/" + wid, { credentials: 'include' });
+                        if (!wres.ok) return;
+                        const wj = await wres.json();
+                        if (wj?.success && wj.data) localWarehouseCache[wid] = wj.data;
+                    } catch(e) { /* ignore per-item errors */ }
+                }));
+            } catch(e) {
+                console.error('warehouse prefetch failed', e);
+                /* keep localWarehouseCache empty */
+                // no-op
+            }
+
             // Group transfers by description and creation time to support multiple bins frontend-only
             const groups = [];
             detailedTransfers.forEach(t => {
@@ -229,29 +323,48 @@
                 }
             });
 
+            // expose fetched warehouse cache to search/render
+            globalWarehouseCache = localWarehouseCache;
             globalGroups = groups;
             searchFilter();
         }
 
-        let globalGroups = [];
-        let filteredGroups = [];
-        let currentPage = 1;
-        const pageSize = 10;
-
         function searchFilter() {
             const q = (document.getElementById('q')?.value || '').toString().toLowerCase();
-            filteredGroups = globalGroups.filter(g => {
+                filteredGroups = globalGroups.filter(g => {
                 const group = g.items;
-                const bins = new Set();
                 const warehouses = new Set();
+                // normalize bins using a map to dedupe robustly (strip HTML tags, trim, lowercase)
+                const binMap = new Map();
+                function normalizeLabel(x){ if (x === null || x === undefined) return ''; try { return String(x).replace(/<[^>]+>/g, '').trim().toLowerCase(); } catch(e){ return String(x); } }
                 group.forEach(o => {
+                    const isPendingOrApproved = (o.status === 1 || o.Status === 1 || o.status === 2 || o.Status === 2);
+                    const binFinishFrom = o.bin_finish_from ?? o.binFinishFrom ?? null;
                     const binFrom = o.bin_from ?? o.binFrom ?? null;
-                    const warehouseName = o._fromWarehouseName ?? (binFrom?.warehouse?.name ?? binFrom?.warehouse?.warehouseName ?? binFrom?.warehouse) ?? (o.warehouse?.name ?? o.warehouse?.warehouseName ?? o.warehouse) ?? '-';
+                    const warehouseName = o._finishFromWarehouseName ?? o._fromWarehouseName ?? (o.warehouse_from?.name ?? o.warehouse_from?.warehouseName) ?? (binFinishFrom?.warehouse?.name ?? binFinishFrom?.warehouse?.warehouseName ?? binFinishFrom?.warehouse) ?? (binFrom?.warehouse?.name ?? binFrom?.warehouse?.warehouseName ?? binFrom?.warehouse) ?? (o.warehouse?.name ?? o.warehouse?.warehouseName ?? o.warehouse) ?? '-';
                     warehouses.add(warehouseName);
-                    const binName = binFrom?.location_in_warehouse ?? binFrom?.locationInWarehouse ?? binFrom?.binCode ?? o.location_in_warehouse ?? o.locationInWarehouse ?? '-';
-                    bins.add(binName);
+                    // Prefer bins referenced by finished_components (type=1 = From). Fallback to bin_finish_from / bin_from / transfer fields.
+                    const finishedArr = o.finished_components ?? o.finishedComponents ?? o.finished_components_list ?? o.finishedComponentsList ?? o.FinishedTransferRequestComponents;
+                    let chosenBinLabels = [];
+                    if (Array.isArray(finishedArr) && finishedArr.length > 0) {
+                        // prefer from-type bins
+                        const fromBins = finishedArr.filter(f => f.type === 1).map(f => f.bin ?? f.Bin ?? null).filter(Boolean);
+                        const baseBins = (fromBins.length > 0 ? fromBins : finishedArr.map(f => f.bin ?? f.Bin ?? null).filter(Boolean));
+                        chosenBinLabels = baseBins.map(b => (b.location_in_warehouse ?? b.locationInWarehouse ?? b.binCode ?? (b.id ?? b.ID ?? b.binId) ?? '').toString());
+                    }
+                    if (chosenBinLabels.length === 0) {
+                        const rawBinName = binFinishFrom?.location_in_warehouse ?? binFinishFrom?.locationInWarehouse ?? binFinishFrom?.binCode ?? binFrom?.location_in_warehouse ?? binFrom?.locationInWarehouse ?? binFrom?.binCode ?? o.location_in_warehouse ?? o.locationInWarehouse ?? '-';
+                        chosenBinLabels = [(typeof rawBinName === 'string') ? rawBinName.trim() : rawBinName];
+                    }
+                    // add chosen bins into normalized binMap to be used for search text
+                    chosenBinLabels.forEach(lbl => {
+                        const n = normalizeLabel(lbl);
+                        if (!binMap.has(n)) binMap.set(n, (typeof lbl === 'string') ? lbl.trim() : lbl);
+                    });
+
+                    // do NOT add all warehouse bins here — only include bins actually referenced by transfers
                 });
-                const rowText = ((group[0].description ?? '') + ' ' + Array.from(warehouses).join(' ') + ' ' + Array.from(bins).join(' ')).toLowerCase();
+                const rowText = ((group[0].description ?? '') + ' ' + Array.from(warehouses).join(' ') + ' ' + Array.from(binMap.values()).join(' ')).toLowerCase();
                 return rowText.includes(q);
             });
             renderPage(1);
@@ -270,20 +383,45 @@
                 paginated.forEach(groupObj => {
                     const group = groupObj.items;
                     // aggregate bins and warehouses
-                    const bins = new Set();
                     const warehouses = new Set();
+                    // use map to dedupe bins robustly while preserving first-seen label
+                    const binMap = new Map();
+                    function normalizeLabel(x){ if (x === null || x === undefined) return ''; try { return String(x).replace(/<[^>]+>/g, '').trim().toLowerCase(); } catch(e){ return String(x); } }
+                    // compute total items by aggregating quantities per component id across the group
                     let totalItems = 0;
+                    const compTotals = {}; // compId -> total qty
                     const statuses = new Set();
                     const ids = [];
                     group.forEach(o => {
                         ids.push(getId(o));
+                        // prefer finished-from bin for outbound display
+                        const binFinishFrom = o.bin_finish_from ?? o.binFinishFrom ?? null;
                         const binFrom = o.bin_from ?? o.binFrom ?? null;
-                        const warehouseName = o._fromWarehouseName ?? (binFrom?.warehouse?.name ?? binFrom?.warehouse?.warehouseName ?? binFrom?.warehouse) ?? (o.warehouse?.name ?? o.warehouse?.warehouseName ?? o.warehouse) ?? '-';
+                        const isPendingOrApproved = (o.status === 1 || o.Status === 1 || o.status === 2 || o.Status === 2);
+                        const warehouseName = o._finishFromWarehouseName ?? o._fromWarehouseName ?? (o.warehouse_from?.name ?? o.warehouse_from?.warehouseName) ?? (binFinishFrom?.warehouse?.name ?? binFinishFrom?.warehouse?.warehouseName ?? binFinishFrom?.warehouse) ?? (binFrom?.warehouse?.name ?? binFrom?.warehouse?.warehouseName ?? binFrom?.warehouse) ?? (o.warehouse?.name ?? o.warehouse?.warehouseName ?? o.warehouse) ?? '-';
                         warehouses.add(warehouseName);
-                        const binName = binFrom?.location_in_warehouse ?? binFrom?.locationInWarehouse ?? binFrom?.binCode ?? o.location_in_warehouse ?? o.locationInWarehouse ?? '-';
-                        bins.add(binName);
+                        // Prefer bins referenced by finished_components (type=1 = From) for display. Collect all distinct bins used by movements.
+                        const finishedArr = o.finished_components ?? o.finishedComponents ?? o.finished_components_list ?? o.finishedComponentsList ?? o.FinishedTransferRequestComponents;
+                        const chosenLabels = [];
+                        if (Array.isArray(finishedArr) && finishedArr.length > 0) {
+                            // collect all 'From' bins first; if none, collect any bins in finishedArr
+                            const fromBins = finishedArr.filter(f => f.type === 1).map(f => f.bin ?? f.Bin ?? null).filter(Boolean);
+                            const baseBins = (fromBins.length > 0 ? fromBins : finishedArr.map(f => f.bin ?? f.Bin ?? null).filter(Boolean));
+                            baseBins.forEach(b => chosenLabels.push((b.location_in_warehouse ?? b.locationInWarehouse ?? b.binCode ?? (b.id ?? b.ID ?? b.binId) ?? '').toString()));
+                        }
+                        if (chosenLabels.length === 0) {
+                            const rawBin = binFinishFrom?.location_in_warehouse ?? binFinishFrom?.locationInWarehouse ?? binFinishFrom?.binCode ?? binFrom?.location_in_warehouse ?? binFrom?.locationInWarehouse ?? binFrom?.binCode ?? o.location_in_warehouse ?? o.locationInWarehouse ?? '-';
+                            chosenLabels.push((typeof rawBin === 'string') ? rawBin.trim() : rawBin);
+                        }
+                        // add all chosen labels into binMap (deduped by normalizeLabel)
+                        chosenLabels.forEach(lbl => { const n = normalizeLabel(lbl); if (!binMap.has(n)) binMap.set(n, lbl); });
+                        // do NOT add all warehouse bins here — only include bins actually referenced by transfers
                         const comps = getComponents(o);
-                        totalItems += comps.reduce((s, c) => s + (c.quantity ?? c.Quantity ?? c.qty ?? 0), 0);
+                        comps.forEach(c => {
+                            const cid = String(c.component_id ?? c.componentId ?? c.component?.id ?? c.component?.componentId ?? 'unknown');
+                            const qty = Number(c.quantity ?? c.Quantity ?? c.qty ?? c.component?.quantity ?? 0) || 0;
+                            compTotals[cid] = (compTotals[cid] || 0) + qty;
+                        });
                         statuses.add(o.status ?? o.Status ?? 0);
                     });
 
@@ -291,17 +429,29 @@
                     let statusText = 'Multiple';
                     if (statuses.size === 1) statusText = getStatusText(Array.from(statuses)[0]);
                     let statusClass = 'status-pending';
-                    if (statusText.toLowerCase().includes('complete') || statusText.toLowerCase().includes('confirmed')) statusClass = 'status-complete';
+                    const st = statusText.toLowerCase();
+                    if (st.includes('complete') || st.includes('confirmed') || st.includes('finished') || st.includes('finish')) statusClass = 'status-complete';
 
-                    // action: open detail for first id in group
-                    const action = `<button class="action-btn" onclick="goDetail('${ids[0]}')">Detail</button>`;
+                    // prefer opening detail by shared request_id when available (list groups by request_id)
+                    let groupRequestId = null;
+                    try {
+                        const candidate = group.find(x => x.request_id ?? x.RequestId ?? x.requestId ?? null);
+                        if (candidate) groupRequestId = candidate.request_id ?? candidate.RequestId ?? candidate.requestId ?? null;
+                    } catch (e) { }
+                    const openId = groupRequestId || ids[0];
+                    // action: open detail for group (prefer request_id)
+                    let action = `<button class="action-btn" onclick="goDetail('${openId}')">Detail</button>`;
+                    // allow cancel when any related item is pending
+                    if (Array.from(statuses).includes(1)) {
+                        action += ` <button class="btn ghost" onclick="cancelOutbound('${openId}')" style="background:#fff1f0;border:1px solid #fdecec;color:#9f1239;padding:6px 10px;border-radius:8px;margin-left:6px">Cancel</button>`;
+                    }
 
                     html += `<tr>
                         <td>${group[0].description ?? '-'}</td>
                         <td>${formatDate(group[0].creation_date ?? group[0].creationDate)}</td>
                         <td>${Array.from(warehouses).join(', ')}</td>
-                        <td>${Array.from(bins).join(', ')}</td>
-                        <td>${totalItems}</td>
+                        <td>${Array.from(binMap.values()).join(', ')}</td>
+                    <td>${Object.values(compTotals).reduce((s, v) => s + Number(v || 0), 0)}</td>
                         <td class="${statusClass}">${statusText}</td>
                         <td>${action}</td>
                     </tr>`;
@@ -344,6 +494,18 @@
         function goDetail(id) {
             if (!id) return;
             window.location.href = `outbound-detail.html?id=${id}`;
+        }
+
+        async function cancelOutbound(id) {
+            if (!id) return;
+            if (!confirm('Are you sure you want to cancel this outbound order?')) return;
+            try {
+                const res = await fetch(BASE + '/storekeeper/transfers/' + id + '/cancel', { method: 'POST', credentials: 'include' });
+                if (!res.ok) { const txt = await res.text().catch(()=>null); return alert('Cancel failed: ' + (txt || res.statusText)); }
+                const json = await res.json().catch(()=>null);
+                if (json?.success) { alert('Outbound canceled'); load(); }
+                else alert(json?.msg || json?.message || 'Error');
+            } catch (e) { alert('Network error: ' + e.message); }
         }
 
         function formatDate(dateStr) {
