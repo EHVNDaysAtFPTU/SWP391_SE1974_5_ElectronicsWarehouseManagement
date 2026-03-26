@@ -31,12 +31,12 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
         public int? ApproverId { get; set; }
 
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        [JsonPropertyName("bin_from_id")]
-        public int? BinFromId { get; set; }
+        [JsonPropertyName("warehouse_from_id")]
+        public int? WarehouseFromId { get; set; }
 
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        [JsonPropertyName("bin_to_id")]
-        public int? BinToId { get; set; }
+        [JsonPropertyName("warehouse_to_id")]
+        public int? WarehouseToId { get; set; }
 
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         [JsonPropertyName("customer_id")]
@@ -51,12 +51,12 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
         public UserResp? Creator { get; set; }
 
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        [JsonPropertyName("bin_from")]
-        public BinResp? BinFrom { get; set; }
+        [JsonPropertyName("warehouse_from")]
+        public WarehouseResp? WarehouseFrom { get; set; }
 
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        [JsonPropertyName("bin_to")]
-        public BinResp? BinTo { get; set; }
+        [JsonPropertyName("warehouse_to")]
+        public WarehouseResp? WarehouseTo { get; set; }
 
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         [JsonPropertyName("components")]
@@ -65,6 +65,10 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         [JsonPropertyName("customer")]
         public CustomerResp? Customer { get; set; }
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        [JsonPropertyName("finished_components")]
+        public List<FinishedTransferRequestComponentResp>? FinishedComponents { get; set; }
 
         public TransferRequestResp(TransferRequest request, bool fullInfo)
         {
@@ -76,21 +80,23 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
             Status = (int)request.Status;
             CreatorId = request.CreatorId;
             ApproverId = request.ApproverId;
-            BinFromId = request.BinFromId;
-            BinToId = request.BinToId;
+            WarehouseFromId = request.WarehouseFromId;
+            WarehouseToId = request.WarehouseToId;
             CustomerId = request.CustomerId;
             if (fullInfo)
             {
                 Creator = new UserResp(request.Creator, false);
                 if (request.ApproverId is not null)
                     Approver = new UserResp(request.Approver, false);
-                if (request.BinFromId is not null)
-                    BinFrom = new BinResp(request.BinFrom, false);
-                if (request.BinToId is not null)
-                    BinTo = new BinResp(request.BinTo, false);
+                if (request.WarehouseFromId is not null)
+                    WarehouseFrom = new WarehouseResp(request.WarehouseFrom, false);
+                if (request.WarehouseToId is not null)
+                    WarehouseTo = new WarehouseResp(request.WarehouseTo, false);
                 if (request.CustomerId is not null)
                     Customer = new CustomerResp(request.Customer, false);
                 Components = request.TransferRequestComponents.Select(i => new TransferRequestComponentResp(i, false)).ToList();
+                if (request.Status == TransferStatus.Finished || request.Status == TransferStatus.MissingComponents)
+                    FinishedComponents = request.FinishedTransferRequestComponents.Select(i => new FinishedTransferRequestComponentResp(i)).ToList();
             }
         }
     }

@@ -2,11 +2,12 @@
 #nullable disable
 using System;
 using System.Collections.Generic;
+using ElectronicsWarehouseManagement.Repositories.Entities;
 using Microsoft.EntityFrameworkCore;
 
 #pragma warning disable CS0618 // Type or member is obsolete
 
-namespace ElectronicsWarehouseManagement.Repositories.Entities;
+namespace ElectronicsWarehouseManagement.Repositories.DBContext;
 
 public partial class EWMDbCtx : DbContext
 {
@@ -24,6 +25,8 @@ public partial class EWMDbCtx : DbContext
     public virtual DbSet<ComponentCategory> ComponentCategories { get; set; }
 
     public virtual DbSet<Customer> Customers { get; set; }
+
+    public virtual DbSet<FinishedTransferRequestComponent> FinishedTransferRequestComponents { get; set; }
 
     public virtual DbSet<Role> Roles { get; set; }
 
@@ -146,6 +149,33 @@ public partial class EWMDbCtx : DbContext
                 .HasColumnName("phone");
         });
 
+        modelBuilder.Entity<FinishedTransferRequestComponent>(entity =>
+        {
+            entity.ToTable("FinishedTransferRequestComponent");
+
+            entity.Property(e => e.FinishedTransferRequestComponentId).HasColumnName("finished_transfer_request_component_id");
+            entity.Property(e => e.BinId).HasColumnName("bin_id");
+            entity.Property(e => e.ComponentId).HasColumnName("component_id");
+            entity.Property(e => e.Quantity).HasColumnName("quantity");
+            entity.Property(e => e.RequestId).HasColumnName("request_id");
+            entity.Property(e => e.TypeInt).HasColumnName("type_int");
+
+            entity.HasOne(d => d.Bin).WithMany(p => p.FinishedTransferRequestComponents)
+                .HasForeignKey(d => d.BinId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_FinishedTransferRequestComponent_Bin");
+
+            entity.HasOne(d => d.Component).WithMany(p => p.FinishedTransferRequestComponents)
+                .HasForeignKey(d => d.ComponentId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_FinishedTransferRequestComponent_Component");
+
+            entity.HasOne(d => d.Request).WithMany(p => p.FinishedTransferRequestComponents)
+                .HasForeignKey(d => d.RequestId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_FinishedTransferRequestComponent_TransferRequest");
+        });
+
         modelBuilder.Entity<Role>(entity =>
         {
             entity.ToTable("Role");
@@ -166,8 +196,6 @@ public partial class EWMDbCtx : DbContext
 
             entity.Property(e => e.RequestId).HasColumnName("request_id");
             entity.Property(e => e.ApproverId).HasColumnName("approver_id");
-            entity.Property(e => e.BinFromId).HasColumnName("bin_from_id");
-            entity.Property(e => e.BinToId).HasColumnName("bin_to_id");
             entity.Property(e => e.CreationTime)
                 .HasColumnType("datetime")
                 .HasColumnName("creation_time");
@@ -181,18 +209,12 @@ public partial class EWMDbCtx : DbContext
                 .HasColumnName("execution_time");
             entity.Property(e => e.StatusInt).HasColumnName("status_int");
             entity.Property(e => e.TypeInt).HasColumnName("type_int");
+            entity.Property(e => e.WarehouseFromId).HasColumnName("warehouse_from_id");
+            entity.Property(e => e.WarehouseToId).HasColumnName("warehouse_to_id");
 
             entity.HasOne(d => d.Approver).WithMany(p => p.TransferRequestApprovers)
                 .HasForeignKey(d => d.ApproverId)
                 .HasConstraintName("FK_TransferRequest_User_Approver");
-
-            entity.HasOne(d => d.BinFrom).WithMany(p => p.TransferRequestBinFroms)
-                .HasForeignKey(d => d.BinFromId)
-                .HasConstraintName("FK_TransferRequest_Bin_From");
-
-            entity.HasOne(d => d.BinTo).WithMany(p => p.TransferRequestBinTos)
-                .HasForeignKey(d => d.BinToId)
-                .HasConstraintName("FK_TransferRequest_Bin_To");
 
             entity.HasOne(d => d.Creator).WithMany(p => p.TransferRequestCreators)
                 .HasForeignKey(d => d.CreatorId)
@@ -202,6 +224,14 @@ public partial class EWMDbCtx : DbContext
             entity.HasOne(d => d.Customer).WithMany(p => p.TransferRequests)
                 .HasForeignKey(d => d.CustomerId)
                 .HasConstraintName("FK_TransferRequest_Customer");
+
+            entity.HasOne(d => d.WarehouseFrom).WithMany(p => p.TransferRequestWarehouseFroms)
+                .HasForeignKey(d => d.WarehouseFromId)
+                .HasConstraintName("FK_TransferRequest_Warehouse_From");
+
+            entity.HasOne(d => d.WarehouseTo).WithMany(p => p.TransferRequestWarehouseTos)
+                .HasForeignKey(d => d.WarehouseToId)
+                .HasConstraintName("FK_TransferRequest_Warehouse_To");
         });
 
         modelBuilder.Entity<TransferRequestComponent>(entity =>

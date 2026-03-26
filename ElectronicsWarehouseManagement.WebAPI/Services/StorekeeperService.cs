@@ -1,4 +1,5 @@
-﻿using ElectronicsWarehouseManagement.Repositories.Entities;
+﻿using ElectronicsWarehouseManagement.Repositories.DBContext;
+using ElectronicsWarehouseManagement.Repositories.Entities;
 using ElectronicsWarehouseManagement.WebAPI.DTO;
 using Microsoft.EntityFrameworkCore;
 
@@ -219,9 +220,10 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
         {
             return new ApiResult<TransferRequestResp>(await _dbCtx.TransferRequests.AsNoTracking()
                 .Include(tr => tr.Creator).Include(tr => tr.Approver)
-                .Include(tr => tr.BinFrom).Include(tr => tr.BinTo)
+                .Include(tr => tr.WarehouseFrom).Include(tr => tr.WarehouseTo)
                 .Include(tr => tr.TransferRequestComponents)
                 .Include(tr => tr.Customer)
+                .Include(tr => tr.FinishedTransferRequestComponents).ThenInclude(ftr => ftr.Bin)
                 .Where(tr => tr.RequestId == requestId && tr.CreatorId == creatorId)
                 .Select(tr => new TransferRequestResp(tr, true)).FirstOrDefaultAsync());
         }
@@ -294,20 +296,19 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
                 Status = TransferStatus.Pending,
                 CreationTime = DateTime.UtcNow,
                 CreatorId = creatorId,
-                BinFromId = warehouseFrom?.Bins.ElementAt(0).BinId,
-                BinToId = warehouseTo?.Bins.ElementAt(0).BinId,
+                WarehouseFrom = warehouseFrom,
+                WarehouseTo = warehouseTo,
                 TransferRequestComponents = tComponents,
                 CustomerId = request.CustomerId
             };
             _dbCtx.TransferRequests.Add(transferRequest);
             await _dbCtx.SaveChangesAsync();
-
             await _dbCtx.Entry(transferRequest).Reference(tr => tr.Creator).LoadAsync();
-            await _dbCtx.Entry(transferRequest).Reference(tr => tr.BinFrom).LoadAsync();
-            await _dbCtx.Entry(transferRequest).Reference(tr => tr.BinTo).LoadAsync();
+            await _dbCtx.Entry(transferRequest).Reference(tr => tr.WarehouseFrom).LoadAsync();
+            await _dbCtx.Entry(transferRequest).Reference(tr => tr.WarehouseTo).LoadAsync();
             await _dbCtx.Entry(transferRequest).Collection(tr => tr.TransferRequestComponents).LoadAsync();
             await _dbCtx.Entry(transferRequest).Reference(tr => tr.Customer).LoadAsync();
-
+            await _dbCtx.Entry(transferRequest).Collection(tr => tr.FinishedTransferRequestComponents).Query().Include(ftr => ftr.Bin).LoadAsync();
             return new ApiResult<TransferRequestResp>(new TransferRequestResp(transferRequest, true));
         }
 
@@ -388,10 +389,11 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             if (missing)
                 transferRequest.Status = TransferStatus.MissingComponents;
             else
-                transferRequest.Status = TransferStatus.Confirmed;
+                transferRequest.Status = TransferStatus.Finished;
             transferRequest.ExecutionTime = DateTime.UtcNow;
 
             // add/remove/update components in bins
+            // and add finished transfer request components to transfer request
             foreach (ConfirmTransferBinReq binFrom in request.BinsFrom ?? [])
             {
                 Bin bin = await _dbCtx.Bins.Include(b => b.ComponentBins).FirstAsync(b => b.BinId == binFrom.BinId);
@@ -405,6 +407,14 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
                     componentBin.Quantity -= componentTakeFromBin.Quantity;
                     if (componentBin.Quantity == 0)
                         _dbCtx.ComponentBins.Remove(componentBin);
+                    transferRequest.FinishedTransferRequestComponents.Add(new FinishedTransferRequestComponent
+                    {
+                        RequestId = transferRequest.RequestId,
+                        BinId = bin.BinId,
+                        ComponentId = componentTakeFromBin.ComponentId,
+                        Quantity = componentTakeFromBin.Quantity,
+                        Type = FinishedTransferRequestComponentType.Out,
+                    });
                 }
                 if (bin.Status != BinStatus.Empty && bin.ComponentBins.Count == 0)
                     bin.Status = BinStatus.Empty;
@@ -427,6 +437,14 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
                     }
                     else
                         componentBin.Quantity += componentAddToBin.Quantity;
+                    transferRequest.FinishedTransferRequestComponents.Add(new FinishedTransferRequestComponent
+                    {
+                        RequestId = transferRequest.RequestId,
+                        BinId = bin.BinId,
+                        ComponentId = componentAddToBin.ComponentId,
+                        Quantity = componentAddToBin.Quantity,
+                        Type = FinishedTransferRequestComponentType.In,
+                    });
                 }
                 if (bin.Status == BinStatus.Empty)
                     bin.Status = BinStatus.Available;
@@ -444,14 +462,13 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             }
 
             await _dbCtx.SaveChangesAsync();
-
             await _dbCtx.Entry(transferRequest).Reference(tr => tr.Creator).LoadAsync();
             await _dbCtx.Entry(transferRequest).Reference(tr => tr.Approver).LoadAsync();
-            await _dbCtx.Entry(transferRequest).Reference(tr => tr.BinFrom).LoadAsync();
-            await _dbCtx.Entry(transferRequest).Reference(tr => tr.BinTo).LoadAsync();
+            await _dbCtx.Entry(transferRequest).Reference(tr => tr.WarehouseFrom).LoadAsync();
+            await _dbCtx.Entry(transferRequest).Reference(tr => tr.WarehouseTo).LoadAsync();
             await _dbCtx.Entry(transferRequest).Reference(tr => tr.Customer).LoadAsync();
             await _dbCtx.Entry(transferRequest).Collection(tr => tr.TransferRequestComponents).LoadAsync();
-
+            await _dbCtx.Entry(transferRequest).Collection(tr => tr.FinishedTransferRequestComponents).Query().Include(ftr => ftr.Bin).LoadAsync();
             return new ApiResult<TransferRequestResp>(new TransferRequestResp(transferRequest, true));
         }
 
@@ -471,14 +488,14 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
                 Warehouse? warehouseFrom = await _dbCtx.Warehouses.Include(w => w.Bins).ThenInclude(b => b.ComponentBins).FirstOrDefaultAsync(w => w.WarehouseId == request.WarehouseFromId.Value);
                 if (warehouseFrom is null)
                     return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Warehouse with ID '{request.WarehouseFromId}' does not exist.");
-                transferRequest.BinFromId = request.WarehouseFromId;
+                transferRequest.WarehouseFromId = request.WarehouseFromId;
             }
             if (request.WarehouseToId is not null)
             {
                 Warehouse? warehouseTo = await _dbCtx.Warehouses.Include(w => w.Bins).ThenInclude(b => b.ComponentBins).FirstOrDefaultAsync(w => w.WarehouseId == request.WarehouseToId.Value);
                 if (warehouseTo is null)
                     return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Warehouse with ID '{request.WarehouseToId}' does not exist.");
-                transferRequest.BinToId = request.WarehouseToId;
+                transferRequest.WarehouseToId = request.WarehouseToId;
             }
             if (request.CustomerId is not null)
             {
@@ -514,10 +531,11 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             await _dbCtx.SaveChangesAsync();
             await _dbCtx.Entry(transferRequest).Reference(tr => tr.Creator).LoadAsync();
             await _dbCtx.Entry(transferRequest).Reference(tr => tr.Approver).LoadAsync();
-            await _dbCtx.Entry(transferRequest).Reference(tr => tr.BinFrom).LoadAsync();
-            await _dbCtx.Entry(transferRequest).Reference(tr => tr.BinTo).LoadAsync();
+            await _dbCtx.Entry(transferRequest).Reference(tr => tr.WarehouseFrom).LoadAsync();
+            await _dbCtx.Entry(transferRequest).Reference(tr => tr.WarehouseTo).LoadAsync();
             await _dbCtx.Entry(transferRequest).Reference(tr => tr.Customer).LoadAsync();
             await _dbCtx.Entry(transferRequest).Collection(tr => tr.TransferRequestComponents).LoadAsync();
+            await _dbCtx.Entry(transferRequest).Collection(tr => tr.FinishedTransferRequestComponents).Query().Include(ftr => ftr.Bin).LoadAsync();
             return new ApiResult<TransferRequestResp>(new TransferRequestResp(transferRequest, true));
         }
 
@@ -530,10 +548,11 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             await _dbCtx.SaveChangesAsync();
             await _dbCtx.Entry(transferRequest).Reference(tr => tr.Creator).LoadAsync();
             await _dbCtx.Entry(transferRequest).Reference(tr => tr.Approver).LoadAsync();
-            await _dbCtx.Entry(transferRequest).Reference(tr => tr.BinFrom).LoadAsync();
-            await _dbCtx.Entry(transferRequest).Reference(tr => tr.BinTo).LoadAsync();
+            await _dbCtx.Entry(transferRequest).Reference(tr => tr.WarehouseFrom).LoadAsync();
+            await _dbCtx.Entry(transferRequest).Reference(tr => tr.WarehouseTo).LoadAsync();
             await _dbCtx.Entry(transferRequest).Reference(tr => tr.Customer).LoadAsync();
             await _dbCtx.Entry(transferRequest).Collection(tr => tr.TransferRequestComponents).LoadAsync();
+            await _dbCtx.Entry(transferRequest).Collection(tr => tr.FinishedTransferRequestComponents).Query().Include(ftr => ftr.Bin).LoadAsync();
             return new ApiResult<TransferRequestResp>(new TransferRequestResp(transferRequest, true));
         }
 

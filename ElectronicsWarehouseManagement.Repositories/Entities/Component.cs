@@ -18,6 +18,8 @@ public partial class Component
 
     public virtual ICollection<ComponentBin> ComponentBins { get; set; } = new List<ComponentBin>();
 
+    public virtual ICollection<FinishedTransferRequestComponent> FinishedTransferRequestComponents { get; set; } = new List<FinishedTransferRequestComponent>();
+
     public virtual ICollection<TransferRequestComponent> TransferRequestComponents { get; set; } = new List<TransferRequestComponent>();
 
     public virtual ICollection<ComponentCategory> Categories { get; set; } = new List<ComponentCategory>();
