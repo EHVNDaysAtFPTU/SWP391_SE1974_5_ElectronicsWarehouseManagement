@@ -411,7 +411,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
 
         public async Task<ApiResult<DashboardSummaryResp>> GetSummaryAsync()
         {
-            var start = DateTime.Today;
+            var start = DateTime.UtcNow.Date;
             var end = start.AddDays(1);
 
             var resp = new DashboardSummaryResp
@@ -448,7 +448,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
 
         public async Task<ApiResult<DashboardChartResp>> GetChartDataAsync(int days)
         {
-            var start = DateTime.Today.AddDays(-days);
+            var start = DateTime.UtcNow.Date.AddDays(-days);
 
             var data = await _dbCtx.FinishedTransferRequestComponents
                 .Include(ftr => ftr.Request)
