@@ -1,4 +1,5 @@
 using ElectronicsWarehouseManagement.Repositories.Entities;
+using ElectronicsWarehouseManagement.WebAPI.Filters;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -19,11 +20,14 @@ namespace ElectronicsWarehouseManagement.WebAPI
             string? connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
             builder.Services.AddDbContext<EWMDbCtx>(options => options.UseSqlServer(connectionString));
 
-            builder.Services.AddControllers()
+            builder.Services.AddControllers(options =>
+            {
+                options.Filters.Add<MaintenanceFilter>();
+            })
                 .AddJsonOptions(options =>
-                {
-                    options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
-                });
+                 {
+         options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+                  });
 
             builder.Services.AddDistributedMemoryCache();
             builder.Services.AddSession(options =>

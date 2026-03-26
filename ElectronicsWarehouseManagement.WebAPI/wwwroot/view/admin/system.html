@@ -2,53 +2,243 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>System Configuration</title>
-    <link rel="stylesheet" href="style.css">
+    <title>System Configuration & Countdown</title>
+    <link rel="stylesheet" href="system-config.css">
 </head>
 <body>
-
     <div class="layout">
 
+        <!-- Sidebar -->
         <aside class="sidebar">
             <div class="brand">ECWMS</div>
             <nav>
-                <a href="index.html">Dashboard</a>
-                <a href="user-management.html">User Management</a>
                 <a class="active">System Configuration</a>
-                <a>Logout</a>
             </nav>
+            <div class="menu">
+                <p onclick="goBack()">← Back</p>
+            </div>
         </aside>
 
+        <!-- Main -->
         <main class="main">
+
+            <!-- Topbar -->
             <header class="topbar">
-                <h1>System Configuration</h1>
+                <h1>System Maintenance</h1>
+                <span id="statusBadge" class="status live">LIVE</span>
             </header>
 
+            <!-- Content -->
             <section class="content">
+
                 <div class="box">
                     <div class="box-header">
-                        <h2>Configuration Settings</h2>
-                        <button>Save</button>
+                        <h2>Maintenance Settings</h2>
+                        <div>
+                            <button id="resetBtn" class="btn-danger">Reset</button>
+                            <button id="saveBtn" class="btn-primary">Save</button>
+                        </div>
                     </div>
 
                     <div class="form">
-                        <label>Warehouse Rule</label>
-                        <input type="text" placeholder="FIFO / LIFO">
 
-                        <label>Approval Policy</label>
-                        <select>
-                            <option>Auto Approve</option>
-                            <option>Manager Approval</option>
-                        </select>
+                        <div class="row">
+                            <span>Enable Maintenance Mode</span>
+                            <label class="switch">
+                                <input type="checkbox" id="maintenance">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
 
-                        <label>Max Items per Order</label>
-                        <input type="number" value="100">
+                        <label>Maintenance Message</label>
+                        <input type="text" id="maintenanceMessage">
+
+                <label>Scheduled End Time (HH:MM)</label>
+                <input type="time" id="scheduledEnd">
+
+                        <div class="row">
+                            <span>Countdown:</span>
+                            <span id="countdown">--:--:--</span>
+                        </div>
+
                     </div>
                 </div>
+
             </section>
         </main>
-
     </div>
+
+    <script>
+        const saveBtn = document.getElementById("saveBtn");
+        const resetBtn = document.getElementById("resetBtn");
+        const statusBadge = document.getElementById("statusBadge");
+        const maintenanceCheck = document.getElementById("maintenance");
+        const messageInput = document.getElementById("maintenanceMessage");
+        const scheduledEndInput = document.getElementById("scheduledEnd");
+        const countdownEl = document.getElementById("countdown");
+
+        let scheduledEndTime = null;
+        let countdownInterval = null;
+
+        // ================= LOAD =================
+        async function loadConfig() {
+            const res = await fetch('/api/admin/config');
+            const result = await res.json();
+            if (!result.success) return;
+
+            const cfg = result.data;
+
+            maintenanceCheck.checked = cfg.maintenanceMode;
+            messageInput.value = cfg.maintenanceMessage || "";
+
+            // ✅ FIX TIME (KHÔNG UTC)
+            scheduledEndInput.value = cfg.scheduledEnd
+                ? cfg.scheduledEnd.substring(0, 16)
+                : "";
+
+            updateStatus(cfg.maintenanceMode);
+
+            if (cfg.scheduledEnd && cfg.maintenanceMode) {
+                scheduledEndTime = parseLocalDate(cfg.scheduledEnd);
+                startCountdown();
+            } else {
+                resetCountdown();
+            }
+        }
+
+        // ================= SAVE =================
+        function pad(n) { return n < 10 ? '0' + n : '' + n; }
+        function formatLocalWithoutSeconds(d) {
+            return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+        }
+
+        async function saveConfig() {
+            const timeStr = scheduledEndInput.value || null;
+
+            // If a time is provided, build a full local DateTime (today or tomorrow if time already passed)
+            let scheduledLocalStr = null;
+            if (timeStr) {
+                const [hh, mm] = timeStr.split(':').map(x => parseInt(x, 10));
+                const now = new Date();
+                const d = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hh, mm, 0, 0);
+                if (d <= now) d.setDate(d.getDate() + 1);
+                scheduledLocalStr = formatLocalWithoutSeconds(d);
+            }
+
+            const cfg = {
+                MaintenanceMode: maintenanceCheck.checked || !!scheduledLocalStr,
+                MaintenanceMessage: messageInput.value,
+                ScheduledEnd: scheduledLocalStr
+            };
+
+            const res = await fetch('/api/admin/config/save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(cfg)
+            });
+
+            const result = await res.json();
+
+            if (result.success) {
+                alert("Saved!");
+                loadConfig();
+            } else {
+                alert(result.msg || 'Save failed');
+            }
+        }
+
+        // ================= RESET =================
+        async function resetConfig() {
+            if (!confirm("Reset về mặc định?")) return;
+
+            const res = await fetch('/api/admin/config/reset', { method: 'POST' });
+            const result = await res.json();
+
+            if (result.success) {
+                alert("Reset thành công!");
+                loadConfig();
+            } else {
+                alert(result.msg);
+            }
+        }
+
+        // ================= STATUS =================
+        function updateStatus(isMaintenance) {
+            statusBadge.innerText = isMaintenance ? "MAINTENANCE" : "LIVE";
+            statusBadge.className = "status " + (isMaintenance ? "maintenance" : "live");
+        }
+
+        // ================= COUNTDOWN =================
+        function startCountdown() {
+
+            if (countdownInterval) {
+                clearInterval(countdownInterval);
+            }
+
+            countdownInterval = setInterval(() => {
+
+                if (!scheduledEndTime) return;
+
+                const now = new Date();
+                const diff = scheduledEndTime - now;
+
+                if (diff <= 0) {
+                    countdownEl.innerText = "00:00:00";
+
+                    // 🔥 chỉ update UI (KHÔNG gọi API)
+                    maintenanceCheck.checked = false;
+                    scheduledEndInput.value = "";
+                    scheduledEndTime = null;
+
+                    updateStatus(false);
+
+                    clearInterval(countdownInterval);
+                    countdownInterval = null;
+
+                    return;
+                }
+
+                const h = String(Math.floor(diff / 3600000)).padStart(2, '0');
+                const m = String(Math.floor((diff % 3600000) / 60000)).padStart(2, '0');
+                const s = String(Math.floor((diff % 60000) / 1000)).padStart(2, '0');
+
+                countdownEl.innerText = `${h}:${m}:${s}`;
+
+            }, 1000);
+        }
+
+        // ================= RESET COUNTDOWN =================
+        function resetCountdown() {
+            scheduledEndTime = null;
+
+            if (countdownInterval) {
+                clearInterval(countdownInterval);
+                countdownInterval = null;
+            }
+
+            countdownEl.innerText = "--:--:--";
+        }
+
+        // ================= PARSE LOCAL DATE =================
+        function parseLocalDate(str) {
+            const [date, time] = str.split("T");
+            const [y, m, d] = date.split("-").map(Number);
+            const [h, min] = time.split(":").map(Number);
+
+            return new Date(y, m - 1, d, h, min);
+        }
+
+        // ================= EVENTS =================
+        saveBtn.addEventListener("click", saveConfig);
+        resetBtn.addEventListener("click", resetConfig);
+
+        function goBack() {
+            window.history.back();
+        }
+
+        // ================= INIT =================
+        window.onload = loadConfig;
+    </script>
 
 </body>
 </html>

@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Maintenance</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+        body { font-family: Arial, Helvetica, sans-serif; background:#f4f6f8; color:#222; display:flex; align-items:center; justify-content:center; height:100vh; margin:0; }
+        .card { background:#fff; padding:28px; border-radius:8px; box-shadow:0 6px 20px rgba(0,0,0,.08); max-width:680px; width:100%; }
+        h1 { margin:0 0 8px; font-size:22px; }
+        p { margin:6px 0; }
+        .actions { margin-top:18px; display:flex; gap:8px; }
+        .btn { padding:8px 12px; border-radius:6px; border:0; cursor:pointer; }
+        .btn-primary { background:#2d8cf0; color:#fff; }
+        .btn-ghost { background:transparent; border:1px solid #ddd; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>Hệ thống đang bảo trì</h1>
+        <p>Hệ thống hiện đang trong chế độ bảo trì. Bạn có muốn đăng xuất không?</p>
+        <div class="actions">
+            <button class="btn btn-primary" onclick="doLogout()">Đăng xuất</button>
+            <button class="btn btn-ghost" onclick="stayOnPage()">Ở lại</button>
+        </div>
+    </div>
+
+    <script>
+        async function doLogout() {
+            try {
+                await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+            } catch (e) {
+                // ignore errors
+            }
+            window.location.href = '/login';
+        }
+
+        function stayOnPage() {
+            // do nothing — user remains on maintenance page
+        }
+    </script>
+</body>
+</html>
