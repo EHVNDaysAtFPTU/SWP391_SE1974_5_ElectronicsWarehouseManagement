@@ -389,7 +389,8 @@ let globalWarehouseCache = {};
                     function normalizeLabel(x){ if (x === null || x === undefined) return ''; try { return String(x).replace(/<[^>]+>/g, '').trim().toLowerCase(); } catch(e){ return String(x); } }
                     // compute total items by aggregating quantities per component id across the group
                     let totalItems = 0;
-                    const compTotals = {}; // compId -> total qty
+                    const compTotals = {}; // compId -> total qty requested
+                    const compFinishedTotals = {}; // compId -> total qty already finished/taken from bins
                     const statuses = new Set();
                     const ids = [];
                     group.forEach(o => {
@@ -422,6 +423,20 @@ let globalWarehouseCache = {};
                             const qty = Number(c.quantity ?? c.Quantity ?? c.qty ?? c.component?.quantity ?? 0) || 0;
                             compTotals[cid] = (compTotals[cid] || 0) + qty;
                         });
+                        // account for finished components (deduct 'From' movements)
+                        try {
+                            const finishedArr = o.finished_components ?? o.finishedComponents ?? o.finished_components_list ?? o.finishedComponentsList ?? o.FinishedTransferRequestComponents;
+                            if (Array.isArray(finishedArr) && finishedArr.length > 0) {
+                                finishedArr.forEach(fc => {
+                                    // only 'From' type (type===1) reduce available quantity
+                                    const type = fc.type ?? fc.Type ?? null;
+                                    if (type !== undefined && type !== null && Number(type) !== 1) return;
+                                    const fcid = String(fc.component_id ?? fc.componentId ?? fc.component?.id ?? fc.component?.componentId ?? 'unknown');
+                                    const fq = Number(fc.quantity ?? fc.Quantity ?? 0) || 0;
+                                    compFinishedTotals[fcid] = (compFinishedTotals[fcid] || 0) + fq;
+                                });
+                            }
+                        } catch(e) { /* ignore */ }
                         statuses.add(o.status ?? o.Status ?? 0);
                     });
 
@@ -451,7 +466,7 @@ let globalWarehouseCache = {};
                         <td>${formatDate(group[0].creation_date ?? group[0].creationDate)}</td>
                         <td>${Array.from(warehouses).join(', ')}</td>
                         <td>${Array.from(binMap.values()).join(', ')}</td>
-                    <td>${Object.values(compTotals).reduce((s, v) => s + Number(v || 0), 0)}</td>
+                    <td>${Object.keys(compTotals).reduce((s, k) => s + Math.max(0, Number(compTotals[k] || 0) - Number(compFinishedTotals[k] || 0)), 0)}</td>
                         <td class="${statusClass}">${statusText}</td>
                         <td>${action}</td>
                     </tr>`;

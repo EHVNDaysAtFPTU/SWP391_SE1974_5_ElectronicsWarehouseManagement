@@ -838,75 +838,51 @@
                 if (!confirm('Confirm allocation and transfer?')) return;
             }
 
-            // Distribute destMap allocations across related requests and submit per-request payloads (bins_to only)
-            let allSuccess = true;
-            let errMsg = '';
+            // Build single payload for this transfer: include bins_from and bins_to per allocation row
+            const reqId = transfer.id ?? transfer.ID ?? transfer.request_id ?? transfer.requestId;
+            if (!reqId) return alert('Cannot determine transfer request ID to confirm.');
 
-            for (const t of related) {
-                const reqId = t.id ?? t.ID ?? t.request_id ?? t.requestId ?? t.RequestId;
-                if (!reqId) continue;
-                if (t.status === 4 || t.status === 6 || t.status === 3) continue;
-
-                const comps = getComponents(t) || [];
-                const compsPayload = comps.map(c => ({ component_id: parseInt(c.component_id ?? c.componentId ?? c.component?.id), quantity: Number((c.quantity ?? c.qty ?? c.Quantity) || 0) }));
-                if (compsPayload.length === 0) continue;
-
-                let subSuccess = true;
-                const localDestMap = {};
-
-                for (const comp of compsPayload) {
-                    let qtyRemaining = comp.quantity;
-                    for (const destKey of Object.keys(destMap)) {
-                        if (qtyRemaining <= 0) break;
-                        const dest = destMap[destKey];
-                        const avail = dest.components[comp.component_id] || 0;
-                        if (avail > 0) {
-                            const take = Math.min(qtyRemaining, avail);
-                            dest.components[comp.component_id] -= take;
-                            qtyRemaining -= take;
-
-                            if (!localDestMap[destKey]) localDestMap[destKey] = { destId: dest.destId, components: [] };
-                            const existing = localDestMap[destKey].components.find(c => c.component_id === comp.component_id);
-                            if (existing) existing.quantity += take;
-                            else localDestMap[destKey].components.push({ component_id: comp.component_id, quantity: take });
-                        }
-                    }
-                    if (qtyRemaining > 0) {
-                        if (!allowPartial) { subSuccess = false; break; }
-                    }
-                }
-
-                if (!subSuccess) { allSuccess = false; errMsg = 'Allocation does not match requested product list.'; break; }
-
-                const payload = { request_id: reqId, bins_to: [] };
-                for (const dk of Object.keys(localDestMap)) {
-                    const dest = localDestMap[dk];
-                    const compsToSubmit = JSON.parse(JSON.stringify(dest.components));
-                    payload.bins_to.push({ bin_id: dest.destId, components: compsToSubmit });
-                }
-
-                try {
-                    const res = await fetch(BASE + '/storekeeper/transfers/confirm', {
-                        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(payload)
-                    });
-                    if (!res.ok) {
-                        const txt = await res.text().catch(()=>null);
-                        allSuccess = false;
-                        let msg = txt || res.statusText;
-                        try { const obj = JSON.parse(txt); if(obj.msg || obj.message) msg = obj.msg || obj.message; } catch(e) {}
-                        errMsg = msg;
-                        break;
-                    }
-                    const json = await res.json();
-                    if (!json?.success) { allSuccess = false; errMsg = json?.msg || json?.message || 'An error occurred'; break; }
-                } catch (e) { allSuccess = false; errMsg = e.message; break; }
+            const binsFromPayload = [];
+            const binsToPayload = [];
+            for (let i = 0; i < rows.length; i++) {
+                const r = rows[i];
+                const pId = parseInt(r.querySelector('.alloc-product').value) || 0;
+                const bSrcId = parseInt(r.querySelector('.alloc-bin-src').value) || 0;
+                const bDestId = parseInt(r.querySelector('.alloc-bin-dest').value) || 0;
+                const qty = Number(r.querySelector('.alloc-qty').value) || 0;
+                if (bSrcId) binsFromPayload.push({ bin_id: bSrcId, components: [{ component_id: pId, quantity: qty }] });
+                if (bDestId) binsToPayload.push({ bin_id: bDestId, components: [{ component_id: pId, quantity: qty }] });
             }
 
-            if (allSuccess) {
+            // ensure arrays have same length (server Verify requires equal counts when both present)
+            // If lengths differ, merge entries so counts equal by combining extras into last element
+            function normalizePairArrays(aFrom, aTo) {
+                if (aFrom.length === aTo.length) return { aFrom, aTo };
+                // combine smaller into larger by appending components
+                if (aFrom.length > aTo.length) {
+                    // append empty to aTo
+                    while (aTo.length < aFrom.length) aTo.push({ bin_id: aFrom[aTo.length].bin_id, components: [] });
+                } else {
+                    while (aFrom.length < aTo.length) aFrom.push({ bin_id: aTo[aFrom.length].bin_id, components: [] });
+                }
+                return { aFrom, aTo };
+            }
+
+            const norm = normalizePairArrays(binsFromPayload, binsToPayload);
+            const payload = { request_id: reqId, bins_from: norm.aFrom, bins_to: norm.aTo };
+
+            try {
+                console.debug('Transfer confirm payload (from+to):', payload);
+                const res = await fetch(BASE + '/storekeeper/transfers/confirm', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(payload)
+                });
+                if (!res.ok) { const txt = await res.text().catch(()=>null); return alert('Confirmation failed: ' + (txt || res.statusText)); }
+                const j = await res.json().catch(()=>null);
+                if (!j?.success) return alert('Confirmation failed: ' + (j?.msg || j?.message || 'Error'));
                 alert('Transfer allocation and move confirmed successfully!');
                 location.href = 'transfer-list.html';
-            } else {
-                alert('Confirmation failed: ' + errMsg);
+            } catch (e) {
+                alert('Confirmation failed: ' + e.message);
                 location.reload();
             }
         }

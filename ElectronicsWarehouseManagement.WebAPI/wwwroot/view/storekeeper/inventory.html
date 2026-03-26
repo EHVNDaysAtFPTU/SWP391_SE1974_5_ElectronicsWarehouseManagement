@@ -143,6 +143,30 @@
                 const container = document.getElementById('warehousesContainer');
                 container.innerHTML = '';
 
+                // fetch all transfers once to calculate finished movements (From) per bin
+                let finishedByBin = {}; // finishedByBin[binId][compId] = qty
+                try {
+                    const transfersRes = await api('/storekeeper/transfers');
+                    if (transfersRes && transfersRes.success && Array.isArray(transfersRes.data)) {
+                        for (const t of transfersRes.data) {
+                            const fins = t.finished_components ?? t.finishedComponents ?? t.finished_components_list ?? t.finishedComponentsList ?? t.FinishedTransferRequestComponents;
+                            if (!Array.isArray(fins)) continue;
+                            for (const fc of fins) {
+                                // only count 'From' movements (type === 1)
+                                const type = fc.type ?? fc.Type ?? null;
+                                if (type === undefined || type === null) continue;
+                                if (Number(type) !== 1) continue;
+                                const binIdKey = String(fc.bin_id ?? fc.binId ?? fc.bin?.id ?? '');
+                                const compIdKey = String(fc.component_id ?? fc.componentId ?? fc.component?.id ?? '');
+                                const fq = Number(fc.quantity ?? fc.Quantity ?? 0) || 0;
+                                if (!binIdKey) continue;
+                                finishedByBin[binIdKey] = finishedByBin[binIdKey] || {};
+                                finishedByBin[binIdKey][compIdKey] = (finishedByBin[binIdKey][compIdKey] || 0) + fq;
+                            }
+                        }
+                    }
+                } catch(e) { console.warn('failed to load transfers for finished movements', e); }
+
                 for (const w of warehouses) {
                     const wid = w.id ?? w.ID ?? w.warehouseId;
                     const wname = w.name ?? w.WarehouseName ?? w.warehouseName ?? ('Warehouse ' + wid);
@@ -201,14 +225,17 @@
                                     const compMeta = fullMap[compIdKey] || fullData.find(cc => String(cc.id ?? cc.ID ?? cc.componentId ?? cc.ComponentId) === compIdKey);
                                     const name = compMeta?.metadata?.name ?? compMeta?.metadata?.Name ?? compMeta?.name ?? compMeta?.Name ?? (compIdKey ? ('#' + compIdKey) : 'Unknown');
                                     const qty = Number(x.quantity ?? x.Quantity ?? x.qty ?? x.component?.quantity ?? x.Component?.quantity ?? x.component?.Quantity ?? 0) || 0;
-                                    // accumulate into aggregatedStock
+                                    // subtract finished 'From' movements for this bin/component when showing available stock
+                                    const finishedForBin = (finishedByBin[String(bid)] && finishedByBin[String(bid)][compIdKey]) ? Number(finishedByBin[String(bid)][compIdKey] || 0) : 0;
+                                    const displayedQty = Math.max(0, qty - finishedForBin);
+                                    // accumulate into aggregatedStock using displayed (available) quantity
                                     if (compIdKey) {
-                                        aggregatedStock[compIdKey] = (aggregatedStock[compIdKey] || 0) + qty;
+                                        aggregatedStock[compIdKey] = (aggregatedStock[compIdKey] || 0) + displayedQty;
                                     }
                                     if (i === 0) {
-                                        rowsForBin += `<tr><td>${bname}</td><td>${bid}</td><td style="min-width:240px">${name}</td><td>${qty}</td></tr>`;
+                                        rowsForBin += `<tr><td>${bname}</td><td>${bid}</td><td style="min-width:240px">${name}</td><td>${displayedQty}</td></tr>`;
                                     } else {
-                                        rowsForBin += `<tr><td></td><td></td><td style="min-width:240px">${name}</td><td>${qty}</td></tr>`;
+                                        rowsForBin += `<tr><td></td><td></td><td style="min-width:240px">${name}</td><td>${displayedQty}</td></tr>`;
                                     }
                                 }
                             } else {
