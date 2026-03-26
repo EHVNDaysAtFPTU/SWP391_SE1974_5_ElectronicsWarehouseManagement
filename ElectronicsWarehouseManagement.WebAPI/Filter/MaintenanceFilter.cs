@@ -35,9 +35,6 @@ namespace ElectronicsWarehouseManagement.WebAPI.Filters
 
             if (!isAdmin && !isAllowedPath)
             {
-                // If the request is an API call, return 503 with JSON so client-side API callers
-                // can show a modal. If the request targets a view (html), redirect to the
-                // static maintenance page so the user sees the full-page notice.
                 if (path != null && path.StartsWith("/api"))
                 {
                     context.Result = new ObjectResult(new
@@ -50,8 +47,6 @@ namespace ElectronicsWarehouseManagement.WebAPI.Filters
                     };
                     return;
                 }
-
-                // Allow serving the maintenance page itself by redirecting to a shared view
                 var scheduledLocal = SystemRuntimeConfig.ScheduledEnd?.ToLocalTime().ToString("yyyy-MM-ddTHH:mm");
                 var msg = SystemRuntimeConfig.MaintenanceMessage ?? "System is under maintenance";
                 var url = "/view/shared/maintenance.html";
