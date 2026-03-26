@@ -6,7 +6,6 @@
         Pending,
         ApprovedAndWaitForConfirm,
         Rejected,
-        Confirmed,
         Finished,
         MissingComponents,
         Canceled
