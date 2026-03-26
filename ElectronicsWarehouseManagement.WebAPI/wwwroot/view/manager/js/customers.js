@@ -142,14 +142,14 @@ async function saveCustomer() {
             return;
         }
 
-        alert("Tạo customer thành công!");
+        alert("Customer created!");
 
         bootstrap.Modal.getInstance(formModal).hide();
         clearForm();
         loadCustomers(1);
 
     } catch {
-        alert("Server lỗi hoặc mất kết nối!");
+        alert("Server error");
     }
 }
 function openEdit(customer) {
@@ -205,14 +205,14 @@ async function updateCustomer() {
             return;
         }
 
-        alert("Cập nhật thành công!");
+        alert("Update Sucessfully!");
 
         bootstrap.Modal.getInstance(formModal).hide();
         clearForm();
         loadCustomers(1);
 
     } catch {
-        alert("Server lỗi hoặc mất kết nối!");
+        alert("Server error!");
     }
 }
 function applyFilter() {
