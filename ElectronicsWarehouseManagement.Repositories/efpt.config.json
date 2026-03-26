@@ -43,6 +43,10 @@
          "ObjectType": 0
       },
       {
+         "Name": "[dbo].[FinishedTransferRequestComponent]",
+         "ObjectType": 0
+      },
+      {
          "Name": "[dbo].[Role]",
          "ObjectType": 0
       },

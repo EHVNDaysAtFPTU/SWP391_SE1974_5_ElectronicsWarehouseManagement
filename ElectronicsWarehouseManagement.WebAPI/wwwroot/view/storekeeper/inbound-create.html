@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="en">
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Phiếu nhập kho</title>
+    <title>Inbound Receipt</title>
     <style>
         :root{--bg:#f7fafc;--card:#fff;--muted:#6b7280;--primary:#2563eb;--success:#16a34a;--danger:#ef4444;--radius:10px;--shadow:0 8px 30px rgba(15,23,42,0.08);--max-width:1100px}
         html,body{height:100%;margin:0;font-family:Inter, 'Segoe UI', Roboto, sans-serif;background:var(--bg);color:#0f172a}
@@ -47,36 +47,36 @@
             <div class="header">
                 <div class="title">
                     <h2>📥 Warehouse Receipt</h2>
-                    <p>Create a new receipt, save the information, and update the inventory..</p>
+                    <p>Create a new receipt, save the information, and update inventory.</p>
                 </div>
                 <div class="actions">
-                    <button class="btn ghost" onclick="location.href='home.html'">⬅ Quay lại</button>
-                    <button class="btn primary" onclick="openModal()">+ Thêm sản phẩm</button>
+                    <button class="btn ghost" onclick="location.href='home.html'">⬅ Back</button>
+                    <button class="btn primary" onclick="openModal()">+ Add product</button>
                 </div>
             </div>
 
             <div class="form-grid">
                 <div>
                     <div class="panel">
-                        <label for="desc">Mô tả</label>
-                        <input id="desc" type="text" placeholder="Nhập mô tả (ví dụ: Nhập lô hàng 2026-03)" />
+                        <label for="desc">Description</label>
+                        <input id="desc" type="text" placeholder="Enter description (e.g. Batch 2026-03)" />
 
                         <div style="display:flex;gap:12px;margin-top:14px">
                             <div style="flex:1">
-                                <label for="warehouse">Chọn Kho</label>
+                                <label for="warehouse">Select Warehouse</label>
                                 <select id="warehouse"></select>
                             </div>
                             <div style="width:260px">
                                 <label for="customerSelect">Supplier</label>
-                                <select id="customerSelect"><option value="">-- Chọn nhà cung cấp (tùy chọn) --</option></select>
+                                <select id="customerSelect"><option value="">-- Select supplier (optional) --</option></select>
                             </div>
                         </div>
 
                         <div class="product-actions">
-                            <div style="color:var(--muted)">Sản phẩm đã thêm: <span id="countItems">0</span></div>
+                            <div style="color:var(--muted)">Products added: <span id="countItems">0</span></div>
                             <div style="display:flex;gap:8px">
                                 <button class="btn" onclick="clearAll()">Clear</button>
-                                <button class="btn success" onclick="submitInbound()">Lưu Phiếu</button>
+                                <button class="btn success" onclick="submitInbound()">Save Receipt</button>
                             </div>
                         </div>
                     </div>
@@ -86,30 +86,30 @@
                             <thead>
                                 <tr>
                                     <th style="width:54px">#</th>
-                                    <th>Tên hàng</th>
-                                    <th style="width:90px">Đơn vị</th>
-                                    <th style="width:110px">Số lượng</th>
-                                    <th style="width:120px">Đơn giá</th>
-                                    <th style="width:140px" class="text-right">Thành tiền</th>
+                                    <th>Product</th>
+                                    <th style="width:90px">Unit</th>
+                                    <th style="width:110px">Quantity</th>
+                                    <th style="width:120px">Unit Price</th>
+                                    <th style="width:140px" class="text-right">Amount</th>
                                     <th style="width:56px" class="center">X</th>
                                 </tr>
                             </thead>
                             <tbody id="tableBody"></tbody>
                         </table>
-                        <div id="emptyState" class="empty">Chưa có sản phẩm. Nhấn "Thêm sản phẩm" để thêm vào phiếu.</div>
-                        <div class="total">Tổng tiền: <span id="totalMoney">0</span></div>
+                        <div id="emptyState" class="empty">No products. Click "Add product" to add items.</div>
+                        <div class="total">Total: <span id="totalMoney">0</span></div>
                     </div>
                 </div>
 
                 <div>
                     <div class="panel">
-                        <h4 style="margin:0 0 8px 0">Thông tin nhanh</h4>
-                        <div style="color:var(--muted);font-size:14px">Vui lòng chọn kho đích. Việc chọn bin lưu trữ sẽ được thực hiện khi xác nhận nhập kho.</div>
+                        <h4 style="margin:0 0 8px 0">Quick info</h4>
+                        <div style="color:var(--muted);font-size:14px">Please select destination warehouse. Bin assignment is performed during confirm step.</div>
                         <hr style="margin:12px 0;border:none;border-top:1px solid #f1f5f9" />
                         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-                            <div style="font-size:13px;color:var(--muted)">Người tạo</div>
+                            <div style="font-size:13px;color:var(--muted)">Created by</div>
                             <div style="font-size:13px" id="createdBy">Auto</div>
-                            <div style="font-size:13px;color:var(--muted)">Ngày tạo</div>
+                            <div style="font-size:13px;color:var(--muted)">Created at</div>
                             <div style="font-size:13px" id="createdAt">-</div>
                             <div style="font-size:13px;color:var(--muted)">Supplier</div>
                             <div style="font-size:13px" id="customerInfo">-</div>
@@ -120,13 +120,12 @@
         </div>
     </div>
     
-    <!-- MODAL -->
     <div id="modal" class="modal">
         <div class="modal-box">
-            <h3>Danh sách sản phẩm</h3>
+            <h3>Product List</h3>
             <div id="productList"></div>
             <br>
-            <button onclick="closeModal()">Đóng</button>
+            <button onclick="closeModal()">Close</button>
         </div>
     </div>
 
@@ -136,16 +135,15 @@
         let components = [];
         let count = 0;
 
-        /* LOAD WAREHOUSE */
         async function loadWarehouses() {
             try {
                 const res = await fetch(BASE + "/warehouses", { credentials: "include" });
                 if (!res.ok) {
                     console.error('warehouses fetch failed', await res.text());
-                    return alert('API warehouse lỗi');
+                    return alert('Warehouse API error');
                 }
                 const json = await res.json();
-                if (!json.success || !json.data) return alert('Không load được warehouse');
+                if (!json.success || !json.data) return alert('Unable to load warehouses');
 
                 const select = document.getElementById("warehouse");
                 select.innerHTML = "";
@@ -186,13 +184,13 @@
                 select.innerHTML = '';
                 const emptyOpt = document.createElement('option');
                 emptyOpt.value = '';
-                emptyOpt.text = '-- Không chọn --';
+                emptyOpt.text = '-- Not selected --';
                 select.appendChild(emptyOpt);
                 json.data.forEach(ci => {
                     try{
                         const opt = document.createElement('option');
                         opt.value = (ci.id ?? ci.ID ?? ci.customerId ?? ci.customer_id ?? '');
-                        opt.text = ci.name ?? ci.Name ?? ci.displayName ?? ci.customerName ?? ci.CustomerName ?? (ci.contact ?? 'Nhà cung cấp');
+                        opt.text = ci.name ?? ci.Name ?? ci.displayName ?? ci.customerName ?? ci.CustomerName ?? (ci.contact ?? 'Supplier');
                         opt.dataset.raw = JSON.stringify(ci);
                         select.appendChild(opt);
                     }catch(e){  }
@@ -211,16 +209,9 @@
             }catch(e){ console.warn('loadCustomers error', e); }
         }
 
-        /* MODAL */
-        function openModal() {
-            renderList();
-            document.getElementById("modal").style.display = "flex";
-        }
-        function closeModal() {
-            document.getElementById("modal").style.display = "none";
-        }
+        function openModal() { renderList(); document.getElementById("modal").style.display = "flex"; }
+        function closeModal() { document.getElementById("modal").style.display = "none"; }
 
-        /* RENDER PRODUCT LIST */
         function renderList() {
             const list = document.getElementById("productList");
             list.innerHTML = "";
@@ -233,20 +224,16 @@
                 const price = c.unitPrice ?? 0;
 
                 list.innerHTML += `
-        <div class="modal-item"
-            onclick="addItem(${id},
-                             '${name}',
-                             ${price},
-                             '${unit}')">
-
-            <b>${name}</b><br>
-            Đơn vị: ${unit}<br>
-            Giá: ${price}
+        <div class="list-item" onclick="addItem(${id},'${name}',${price},'${unit}')">
+            <div>
+                <b>${name}</b><br>
+                Unit: ${unit}
+            </div>
+            <div style="color:var(--muted)">${price}</div>
         </div>`;
             });
         }
 
-        /* ADD ROW */
         function addItem(id, name, price, unit) {
             count++;
 
@@ -280,7 +267,6 @@
             calc();
         }
 
-        /* CALCULATE TOTAL */
         function calc() {
 
             let total = 0;
@@ -326,17 +312,15 @@
             } catch (e) {  }
         }
 
-        /* SUBMIT */
         async function submitInbound() {
 
             const rows = document.querySelectorAll("#tableBody tr");
-            if (rows.length === 0) return alert("Chưa có sản phẩm");
+            if (rows.length === 0) return alert("No products added");
 
-          
             try{
                 const selReq = document.getElementById('customerSelect');
                 if (!selReq || !selReq.value) {
-                    return alert('Vui lòng chọn supplier trước khi tạo phiếu (bắt buộc).');
+                    return alert('Please select a supplier before creating the receipt (required).');
                 }
             }catch(e){ }
 
@@ -358,7 +342,6 @@
                 components: componentList
             };
 
-         
             try{
                 const sel = document.getElementById('customerSelect');
                 const opt = sel.options[sel.selectedIndex];
@@ -382,20 +365,20 @@
             if (!res.ok) {
                 const txt = await res.text();
                 console.error('server error', txt);
-                return alert('Tạo thất bại: ' + (txt || res.statusText));
+                return alert('Creation failed: ' + (txt || res.statusText));
             }
             let json;
             try {
                 json = await res.json();
             } catch (e) {
                 console.error('Invalid JSON response', e);
-                return alert('Tạo thất bại: server returned invalid response');
+                return alert('Creation failed: server returned invalid response');
             }
             console.log("RESPONSE:", json);
             if (!json.success) {
-                return alert("Tạo thất bại: " + (json.msg || 'unknown'));
+                return alert("Creation failed: " + (json.msg || 'unknown'));
             }
-            alert("Tạo phiếu thành công!");
+            alert("Receipt created successfully!");
             location.reload();
         }
 

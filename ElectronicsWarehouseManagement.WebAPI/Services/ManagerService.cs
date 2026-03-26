@@ -1,3 +1,4 @@
+using ElectronicsWarehouseManagement.Repositories.DBContext;
 using ElectronicsWarehouseManagement.Repositories.Entities;
 using ElectronicsWarehouseManagement.WebAPI.DTO;
 using ElectronicsWarehouseManagement.WebAPI.Helpers;
@@ -124,9 +125,10 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
                 query = query
                     .Include(t => t.Approver)
                     .Include(t => t.Creator)
-                    .Include(t => t.BinFrom)
-                    .Include(t => t.BinTo)
+                    .Include(t => t.WarehouseFrom)
+                    .Include(t => t.WarehouseTo)
                     .Include(t => t.Customer)
+                    .Include(t => t.FinishedTransferRequestComponents)
                     .Include(t => t.TransferRequestComponents)
                         .ThenInclude(c => c.Component);
             }
@@ -147,8 +149,8 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             IQueryable<TransferRequest> query = _dbCtx.TransferRequests.AsNoTracking().AsQueryable()
                 .Include(i => i.Approver)
                 .Include(i => i.Creator)
-                .Include(i => i.BinFrom)
-                .Include(i => i.BinTo);
+                .Include(i => i.WarehouseFrom)
+                .Include(i => i.WarehouseTo);
 
             if (!string.IsNullOrEmpty(request.Search))
             {

@@ -37,11 +37,11 @@
         <div class="top-bar">
             <div>
                 <h2>Inbound</h2>
-                <div style="color:var(--muted);font-size:13px">Danh sách phiếu nhập kho — phân trang 5 đơn / trang</div>
+                <div style="color:var(--muted);font-size:13px">Inbound receipts list — paginated, 5 per page</div>
             </div>
             <div class="controls">
                 <div class="search">
-                    <input id="q" placeholder="Tìm theo mô tả, kho, bin..." />
+                    <input id="q" placeholder="Search by description, warehouse, bin..." />
                     <button class="btn ghost" onclick="applyFilter()">Search</button>
                 </div>
                 <button class="btn primary" onclick="goHome()">Back</button>
@@ -188,7 +188,7 @@
                 let bin = binTo?.location_in_warehouse ?? binTo?.locationInWarehouse ?? binTo?.binCode ?? o.location_in_warehouse ?? o.locationInWarehouse ?? '-';
                 
                 const isPending = (o.status === 1 || o.Status === 1 || o.status === 2 || o.Status === 2);
-                if (isPending) bin = '<i>Chưa phân bổ</i>';
+                if (isPending) bin = '<i>Not allocated</i>';
 
                 const comps = getComponents(o);
                 const totalItems = comps.reduce((s, c) => s + (c.quantity ?? c.Quantity ?? c.qty ?? 0), 0);

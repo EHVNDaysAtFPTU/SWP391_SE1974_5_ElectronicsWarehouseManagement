@@ -6,7 +6,8 @@ const STATUS = {
     PENDING: 1,
     APPROVED: 2,
     REJECTED: 3,
-    CONFIRMED: 4
+    CONFIRMED: 4,
+    MISSING_COMPONENTS: 5
 };
 
 document.addEventListener("DOMContentLoaded", function () {
@@ -153,6 +154,7 @@ function getStatusBadge(status) {
         case STATUS.APPROVED: return '<span class="badge bg-primary rounded-pill px-3 shadow-sm">Approved</span>';
         case STATUS.REJECTED: return '<span class="badge bg-danger rounded-pill px-3 shadow-sm">Rejected</span>';
         case STATUS.CONFIRMED: return '<span class="badge bg-success rounded-pill px-3 shadow-sm">Confirmed</span>';
+        case STATUS.MISSING_COMPONENTS: return '<span class="badge" style="background:#f59e0b;color:#fff;border-radius:999px;padding:6px 12px;">Missing</span>';
         default: return '<span class="badge bg-secondary rounded-pill px-3">Unknown</span>';
     }
 }

@@ -196,7 +196,10 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
         [HttpPost("transfers/confirm")]
         public async Task<IActionResult> ConfirmTransferRequest([FromBody] ConfirmTransferRequestReq request)
         {
-            var result = await _storekeeperService.ConfirmTransferRequestAsync(request, int.Parse(HttpContext.Session.GetString("UserId")!));
+            string? idStr = HttpContext.Session.GetString("UserId");
+            if (idStr is null || !int.TryParse(idStr, out int id))
+                return Redirect("/");
+            var result = await _storekeeperService.ConfirmTransferRequestAsync(request, id);
             if (result.Success)
                 return Ok(result);
             return BadRequest(result);
@@ -205,7 +208,10 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
         [HttpGet("transfers")]
         public async Task<IActionResult> GetTransferRequests()
         {
-            var result = await _storekeeperService.GetTransferRequestsAsync(int.Parse(HttpContext.Session.GetString("UserId")!));
+            string? idStr = HttpContext.Session.GetString("UserId");
+            if (idStr is null || !int.TryParse(idStr, out int id))
+                return Redirect("/");
+            var result = await _storekeeperService.GetTransferRequestsAsync(id);
             if (result.Success)
                 return Ok(result);
             return BadRequest(result);
@@ -214,7 +220,10 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
         [HttpGet("transfers/count")]
         public async Task<IActionResult> GetTransferRequestCount()
         {
-            var result = await _storekeeperService.GetTransferRequestCountAsync(int.Parse(HttpContext.Session.GetString("UserId")!));
+            string? idStr = HttpContext.Session.GetString("UserId");
+            if (idStr is null || !int.TryParse(idStr, out int id))
+                return Redirect("/");
+            var result = await _storekeeperService.GetTransferRequestCountAsync(id);
             if (result.Success)
                 return Ok(result);
             return BadRequest(result);
@@ -223,7 +232,10 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
         [HttpGet("transfers/{transferId:int}")]
         public async Task<IActionResult> GetTransferRequest([FromRoute] int transferId)
         {
-            var result = await _storekeeperService.GetTransferRequestAsync(transferId, int.Parse(HttpContext.Session.GetString("UserId")!));
+            string? idStr = HttpContext.Session.GetString("UserId");
+            if (idStr is null || !int.TryParse(idStr, out int id))
+                return Redirect("/");
+            var result = await _storekeeperService.GetTransferRequestAsync(transferId, id);
             if (result.Success)
                 return Ok(result);
             return BadRequest(result);
@@ -232,7 +244,10 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
         [HttpPatch("transfers/{transferId:int}")]
         public async Task<IActionResult> UpdateTransferRequest([FromRoute] int transferId, UpdateTransferRequestReq request)
         {
-            var result = await _storekeeperService.UpdateTransferRequestAsync(transferId, request, int.Parse(HttpContext.Session.GetString("UserId")!));
+            string? idStr = HttpContext.Session.GetString("UserId");
+            if (idStr is null || !int.TryParse(idStr, out int id))
+                return Redirect("/");
+            var result = await _storekeeperService.UpdateTransferRequestAsync(transferId, request, id);
             if (result.Success)
                 return Ok(result);
             return BadRequest(result);
@@ -241,7 +256,10 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
         [HttpPost("transfers/{transferId:int}/cancel")]
         public async Task<IActionResult> CancelTransferRequest([FromRoute] int transferId)
         {
-            var result = await _storekeeperService.CancelTransferRequestAsync(transferId, int.Parse(HttpContext.Session.GetString("UserId")!));
+            string? idStr = HttpContext.Session.GetString("UserId");
+            if (idStr is null || !int.TryParse(idStr, out int id))
+                return Redirect("/");
+            var result = await _storekeeperService.CancelTransferRequestAsync(transferId, id);
             if (result.Success)
                 return Ok(result);
             return BadRequest(result);
@@ -276,7 +294,10 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
 
         async Task<IActionResult> CreateTransferRequest(CreateTransferRequestReq request, TransferType type)
         {
-            var result = await _storekeeperService.CreateTransferRequestAsync(request, type, int.Parse(HttpContext.Session.GetString("UserId")!));
+            string? idStr = HttpContext.Session.GetString("UserId");
+            if (idStr is null || !int.TryParse(idStr, out int id))
+                return Redirect("/");
+            var result = await _storekeeperService.CreateTransferRequestAsync(request, type, id);
             if (result.Success)
                 return Ok(result);
             return BadRequest(result);
