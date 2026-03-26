@@ -117,11 +117,18 @@
                 case 1: return "Pending";
                 case 2: return "Approved - Waiting Confirm";
                 case 3: return "Rejected";
-                case 4: return "Confirmed";
+                case 4: return "Finished";
                 case 5: return "Missing components";
+                case 6: return "Canceled";
                 default: return "Unknown";
             }
         }
+
+        // state used by paging and filtering
+        let globalGroups = [];
+        let filteredGroups = [];
+        let currentPage = 1;
+        const pageSize = 10;
 
         async function load() {
 
@@ -166,11 +173,44 @@
                         } catch (e) { console.error('binTo fetch failed', e); }
                     }
 
+                    // If transfer detail includes finished_components with nested bin, use it as bin_finish
+                    const finishedArr = t.finished_components ?? t.finishedComponents ?? t.finished_components_list ?? t.finishedComponentsList;
+                    if (Array.isArray(finishedArr) && finishedArr.length > 0) {
+                        // finished_components may contain separate bins for source/target in internal transfers
+                        // type === 1 => source (from), type === 0 => destination (to)
+                        t.bin_finish_from = null;
+                        t.bin_finish_to = null;
+                        for (const fc of finishedArr) {
+                            const binObj = fc.bin ?? fc.Bin ?? null;
+                            const binRef = binObj ? binObj : ((fc.bin_id || fc.binId) ? { id: fc.bin_id ?? fc.binId } : null);
+                            if (!binRef) continue;
+                            if (fc.type === 1) {
+                                t.bin_finish_from = binRef;
+                            } else if (fc.type === 0) {
+                                t.bin_finish_to = binRef;
+                            } else {
+                                // fallback: place into to if empty, otherwise from
+                                if (!t.bin_finish_to) t.bin_finish_to = binRef; else if (!t.bin_finish_from) t.bin_finish_from = binRef;
+                            }
+                        }
+                        // if none had explicit types, pick largest-quantity as representative for "to"
+                        if (!t.bin_finish_from && !t.bin_finish_to) {
+                            const fc = finishedArr.reduce((a, b) => ((b.quantity ?? 0) > (a.quantity ?? 0) ? b : a), finishedArr[0]);
+                            const binFromFinished = fc.bin ?? fc.Bin ?? null;
+                            if (binFromFinished) t.bin_finish_to = binFromFinished;
+                            else if (fc.bin_id || fc.binId) t.bin_finish_to = { id: fc.bin_id ?? fc.binId };
+                        }
+                    }
+
                     // resolve warehouse names for display (from bin or from direct fields)
                     try {
                         // from
                         const bFrom = t.bin_from ?? t.binFrom;
                         let fromName = bFrom?.warehouse?.name ?? bFrom?.warehouse?.warehouseName ?? bFrom?.warehouse ?? bFrom?.warehouseName ?? null;
+                        if (!fromName) {
+                            // try top-level warehouse_from field as fallback
+                            fromName = t.warehouse_from?.name ?? t.warehouse_from?.warehouseName ?? t.warehouse_from ?? null;
+                        }
                         if (!fromName) {
                             const fromId = t.bin_from_id ?? t.binFromId ?? bFrom?.id ?? bFrom?.ID;
                             if (fromId) {
@@ -189,6 +229,10 @@
                         const bTo = t.bin_to ?? t.binTo;
                         let toName = bTo?.warehouse?.name ?? bTo?.warehouse?.warehouseName ?? bTo?.warehouse ?? bTo?.warehouseName ?? null;
                         if (!toName) {
+                            // try top-level warehouse_to field as fallback
+                            toName = t.warehouse_to?.name ?? t.warehouse_to?.warehouseName ?? t.warehouse_to ?? null;
+                        }
+                        if (!toName) {
                             const toId = t.bin_to_id ?? t.binToId ?? bTo?.id ?? bTo?.ID;
                             if (toId) {
                                 const bres2 = await fetch(BASE + "/storekeeper/bins/" + toId, { credentials: 'include' });
@@ -200,6 +244,45 @@
                         }
                         t._toWarehouseName = toName ?? null;
                     } catch (e) { console.error('resolve to warehouse failed', e); }
+
+                    // also resolve finish warehouses if bin_finish_from/to exist
+                    try {
+                        if (t.bin_finish_from) {
+                            const bfFromId = t.bin_finish_from?.warehouse ?? t.bin_finish_from?.warehouse_id ?? t.bin_finish_from?.warehouseId ?? (typeof t.bin_finish_from?.warehouse === 'object' ? t.bin_finish_from.warehouse.id : null) ?? t.warehouse_from_id;
+                            if (bfFromId && (!t.bin_finish_from?.warehouse || typeof t.bin_finish_from.warehouse !== 'object')) {
+                                try {
+                                    const wresF = await fetch(BASE + "/storekeeper/warehouses/" + bfFromId, { credentials: 'include' });
+                                    if (wresF.ok) {
+                                        const wjsonF = await wresF.json();
+                                        if (wjsonF?.success && wjsonF.data) {
+                                            t._finishFromWarehouseName = wjsonF.data.name ?? wjsonF.data.warehouseName;
+                                            t.bin_finish_from.warehouse = wjsonF.data;
+                                        }
+                                    }
+                                } catch (e) { console.error('bin_finish_from warehouse fetch failed', e); }
+                            } else if (t.bin_finish_from?.warehouse && typeof t.bin_finish_from.warehouse === 'object') {
+                                t._finishFromWarehouseName = t.bin_finish_from.warehouse.name ?? t.bin_finish_from.warehouse.warehouseName;
+                            }
+                        }
+
+                        if (t.bin_finish_to) {
+                            const bfToId = t.bin_finish_to?.warehouse ?? t.bin_finish_to?.warehouse_id ?? t.bin_finish_to?.warehouseId ?? (typeof t.bin_finish_to?.warehouse === 'object' ? t.bin_finish_to.warehouse.id : null) ?? t.warehouse_to_id;
+                            if (bfToId && (!t.bin_finish_to?.warehouse || typeof t.bin_finish_to.warehouse !== 'object')) {
+                                try {
+                                    const wresT = await fetch(BASE + "/storekeeper/warehouses/" + bfToId, { credentials: 'include' });
+                                    if (wresT.ok) {
+                                        const wjsonT = await wresT.json();
+                                        if (wjsonT?.success && wjsonT.data) {
+                                            t._finishToWarehouseName = wjsonT.data.name ?? wjsonT.data.warehouseName;
+                                            t.bin_finish_to.warehouse = wjsonT.data;
+                                        }
+                                    }
+                                } catch (e) { console.error('bin_finish_to warehouse fetch failed', e); }
+                            } else if (t.bin_finish_to?.warehouse && typeof t.bin_finish_to.warehouse === 'object') {
+                                t._finishToWarehouseName = t.bin_finish_to.warehouse.name ?? t.bin_finish_to.warehouse.warehouseName;
+                            }
+                        }
+                    } catch (e) { console.error('resolve finish warehouses failed', e); }
 
                     return t;
                 } catch (e) {
@@ -232,29 +315,31 @@
             searchFilter();
         }
 
-        let globalGroups = [];
-        let filteredGroups = [];
-        let currentPage = 1;
-        const pageSize = 10;
-
         function searchFilter() {
             const q = (document.getElementById('q')?.value || '').toString().toLowerCase();
-            filteredGroups = globalGroups.filter(g => {
+                filteredGroups = globalGroups.filter(g => {
                 const group = g.items;
                 const fromWarehouses = new Set();
                 const fromBins = new Set();
                 const toWarehouses = new Set();
                 const toBins = new Set();
                 group.forEach(o => {
+                    // prefer separate finished bins when present
+                    const binFinishFrom = o.bin_finish_from ?? o.binFinishFrom ?? null;
+                    const binFinishTo = o.bin_finish_to ?? o.binFinishTo ?? null;
                     const bFrom = o.bin_from ?? o.binFrom;
                     const bTo = o.bin_to ?? o.binTo;
-                    const fw = o._fromWarehouseName ?? (bFrom?.warehouse?.name ?? bFrom?.warehouse?.warehouseName ?? bFrom?.warehouse) ?? '-';
-                    const fb = bFrom?.location_in_warehouse ?? bFrom?.locationInWarehouse ?? bFrom?.binCode ?? '-';
+
+                    // If transfer is Pending(1) or Approved(2), show Not allocated for bins
+                    const isPendingOrApproved = (o.status === 1 || o.Status === 1 || o.status === 2 || o.Status === 2);
+                    // Always show warehouse name even when Pending/Approved; show bin as Not allocated in those states
+                    const fw = (o._finishFromWarehouseName ?? o._fromWarehouseName ?? (binFinishFrom?.warehouse?.name ?? binFinishFrom?.warehouse?.warehouseName ?? binFinishFrom?.warehouse) ?? (bFrom?.warehouse?.name ?? bFrom?.warehouse?.warehouseName ?? bFrom?.warehouse) ?? '-');
+                    const fb = isPendingOrApproved ? '<i>Not allocated</i>' : (binFinishFrom?.location_in_warehouse ?? binFinishFrom?.locationInWarehouse ?? binFinishFrom?.binCode ?? bFrom?.location_in_warehouse ?? bFrom?.locationInWarehouse ?? bFrom?.binCode ?? '-');
                     if (fw !== '-') fromWarehouses.add(fw);
                     if (fb !== '-') fromBins.add(fb);
 
-                    const tw = o._toWarehouseName ?? (bTo?.warehouse?.name ?? bTo?.warehouse?.warehouseName ?? bTo?.warehouse) ?? '-';
-                    const tb = bTo?.location_in_warehouse ?? bTo?.locationInWarehouse ?? bTo?.binCode ?? '-';
+                    const tw = (o._finishToWarehouseName ?? o._toWarehouseName ?? (binFinishTo?.warehouse?.name ?? binFinishTo?.warehouse?.warehouseName ?? binFinishTo?.warehouse) ?? (bTo?.warehouse?.name ?? bTo?.warehouse?.warehouseName ?? bTo?.warehouse) ?? '-');
+                    const tb = isPendingOrApproved ? '<i>Not allocated</i>' : (binFinishTo?.location_in_warehouse ?? binFinishTo?.locationInWarehouse ?? binFinishTo?.binCode ?? bTo?.location_in_warehouse ?? bTo?.locationInWarehouse ?? bTo?.binCode ?? '-');
                     if (tw !== '-') toWarehouses.add(tw);
                     if (tb !== '-') toBins.add(tb);
                 });
@@ -286,15 +371,22 @@
                     const statuses = new Set();
                     
                     group.forEach(o => {
+                        // prefer finished bins for from/to when available
+                        const binFinishFrom = o.bin_finish_from ?? o.binFinishFrom ?? null;
+                        const binFinishTo = o.bin_finish_to ?? o.binFinishTo ?? null;
                         const bFrom = o.bin_from ?? o.binFrom;
                         const bTo = o.bin_to ?? o.binTo;
-                        const fw = o._fromWarehouseName ?? (bFrom?.warehouse?.name ?? bFrom?.warehouse?.warehouseName ?? bFrom?.warehouse) ?? '-';
-                        const fb = bFrom?.location_in_warehouse ?? bFrom?.locationInWarehouse ?? bFrom?.binCode ?? '-';
+
+                        const isPendingOrApproved = (o.status === 1 || o.Status === 1 || o.status === 2 || o.Status === 2);
+
+                        // always show warehouse name (use top-level warehouse_from/warehouse_to as fallback)
+                        const fw = (o._finishFromWarehouseName ?? o._fromWarehouseName ?? (o.warehouse_from?.name ?? o.warehouse_from?.warehouseName) ?? (binFinishFrom?.warehouse?.name ?? binFinishFrom?.warehouse?.warehouseName ?? binFinishFrom?.warehouse) ?? (bFrom?.warehouse?.name ?? bFrom?.warehouse?.warehouseName ?? bFrom?.warehouse) ?? '-');
+                        const fb = isPendingOrApproved ? '<i>Not allocated</i>' : (binFinishFrom?.location_in_warehouse ?? binFinishFrom?.locationInWarehouse ?? binFinishFrom?.binCode ?? bFrom?.location_in_warehouse ?? bFrom?.locationInWarehouse ?? bFrom?.binCode ?? '-');
                         if (fw !== '-') fromWarehouses.add(fw);
                         if (fb !== '-') fromBins.add(fb);
 
-                        const tw = o._toWarehouseName ?? (bTo?.warehouse?.name ?? bTo?.warehouse?.warehouseName ?? bTo?.warehouse) ?? '-';
-                        const tb = bTo?.location_in_warehouse ?? bTo?.locationInWarehouse ?? bTo?.binCode ?? '-';
+                        const tw = (o._finishToWarehouseName ?? o._toWarehouseName ?? (o.warehouse_to?.name ?? o.warehouse_to?.warehouseName) ?? (binFinishTo?.warehouse?.name ?? binFinishTo?.warehouse?.warehouseName ?? binFinishTo?.warehouse) ?? (bTo?.warehouse?.name ?? bTo?.warehouse?.warehouseName ?? bTo?.warehouse) ?? '-');
+                        const tb = isPendingOrApproved ? '<i>Not allocated</i>' : (binFinishTo?.location_in_warehouse ?? binFinishTo?.locationInWarehouse ?? binFinishTo?.binCode ?? bTo?.location_in_warehouse ?? bTo?.locationInWarehouse ?? bTo?.binCode ?? '-');
                         if (tw !== '-') toWarehouses.add(tw);
                         if (tb !== '-') toBins.add(tb);
 
@@ -308,6 +400,11 @@
                     if (statusText === "Unknown" || statusText === "Rejected") statusClass = "status-complete";
                     if (statusText.toLowerCase().includes('confirm') || statusText.toLowerCase().includes('complete') || Array.from(statuses).includes(4)) statusClass = "status-complete";
 
+                    let action = `<button class="detail-btn action-btn" onclick="viewDetail(${reqId})">Detail</button>`;
+                    if (Array.from(statuses).includes(1)) {
+                        action += ` <button class="btn ghost" onclick="cancelTransfer(${reqId})" style="background:#fff1f0;border:1px solid #fdecec;color:#9f1239;padding:6px 10px;border-radius:8px;margin-left:6px">Cancel</button>`;
+                    }
+
                     html += `<tr>
                         <td>${group[0].description}</td>
                         <td>${formatDate(group[0].creation_date ?? group[0].creationDate)}</td>
@@ -317,7 +414,7 @@
                         <td>${Array.from(toBins).join(', ') || '-'}</td>
                         <td>${totalItems}</td>
                         <td class="${statusClass}">${statusText}</td>
-                        <td><button class="detail-btn action-btn" onclick="viewDetail(${reqId})">Detail</button></td>
+                        <td>${action}</td>
                     </tr>`;
                 });
             }
@@ -358,6 +455,22 @@
         async function viewDetail(id) {
             // chuyển sang trang chi tiết để có thể confirm
             window.location.href = `transfer-detail.html?id=${id}`;
+        }
+
+        async function cancelTransfer(id) {
+            if (!confirm('Are you sure you want to cancel this transfer?')) return;
+            try {
+                const res = await fetch(BASE + '/storekeeper/transfers/' + id + '/cancel', { method: 'POST', credentials: 'include' });
+                if (!res.ok) {
+                    const txt = await res.text().catch(()=>null);
+                    return alert('Cancel failed: ' + (txt || res.statusText));
+                }
+                const json = await res.json();
+                if (json?.success) {
+                    alert('Transfer canceled');
+                    load();
+                } else alert(json?.msg || json?.message || 'Error');
+            } catch (e) { alert('Network error: ' + e.message); }
         }
 
         function closeModal() {
