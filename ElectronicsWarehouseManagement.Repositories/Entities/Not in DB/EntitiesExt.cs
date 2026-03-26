@@ -50,6 +50,15 @@ namespace ElectronicsWarehouseManagement.Repositories.Entities
                 set => bin.StatusInt = (int)value;
             }
         }
+
+        extension(FinishedTransferRequestComponent tComponent)
+        {
+            public FinishedTransferRequestComponentType Type
+            {
+                get => (FinishedTransferRequestComponentType)tComponent.TypeInt;
+                set => tComponent.TypeInt = (int)value;
+            }
+        }
     }
 }
 #pragma warning restore CS0618 // Type or member is obsolete

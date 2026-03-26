@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <title>Transfer Orders - Storekeeper</title>
@@ -34,11 +34,11 @@
         <div class="top-bar">
             <div>
                 <h2>Transfer Orders</h2>
-                <div style="color:var(--muted);font-size:13px">Danh sách các phiếu chuyển nội bộ</div>
+                <div style="color:var(--muted);font-size:13px">Internal transfer requests list</div>
             </div>
             <div class="controls">
                 <div class="search">
-                    <input id="q" placeholder="Tìm theo mã, kho, bin..." />
+                    <input id="q" placeholder="Search by code, warehouse, bin..." />
                     <button class="btn ghost" onclick="searchFilter()">Search</button>
                 </div>
                 <button class="btn primary" onclick="goHome()">Back</button>
@@ -62,9 +62,8 @@
                 </thead>
                 <tbody id="data"></tbody>
             </table>
-            <!-- Pagination Controls -->
             <div id="paginationControls" style="display:flex; justify-content:space-between; align-items:center; margin-top:20px; padding-top:16px; border-top:1px solid #f1f5f9;">
-                <div id="pageInfo" class="meta" style="font-size:14px;">Hiển thị 0-0 trong số 0</div>
+                <div id="pageInfo" class="meta" style="font-size:14px;">Showing 0-0 of 0</div>
                 <div style="display:flex; gap:8px;" id="pageButtons">
                 </div>
             </div>
@@ -113,12 +112,13 @@
 
         function getStatusText(status) {
             // Match server TransferStatus enum: 0=Unknown,1=Pending,2=Approved - Waiting Confirm,3=Rejected,4=Confirmed
-            switch (status) {
+        switch (status) {
                 case 0: return "Unknown";
                 case 1: return "Pending";
                 case 2: return "Approved - Waiting Confirm";
                 case 3: return "Rejected";
                 case 4: return "Confirmed";
+                case 5: return "Missing components";
                 default: return "Unknown";
             }
         }
@@ -272,7 +272,7 @@
 
             let html = "";
             if (paginated.length === 0) {
-                html = `<tr><td colspan="9" style="text-align:center; padding:24px; color:#64748b">Không có dữ liệu</td></tr>`;
+                html = `<tr><td colspan="9" style="text-align:center; padding:24px; color:#64748b">No data</td></tr>`;
             } else {
                 paginated.forEach(groupObj => {
                     const group = groupObj.items;
@@ -328,14 +328,14 @@
             const totalItems = filteredGroups.length;
             const s = totalItems === 0 ? 0 : start + 1;
             const e = Math.min(start + pageSize, totalItems);
-            document.getElementById('pageInfo').innerText = `Hiển thị ${s}-${e} trong số ${totalItems}`;
+            document.getElementById('pageInfo').innerText = `Showing ${s}-${e} of ${totalItems}`;
 
             // Render buttons
             const totalPages = Math.ceil(totalItems / pageSize) || 1;
             let btnHtml = "";
             
             // Prev button
-            btnHtml += `<button class="btn ghost" onclick="renderPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled style="opacity:0.5"' : ''}>&laquo; Trước</button>`;
+            btnHtml += `<button class="btn ghost" onclick="renderPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled style="opacity:0.5"' : ''}>&laquo; Prev</button>`;
             
             // Page numbers
             for (let i = 1; i <= totalPages; i++) {
@@ -350,7 +350,7 @@
             }
 
             // Next button
-            btnHtml += `<button class="btn ghost" onclick="renderPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled style="opacity:0.5"' : ''}>Sau &raquo;</button>`;
+            btnHtml += `<button class="btn ghost" onclick="renderPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled style="opacity:0.5"' : ''}>Next &raquo;</button>`;
             
             document.getElementById('pageButtons').innerHTML = btnHtml;
         }

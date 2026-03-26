@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <title>Inbound Detail</title>
@@ -30,38 +30,39 @@
             <div class="header">
                 <div class="title">
                     <button class="btn ghost" onclick="location.href='inbound-list.html'">⬅ Back</button>
-                    <h2>Phiếu Nhập</h2>
-                    <div class="meta">Chi tiết phiếu nhập kho</div>
+                    <h2>Inbound Receipt</h2>
+                    <div class="meta">Inbound receipt details</div>
                 </div>
                 <div style="text-align:right">
-                    <div id="createdBy" class="meta">Người tạo: -</div>
-                    <div id="createdAt" class="meta">Ngày tạo: -</div>
+                    <div id="createdBy" class="meta">Created by: -</div>
+                    <div id="createdAt" class="meta">Created at: -</div>
                 </div>
             </div>
 
             <div id="detail"></div>
 
             <div id="confirmSection" style="display:none; margin-top:20px; background:#f0fdf4; border:1px solid #bbf7d0; padding:16px; border-radius:8px">
-                <h4 style="margin-top:0; color:#065f46">Phân bổ Lưu kho (Inbound)</h4>
-                <div style="margin-bottom:8px; color:#0f172a; font-size:14px">Vui lòng chọn sản phẩm, số lượng và Bin tương ứng để lưu trữ (có thể phân bổ vào nhiều Bin):</div>
+                <h4 style="margin-top:0; color:#065f46">Storage Allocation (Inbound)</h4>
+                <div style="margin-bottom:8px; color:#0f172a; font-size:14px">Please select product, quantity and destination Bin to store (you may split into multiple Bins):</div>
                 <table style="width:100%; text-align:left; background:#fff; border-radius:6px; border-collapse: collapse; margin-top:8px;" id="allocationTable">
                     <thead>
                         <tr style="border-bottom:1px solid #bbf7d0; background:#f0fdf4;">
-                            <th style="padding:8px">Sản phẩm</th>
-                            <th style="padding:8px; width:200px;">Bin lưu trữ</th>
-                            <th style="padding:8px; width:120px;">Số lượng</th>
+                            <th style="padding:8px">Product</th>
+                            <th style="padding:8px; width:200px;">Storage Bin</th>
+                            <th style="padding:8px; width:120px;">Quantity</th>
                             <th style="padding:8px; width:60px;"></th>
                         </tr>
                     </thead>
                     <tbody id="allocationBody">
                     </tbody>
                 </table>
-                <button class="btn ghost" style="margin-top:12px; font-size:13px; border-color:#bbf7d0; color:#065f46" onclick="addAllocationRow()">+ Thêm phân bổ</button>
+                <button class="btn ghost" style="margin-top:12px; font-size:13px; border-color:#bbf7d0; color:#065f46" onclick="addAllocationRow()">+ Add allocation</button>
             </div>
 
             <div class="actions">
-                <button id="confirmBtn" class="btn primary" onclick="confirmOrder()" style="display:none">Xác nhận</button>
-                <button class="btn ghost" onclick="location.href='inbound-list.html'">Quay lại</button>
+                <button id="confirmBtn" class="btn primary" onclick="confirmOrder(false)" style="display:none">Confirm</button>
+                <button id="missingBtn" class="btn ghost" onclick="confirmOrder(true)" style="display:none;margin-left:8px;background:#f59e0b;color:#fff">Mark Missing</button>
+                <button class="btn ghost" onclick="location.href='inbound-list.html'">Back</button>
             </div>
         </div>
     </div>
@@ -130,20 +131,20 @@
         }
 
         async function load() {
-            try {
+        try {
                 const res = await fetch(BASE + '/storekeeper/transfers/' + id, {credentials:'include'});
                 if (!res.ok) {
-                    document.getElementById('detail').innerHTML = `<div style="color:#ef4444; font-weight:bold; padding:12px;">Lỗi tải dữ liệu phiếu nhập: Server trả về mã ${res.status}. Vui lòng thử tải lại trang hoặc chờ trong giây lát.</div>`;
+                    document.getElementById('detail').innerHTML = `<div style="color:#ef4444; font-weight:bold; padding:12px;">Failed to load receipt: server returned ${res.status}. Please retry or try again later.</div>`;
                     return;
                 }
                 const json = await res.json();
                 transfer = json.data;
                 if (!transfer) {
-                    document.getElementById('detail').innerHTML = `<div style="color:#ef4444; font-weight:bold; padding:12px;">Không tìm thấy thông tin phiếu nhập.</div>`;
+                    document.getElementById('detail').innerHTML = `<div style="color:#ef4444; font-weight:bold; padding:12px;">Receipt not found.</div>`;
                     return;
                 }
             } catch (err) {
-                document.getElementById('detail').innerHTML = `<div style="color:#ef4444; font-weight:bold; padding:12px;">Lỗi mạng hoặc máy chủ không phản hồi: ${err.message}</div>`;
+                document.getElementById('detail').innerHTML = `<div style="color:#ef4444; font-weight:bold; padding:12px;">Network or server error: ${err.message}</div>`;
                 return;
             }
 
@@ -153,12 +154,11 @@
             await resolveCustomers([transfer]);
             console.debug('transfer loaded', transfer);
             try { render(); } catch(e) { console.error('render error', e); document.getElementById('detail').innerHTML = '<div style="color:#b91c1c;font-weight:600;padding:12px">Lỗi khi hiển thị chi tiết: ' + (e?.message || e) + '</div>'; }
-            // set created info
             try{
                 const createdBy = transfer.created_by ?? transfer.createdBy ?? transfer.created_by_name ?? transfer.createdByName ?? transfer.owner ?? null;
                 const createdAt = transfer.creation_date ?? transfer.creationDate ?? transfer.created_at ?? transfer.createdAt ?? null;
-                if(document.getElementById('createdBy')) document.getElementById('createdBy').innerText = 'Người tạo: ' + (createdBy ?? 'Auto');
-                if(document.getElementById('createdAt')) document.getElementById('createdAt').innerText = 'Ngày tạo: ' + (createdAt ? new Date(createdAt).toLocaleString('vi-VN') : '-');
+                if(document.getElementById('createdBy')) document.getElementById('createdBy').innerText = 'Created by: ' + (createdBy ?? 'Auto');
+                if(document.getElementById('createdAt')) document.getElementById('createdAt').innerText = 'Created at: ' + (createdAt ? new Date(createdAt).toLocaleString() : '-');
             }catch(e){/* ignore */}
         }
 
@@ -215,7 +215,7 @@
     <div class="meta">${(transfer.bin_to?.warehouse?.warehouseName ?? transfer.bin_to?.warehouse?.name) ?? (transfer.bin_from?.warehouse?.warehouseName ?? transfer.bin_from?.warehouse?.name) ?? '-'} / ${(transfer.bin_to?.location_in_warehouse ?? transfer.bin_to?.locationInWarehouse) ?? (transfer.bin_from?.location_in_warehouse ?? transfer.bin_from?.locationInWarehouse) ?? '-'}</div>
     <div style="height:8px"></div>
     <div style="font-weight:700">Status</div>
-    <div class="meta">${(function(s){ switch(s){case 0:return 'Unknown';case 1:return 'Pending';case 2:return 'Approved - Waiting Confirm';case 3:return 'Rejected';default:return 'Completed';}})(transfer.status)}</div>
+    <div class="meta">${(function(s){ switch(s){case 0:return 'Unknown';case 1:return 'Pending';case 2:return 'Approved - Waiting Confirm';case 3:return 'Rejected';case 4:return 'Confirmed';case 5:return 'Missing components';default:return 'Unknown';}})(transfer.status)}</div>
     <div style="height:8px"></div>
     <div style="font-weight:700">Customer</div>
     <div class="meta">${transfer._customerName ?? (transfer.customer_id ? ('Customer ID: ' + transfer.customer_id) : '-')}</div>
@@ -245,6 +245,7 @@
             // hiển thị nút confirm khi trạng thái là Approved
             if (transfer.status === 2) {
                 document.getElementById('confirmBtn').style.display = 'inline-block';
+                const mb = document.getElementById('missingBtn'); if (mb) mb.style.display = 'inline-block';
                 document.getElementById('confirmSection').style.display = 'block';
                 loadBinsForConfirm();
             }
@@ -271,7 +272,7 @@
                 if (!wId && transfer.bin_from) wId = transfer.bin_from.warehouse?.id ?? transfer.bin_from.warehouse_id ?? transfer.bin_from.warehouseId;
 
                 if (!wId) {
-                    console.warn('Kho chưa được cấu hình cho phiếu này');
+                    console.warn('Warehouse not configured for this receipt');
                     return;
                 }
                 const bres = await fetch(BASE + '/storekeeper/warehouses/' + wId, { credentials: 'include' });
@@ -294,13 +295,13 @@
             const row = document.createElement('tr');
             row.style.borderBottom = '1px solid #f1f5f4';
 
-            let productOptions = '<option value="">-- Chọn sản phẩm --</option>';
+    let productOptions = '<option value="">-- Select product --</option>';
             orderProducts.forEach(p => {
                 const selected = p.id == defaultProductId ? 'selected' : '';
                 productOptions += `<option value="${p.id}" ${selected}>${p.name} (cần nhập: ${p.maxQty})</option>`;
             });
 
-            let binOptions = '<option value="">-- Chọn Bin --</option>';
+    let binOptions = '<option value="">-- Select Bin --</option>';
             availableBins.forEach(b => {
                 const lbl = b.location_in_warehouse ?? b.locationInWarehouse ?? b.binCode ?? ('Bin ' + b.id);
                 binOptions += `<option value="${b.id ?? b.ID ?? b.binId}">${lbl}</option>`;
@@ -315,11 +316,12 @@
             tbody.appendChild(row);
         }
 
-        async function confirmOrder() {
-            if (!confirm('Xác nhận lưu kho với các phân bổ này?')) return;
+        async function confirmOrder(allowPartial = false) {
+            const confirmMsg = allowPartial ? 'Mark missing and apply these allocations?' : 'Confirm storage with these allocations?';
+            if (!confirm(confirmMsg)) return;
 
             const rows = Array.from(document.querySelectorAll('#allocationBody tr'));
-            if (rows.length === 0) return alert('Vui lòng thêm ít nhất 1 phân bổ.');
+            if (rows.length === 0) return alert('Please add at least one allocation.');
 
             // Validate allocations
             const allocationSummary = {}; // product_id -> total allocated
@@ -331,9 +333,9 @@
                 const bId = r.querySelector('.alloc-bin').value;
                 const qty = Number(r.querySelector('.alloc-qty').value) || 0;
 
-                if (!pId) return alert(`Dòng ${i+1}: Vui lòng chọn sản phẩm.`);
-                if (!bId) return alert(`Dòng ${i+1}: Vui lòng chọn Bin.`);
-                if (qty <= 0) return alert(`Dòng ${i+1}: Số lượng phải lớn hơn 0.`);
+                if (!pId) return alert(`Row ${i+1}: please select product.`);
+                if (!bId) return alert(`Row ${i+1}: please select bin.`);
+                if (qty <= 0) return alert(`Row ${i+1}: quantity must be greater than 0.`);
 
                 allocationSummary[pId] = (allocationSummary[pId] || 0) + qty;
 
@@ -341,11 +343,15 @@
                 binsToPayload[bId][pId] = (binsToPayload[bId][pId] || 0) + qty;
             }
 
-            // Check if allocations match request exactly (optional but good practice)
+            // If not allowed partial, require exact match
             for (const p of orderProducts) {
                 const sum = allocationSummary[p.id] || 0;
-                if (sum !== p.maxQty) {
-                    return alert(`Sản phẩm "${p.name}" được yêu cầu nhập ${p.maxQty}, nhưng bạn đã phân bổ tổng ${sum}. Vui lòng phân bổ cho khớp.`);
+                if (!allowPartial && sum !== p.maxQty) {
+                    return alert(`Product "${p.name}": requested ${p.maxQty}, but total allocated is ${sum}. Please allocate to match.`);
+                }
+                // if partial allowed, at least some allocation should be present
+                if (allowPartial && (allocationSummary[p.id] || 0) === 0) {
+                    // fine to be zero for some products; we'll still proceed
                 }
             }
 
@@ -367,11 +373,11 @@
             if (!res.ok) {
                 const txt = await res.text().catch(()=>null);
                 console.error('confirm error', txt || res.statusText);
-                return alert('Tạo thất bại: ' + (txt || res.statusText));
+                return alert('Creation failed: ' + (txt || res.statusText));
             }
             let json;
             try { json = await res.json(); } catch (e) { return alert('Server returned invalid response'); }
-            if (json?.success) { alert('Đã lưu kho thành công!'); location.href='inbound-list.html'; }
+            if (json?.success) { alert(allowPartial ? 'Marked missing and updated inventory successfully!' : 'Storage confirmed successfully!'); location.href='inbound-list.html'; }
             else alert(json?.msg || json?.message || 'Error');
         }
 

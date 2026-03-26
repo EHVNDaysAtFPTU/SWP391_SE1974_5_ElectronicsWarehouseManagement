@@ -61,7 +61,10 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
         [HttpPatch("users/{userId:int}/role")]
         public async Task<IActionResult> SetRole([FromRoute] int userId, [FromBody] SetRoleReq setRoleReq)
         {
-            var result = await _adminService.SetRoleAsync(userId, setRoleReq, int.Parse(HttpContext.Session.GetString("UserId")!));
+            string? idStr = HttpContext.Session.GetString("UserId");
+            if (idStr is null || !int.TryParse(idStr, out int id))
+                return Redirect("/");
+            var result = await _adminService.SetRoleAsync(userId, setRoleReq, id);
             if (result.Success)
                 return Ok(result);
             return BadRequest(result);
@@ -70,7 +73,10 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
         [HttpDelete("users/{userId:int}/delete")]
         public async Task<IActionResult> DeleteUser([FromRoute] int userId)
         {
-            var result = await _adminService.DeleteUserAsync(userId, int.Parse(HttpContext.Session.GetString("UserId")!));
+            string? idStr = HttpContext.Session.GetString("UserId");
+            if (idStr is null || !int.TryParse(idStr, out int id))
+                return Redirect("/");
+            var result = await _adminService.DeleteUserAsync(userId, id);
             if (result.Success)
                 return Ok(result);
             return BadRequest(result);

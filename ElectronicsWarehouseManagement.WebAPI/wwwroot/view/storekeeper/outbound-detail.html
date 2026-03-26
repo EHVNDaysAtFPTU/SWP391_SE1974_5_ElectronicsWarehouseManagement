@@ -144,8 +144,9 @@
             </div>
 
             <div class="actions">
-                <button id="confirmBtn" class="btn danger" onclick="confirmOrder()" style="display:none">Xác nhận</button>
-                <button class="btn ghost" onclick="location.href='outbound-list.html'">Quay lại</button>
+                <button id="confirmBtn" class="btn danger" onclick="confirmOrder(false)" style="display:none">Confirm</button>
+                <button id="missingBtn" class="btn ghost" onclick="confirmOrder(true)" style="display:none;margin-left:8px;background:#f59e0b;color:#fff">Mark Missing</button>
+                <button class="btn ghost" onclick="location.href='outbound-list.html'">Back</button>
             </div>
         </div>
     </div>
@@ -244,10 +245,11 @@
                 document.getElementById('detail').innerHTML = '<div style="color:#b91c1c;font-weight:600;padding:12px">Lỗi khi hiển thị chi tiết: ' + (e?.message || e) + '</div>';
             }
 
-            // hiển thị nút confirm nếu status = 2 (Approved)
+            // show confirm and missing buttons if status = 2 (Approved)
             if (transfer.status === 2) {
                 document.getElementById('confirmSection').style.display = 'block';
                 document.getElementById('confirmBtn').style.display = 'inline-block';
+                const mb = document.getElementById('missingBtn'); if (mb) mb.style.display = 'inline-block';
                 loadBinsForConfirm();
             }
 
@@ -405,6 +407,7 @@
                     case 1: return 'Pending';
                     case 2: return 'Approved - Waiting Confirm';
                     case 3: return 'Rejected';
+                    case 5: return 'Missing components';
                     default: return 'Completed';
                 }
             }
@@ -567,8 +570,9 @@
             tbody.appendChild(row);
         }
 
-        async function confirmOrder() {
-            if (!confirm('Xác nhận xuất kho với các phân bổ này?')) return;
+        async function confirmOrder(allowPartial = false) {
+            const confirmMsg = allowPartial ? 'Mark this outbound as MissingComponents and apply provided allocations?' : 'Confirm outbound with these allocations?';
+            if (!confirm(confirmMsg)) return;
 
             const related = transfer._related ?? [transfer];
             const isValidStatus = related.some(t => t.status === 2 || t.status === 1);
@@ -608,11 +612,14 @@
                 globalBinsFromPayload[bId][pId] = (globalBinsFromPayload[bId][pId] || 0) + qty;
             }
 
-            // Check if allocations match request exactly (optional but good practice)
+            // Check if allocations match request exactly unless partial allowed
             for (const p of orderProducts) {
                 const sum = allocationSummary[p.id] || 0;
-                if (sum !== p.maxQty) {
+                if (!allowPartial && sum !== p.maxQty) {
                     return alert(`Sản phẩm "${p.name}" được yêu cầu xuất ${p.maxQty}, nhưng bạn đã phân bổ tổng ${sum}. Vui lòng phân bổ cho khớp.`);
+                }
+                if (allowPartial && sum > p.maxQty) {
+                    return alert(`Sản phẩm "${p.name}" yêu cầu ${p.maxQty} nhưng bạn đã phân bổ tổng ${sum} (vượt quá). Vui lòng kiểm tra lại.`);
                 }
             }
 
@@ -639,7 +646,7 @@
                             const take = Math.min(qtyRemaining, avail);
                             compsMap[comp.component_id] -= take;
                             qtyRemaining -= take;
-                            
+
                             let existingBin = binsFrom.find(b => b.bin_id === parseInt(binId));
                             if (!existingBin) {
                                 existingBin = { bin_id: parseInt(binId), components: [] };
@@ -649,9 +656,14 @@
                         }
                     }
                     if (qtyRemaining > 0) {
-                        errMsg = 'Hệ thống không thể khớp phân bổ với đơn hàng ban đầu. Vui lòng tải lại trang và thử lại.';
-                        allSuccess = false;
-                        break;
+                        if (!allowPartial) {
+                            errMsg = 'Hệ thống không thể khớp phân bổ với đơn hàng ban đầu. Vui lòng tải lại trang và thử lại.';
+                            allSuccess = false;
+                            break;
+                        } else {
+                            // partial allowed: proceed with whatever was allocated (qtyRemaining > 0 means some items missing)
+                            // continue to next component - server will mark MissingComponents for remaining
+                        }
                     }
                 }
                 
@@ -685,10 +697,10 @@
             }
 
             if (allSuccess) {
-                alert('Đã xác nhận xuất kho thành công!');
+                alert(allowPartial ? 'Marked missing and updated inventory successfully!' : 'Outbound confirmed successfully!');
                 location.href = 'outbound-list.html';
             } else {
-                alert('Xác nhận một phần thất bại: ' + errMsg);
+                alert('Confirmation failed: ' + errMsg);
                 location.reload();
             }
         }
