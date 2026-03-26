@@ -53,7 +53,10 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
         [HttpPost("logout")]
         public async Task<IActionResult> Logout()
         {
-            var result = await _authService.LogoutAsync(int.Parse(HttpContext.Session.GetString("UserId")!));
+            string? idStr = HttpContext.Session.GetString("UserId");
+            if (idStr is null || !int.TryParse(idStr, out int id))
+                return Redirect("/");
+            var result = await _authService.LogoutAsync(id);
             if (result.Success)
             {
                 HttpContext.Session.Clear();

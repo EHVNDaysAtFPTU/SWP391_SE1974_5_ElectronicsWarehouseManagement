@@ -18,9 +18,7 @@ public partial class Bin
 
     public virtual ICollection<ComponentBin> ComponentBins { get; set; } = new List<ComponentBin>();
 
-    public virtual ICollection<TransferRequest> TransferRequestBinFroms { get; set; } = new List<TransferRequest>();
-
-    public virtual ICollection<TransferRequest> TransferRequestBinTos { get; set; } = new List<TransferRequest>();
+    public virtual ICollection<FinishedTransferRequestComponent> FinishedTransferRequestComponents { get; set; } = new List<FinishedTransferRequestComponent>();
 
     public virtual Warehouse Warehouse { get; set; }
 }

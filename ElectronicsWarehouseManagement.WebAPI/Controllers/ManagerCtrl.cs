@@ -72,13 +72,10 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
         [HttpPost("transfer-requests/{transferId:int}/decisions")]
         public async Task<IActionResult> PostTransferReq([FromRoute] int transferId, [FromBody] TransferDecisionRequest request)
         {
-            string? userIdString = HttpContext.Session.GetString("UserId");
-            int? approverId = null;
-            if (!string.IsNullOrEmpty(userIdString) && int.TryParse(userIdString, out int parsedId))
-                approverId = parsedId;
-            if (approverId == null)
-                return BadRequest("Invalid or missing UserId in session.");
-            var result = await _managerService.PostTransferDecisionAsync(transferId, request.Decision, approverId.Value);
+            string? idStr = HttpContext.Session.GetString("UserId");
+            if (idStr is null || !int.TryParse(idStr, out int id))
+                return Redirect("/");
+            var result = await _managerService.PostTransferDecisionAsync(transferId, request.Decision, id);
             if (result.Success)
                 return Ok(result);
             return BadRequest(result);

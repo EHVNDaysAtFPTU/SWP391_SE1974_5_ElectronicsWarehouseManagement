@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.StaticFiles;
@@ -16,16 +18,22 @@ public sealed class ViewCtrl : ControllerBase
     }
 
     [HttpGet("/")]
-    public IActionResult GetView([FromServices] IWebHostEnvironment env)
+    public async Task<IActionResult> GetView([FromServices] IWebHostEnvironment env)
     {
         if (User?.Identity?.IsAuthenticated == false)
             return Redirect("/login");
+        string? idStr = HttpContext.Session.GetString("UserId");
+        if (idStr is null || !int.TryParse(idStr, out int id))
+        {
+            HttpContext.Session.Clear();
+            await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            return Redirect("/login");
+        }
         DisableClientCache();
         var highestRoleName = HttpContext.User.Claims
             .Where(c => c.Type == ClaimTypes.NameIdentifier)
             .Select(c => c.Value)
             .FirstOrDefault() ?? "";
-
         var physicalPath = Path.Combine(env.WebRootPath, "view", highestRoleName, "home.html");
         if (!System.IO.File.Exists(physicalPath))
             return NotFound();
@@ -36,7 +44,7 @@ public sealed class ViewCtrl : ControllerBase
     }
 
     [HttpGet("/{**path}")]
-    public IActionResult GetView([FromRoute] string path, [FromServices] IWebHostEnvironment env)
+    public async Task<IActionResult> GetView([FromRoute] string path, [FromServices] IWebHostEnvironment env)
     {
         if (path.StartsWith("uploads/", StringComparison.InvariantCultureIgnoreCase))
         {
@@ -48,14 +56,21 @@ public sealed class ViewCtrl : ControllerBase
                 contentType = "application/octet-stream";
             return PhysicalFile(filePath, contentType);
         }
-        else if (path.StartsWith("me/", StringComparison.InvariantCultureIgnoreCase))
+        if (User?.Identity?.IsAuthenticated == false)
         {
-            if (User?.Identity?.IsAuthenticated == false)
-            {
-                if (path.EndsWith("/") || path.EndsWith("\\") || path.EndsWith(".html", StringComparison.OrdinalIgnoreCase))
-                    return Redirect("/login");
-                return NotFound();
-            }
+            if (path.EndsWith("/") || path.EndsWith("\\") || path.EndsWith(".html", StringComparison.OrdinalIgnoreCase))
+                return Redirect("/login");
+            return NotFound();
+        }
+        string? idStr = HttpContext.Session.GetString("UserId");
+        if (idStr is null || !int.TryParse(idStr, out int id))
+        {
+            HttpContext.Session.Clear();
+            await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            return Redirect("/login");
+        }
+        if (path.StartsWith("me/", StringComparison.InvariantCultureIgnoreCase))
+        {
             string filePath = Path.Combine(env.WebRootPath, "view", "me", path.Substring(3));
             if (!System.IO.File.Exists(filePath))
                 return NotFound();
@@ -66,12 +81,6 @@ public sealed class ViewCtrl : ControllerBase
         }
         else
         {
-            if (User?.Identity?.IsAuthenticated == false)
-            {
-                if (path.EndsWith("/") || path.EndsWith("\\") || path.EndsWith(".html", StringComparison.OrdinalIgnoreCase))
-                    return Redirect("/login");
-                return NotFound();
-            }
             DisableClientCache();
             //TODO: selectable current role
             var highestRoleName = HttpContext.User.Claims
