@@ -81,19 +81,19 @@ async function renderTransferInfo(t) {
                         </div>
                         <div class="col-6">
                             <label class="small text-muted text-uppercase d-block ls-1">Supplier / Customer</label>
-                            <span class="fw-bold text-success">${t.name || "Internal"}</span>
+                            <span class="fw-bold text-success">${t.customer.name || "Internal"}</span>
                         </div>
                         <div class="col-6">
                             <label class="small text-muted text-uppercase d-block ls-1">Creator</label>
-                            <span>${t.creator?.username || "System"}</span>
+                            <span class ="fw-bold text-info">${t.creator?.username || "System"}</span>
                         </div>
                         <div class="col-6">
                             <label class="small text-muted text-uppercase d-block ls-1">Created Date</label>
-                            <span class="text-muted small">${formatDate(t.creation_date)}</span>
+                            <span class="fs-5 text-primary fw-bold">${formatDate(t.creation_date)}</span>
                         </div>
                         <div class="col-6">
                             <label class="small text-muted text-uppercase d-block ls-1">Executed Date</label>
-                            <span class="text-muted small">${t.execution_date ? formatDate(t.execution_date) : "Pending"}</span>
+                            <span class="fs-5 text-primary fw-bold">${t.execution_date ? formatDate(t.execution_date) : "Not Yet"}</span>
                         </div>
                     </div>
                 </div>
@@ -242,12 +242,13 @@ async function renderComponents(t) {
                                         </div>
                                     </td>
                                     <td class="text-center">
-                                        <span class="badge bg-primary-soft text-primary rounded-pill px-3 py-2 fw-bold">
+                                        <span class="badge bg-primary-soft rounded-pill px-3 py-2 fw-bold fs-5 text-dark">
                                             ${c.quantity} items
-                                        </span>
+                                         </span>
                                     </td>
-                                    <td class="text-end fw-medium text-muted">$${unitPrice.toFixed(2)}</td>
-                                    <td class="text-end fw-bold text-primary">$${totalPrice.toFixed(2)}</td>
+
+                                    <td class="text-end fw-bold text-success fs-5">${formatCurrency(unitPrice.toFixed(2))}</td>
+                                    <td class="text-end fw-bold text-primary text-success fs-5">${formatCurrency(totalPrice.toFixed(2))}</td>
                                 </tr>
                                 `;
                             }).join('')}
@@ -255,8 +256,8 @@ async function renderComponents(t) {
                         <tfoot class="table-light border-top-0">
                             <tr>
                                 <td colspan="4" class="text-end fw-bold text-uppercase small ls-1">Total Estimated Value</td>
-                                <td class="text-end fw-bold fs-5 text-dark">
-                                    $${t.components.reduce((sum, c) => sum + (c.unit_price * c.quantity), 0).toFixed(2)}
+                                <td class="text-end fw-bold fs-5 text-success">
+                                    ${formatCurrency(t.components.reduce((sum, c) => sum + (c.unit_price * c.quantity), 0).toFixed(2))}
                                 </td>
                             </tr>
                         </tfoot>
@@ -277,4 +278,3 @@ function showMessage(msg, type = "info") {
 function goBack() {
     window.history.back();
 }
-

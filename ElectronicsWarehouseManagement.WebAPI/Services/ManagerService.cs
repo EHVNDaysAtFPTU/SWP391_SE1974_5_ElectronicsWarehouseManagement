@@ -27,8 +27,8 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
         Task<ApiResult<CustomerResp>> UpdateCustomerAsync(int customerId, CustomerReq customerReq);
         Task<ApiResult<BinResp>> CreateBinAsync(CreateBinReq request);
         Task<ApiResult<WarehouseResp>> CreateWarehouseAsync(CreateWarehouseReq request);
-        Task<ApiResult<BinResp>> UpdateBinAsync(UpdateBinReq request);
-        Task<ApiResult<WarehouseResp>> UpdateWarehouseAsync(UpdateWarehouseReq request);
+        Task<ApiResult<UpdateBinResp>> UpdateBinAsync(UpdateBinReq request);
+        Task<ApiResult<UpdateWarehouseResp>> UpdateWarehouseAsync(UpdateWarehouseReq request);
 
         // Dashboard
         Task<ApiResult<DashboardSummaryResp>> GetSummaryAsync();
@@ -655,38 +655,38 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             return new ApiResult<string>(filePath.Replace('\\', '/'));
         }
 
-        public async Task<ApiResult<BinResp>> UpdateBinAsync(UpdateBinReq request)
+        public async Task<ApiResult<UpdateBinResp>> UpdateBinAsync(UpdateBinReq request)
         {
 
             var bin = await _dbCtx.Bins.FirstOrDefaultAsync(x => x.BinId == request.BinId);
             if (bin == null)
             {
-                return new ApiResult<BinResp>(ApiResultCode.NotFound, "Bin not found!");
+                return new ApiResult<UpdateBinResp>(ApiResultCode.NotFound, "Bin not found!");
             }
 
             bin.LocationInWarehouse = request.LocationInWarehouse;
-            bin.StatusInt = bin.StatusInt;
+            bin.StatusInt = request.StatusInt;
 
             await _dbCtx.SaveChangesAsync();
 
-            return new ApiResult<BinResp>(new BinResp(bin, true));
+            return new ApiResult<UpdateBinResp>(new UpdateBinResp(bin));
         }
 
-        public async Task<ApiResult<WarehouseResp>> UpdateWarehouseAsync(UpdateWarehouseReq request)
+        public async Task<ApiResult<UpdateWarehouseResp>> UpdateWarehouseAsync(UpdateWarehouseReq request)
         {
             var warehouse = await _dbCtx.Warehouses.FirstOrDefaultAsync(x => x.WarehouseId == request.WarehouseId);
             if (warehouse == null)
             {
-                return new ApiResult<WarehouseResp>(ApiResultCode.NotFound, "Warehouse not found!");
+                return new ApiResult<UpdateWarehouseResp>(ApiResultCode.NotFound, "Warehouse not found!");
             }
 
             warehouse.WarehouseName = request.WarehouseName;
-            warehouse.Description = warehouse.Description;
+            warehouse.Description = request.Description;
             warehouse.PhysicalLocation = request.PhysicalLocation;
 
             await _dbCtx.SaveChangesAsync();
 
-            return new ApiResult<WarehouseResp>(new WarehouseResp(warehouse, true));
+            return new ApiResult<UpdateWarehouseResp>(new UpdateWarehouseResp(warehouse));
         }
     }
 }

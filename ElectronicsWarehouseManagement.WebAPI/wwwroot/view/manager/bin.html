@@ -29,6 +29,18 @@
     <!-- Header -->
     <header class="header d-flex justify-content-between align-items-center">
         <h5 class="mb-0">Bin Management</h5>
+        <div class="profile-container position-relative">
+            <div class="cursor-pointer d-flex align-items-center" onclick="toggleProfileMenu()">
+                <img src="https://i.pravatar.cc/40?img=12" alt="Profile" class="rounded-circle me-2 border" width="40">
+                <span class="small fw-bold">Manager Dashboard</span>
+            </div>
+
+            <div class="profile-dropdown" id="profileDropdown">
+                <a href="profile.html">My Profile</a>
+                <hr class="my-1">
+                <a href="#" onclick="logout()" class="text-danger">Logout</a>
+            </div>
+        </div>
     </header>
 
     <!-- Main -->

@@ -217,6 +217,20 @@ async function toggleDetail(id, button) {
                                 <label class="small text-uppercase text-muted d-block">Quantity</label>
                                 <span>${component.quantity || "N/A"}</span>
                             </div>
+                            <div class="col-12">
+                                <label class="small text-uppercase text-muted d-block">Categories</label>
+                                ${
+                                        component.categories?.length
+                                            ? component.categories.map(c =>
+                                                `<span class="badge bg-secondary me-1">${c.name}</span>`
+                                            ).join("")
+                                            : `<span>N/A</span>`
+                                }
+                            </div>
+                            <div class="col-6 col-sm-4">
+                                <label class="small text-uppercase text-muted d-block">Dataset</label>
+                                 <span class= "fs-bold text-success">${component.metadata?.datasheet_url || "N/A"}</span>
+                            </div>
                         </div>
                     </div>
                 </div>

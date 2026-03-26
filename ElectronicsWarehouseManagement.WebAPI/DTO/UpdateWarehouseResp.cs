@@ -1,9 +1,11 @@
-﻿using System.Text.Json.Serialization;
+﻿using ElectronicsWarehouseManagement.Repositories.Entities;
+using System.Text.Json.Serialization;
 
 namespace ElectronicsWarehouseManagement.WebAPI.DTO
 {
     public class UpdateWarehouseResp
     {
+
         [JsonPropertyName("warehouse_id")]
         public int WarehouseId { get; set; }
         [JsonPropertyName("warehouse_name")]
@@ -12,5 +14,12 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
         public string Description { get; set; }
         [JsonPropertyName("physical_location")]
         public string PhysicalLocation { get; set; }
+        public UpdateWarehouseResp(Warehouse warehouse)
+        {
+            WarehouseId = warehouse.WarehouseId;
+            WarehouseName = warehouse.WarehouseName;
+            Description = warehouse.Description;
+            PhysicalLocation = warehouse.PhysicalLocation;
+        }
     }
 }
