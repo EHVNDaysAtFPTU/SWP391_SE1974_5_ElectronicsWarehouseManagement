@@ -150,12 +150,29 @@ async function updateTransferStatus(transferId, decision) {
 
 function getStatusBadge(status) {
     switch (status) {
-        case STATUS.PENDING: return '<span class="badge bg-warning text-dark rounded-pill px-3 shadow-sm">Pending</span>';
-        case STATUS.APPROVED: return '<span class="badge bg-primary rounded-pill px-3 shadow-sm">Approved</span>';
-        case STATUS.REJECTED: return '<span class="badge bg-danger rounded-pill px-3 shadow-sm">Rejected</span>';
-        case STATUS.CONFIRMED: return '<span class="badge bg-success rounded-pill px-3 shadow-sm">Confirmed</span>';
-        case STATUS.MISSING_COMPONENTS: return '<span class="badge" style="background:#f59e0b;color:#fff;border-radius:999px;padding:6px 12px;">Missing</span>';
-        default: return '<span class="badge bg-secondary rounded-pill px-3">Unknown</span>';
+        case STATUS.PENDING:
+            return '<span class="badge text-muted border rounded-pill">Waiting</span>';
+
+        case STATUS.APPROVED:
+            return '<span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 rounded-pill">Processing</span>';
+
+        case STATUS.REJECTED:
+            return '<span class="badge bg-light text-muted border rounded-pill">Canceled</span>';
+
+        case STATUS.FINISHED:
+            if (t.execution_date) {
+                return '<span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill">Done</span>';
+            }
+            return '<span class="badge bg-success bg-opacity-10 text-success rounded-pill">Finished</span>';
+
+        case STATUS.MISSING_COMPONENTS:
+            return '<span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 rounded-pill">Missing Components</span>';
+
+        case STATUS.CANCELED:
+            return '<span class="badge bg-light text-muted border rounded-pill">Canceled</span>';
+
+        default:
+            return '<span class="badge bg-light text-muted rounded-pill">Unknown</span>';
     }
 }
 
@@ -249,8 +266,8 @@ async function renderComponents(t) {
                                          </span>
                                     </td>
 
-                                    <td class="text-end fw-bold text-success fs-5">${formatCurrency(unitPrice.toFixed(2))}</td>
-                                    <td class="text-end fw-bold text-primary text-success fs-5">${formatCurrency(totalPrice.toFixed(2))}</td>
+                                    <td class="text-end fw-bold text-success fs-5">${formatCurrency(unitPrice)}</td>
+                                    <td class="text-end fw-bold text-primary text-success fs-5">${formatCurrency(totalPrice)}</td>
                                 </tr>
                                 `;
                             }).join('')}
@@ -259,7 +276,7 @@ async function renderComponents(t) {
                             <tr>
                                 <td colspan="4" class="text-end fw-bold text-uppercase small ls-1">Total Estimated Value</td>
                                 <td class="text-end fw-bold fs-5 text-success">
-                                    ${formatCurrency(t.components.reduce((sum, c) => sum + (c.unit_price * c.quantity), 0).toFixed(2))}
+                                    ${formatCurrency(t.components.reduce((sum, c) => sum + (c.unit_price * c.quantity), 0))}
                                 </td>
                             </tr>
                         </tfoot>

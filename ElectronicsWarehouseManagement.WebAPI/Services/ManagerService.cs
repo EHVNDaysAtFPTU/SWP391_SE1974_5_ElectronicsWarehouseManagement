@@ -129,6 +129,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
                     .Include(t => t.WarehouseTo)
                     .Include(t => t.Customer)
                     .Include(t => t.FinishedTransferRequestComponents)
+                    .ThenInclude(t => t.Bin)
                     .Include(t => t.TransferRequestComponents)
                         .ThenInclude(c => c.Component);
             }

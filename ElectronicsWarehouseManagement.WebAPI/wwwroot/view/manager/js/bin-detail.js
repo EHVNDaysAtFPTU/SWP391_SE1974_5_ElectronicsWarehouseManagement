@@ -143,28 +143,28 @@ async function renderBinComponents(binComponents) {
 
   <!-- Unit -->
   <td class="align-middle">
-    <span class="badge bg-light text-primary border rounded-pill">
+    <span class="badge fs-6 bg-light text-primary border rounded-pill">
       ${comp.unit || "N/A"}
     </span>
   </td>
 
   <!-- Price -->
   <td class="align-middle">
-    <span class="badge bg-light text-primary border rounded-pill">
+    <span class="fs-4 fw-bold text-success border rounded-pill">
       ${formatCurrency(comp.unit_price || 0)}
     </span>
   </td>
 
   <!-- Quantity -->
   <td class="align-middle">
-    <span class="badge bg-dark text-white rounded-pill">
+    <span class=" fs-4 fw-bold text-black rounded-pill">
       ${bc.quantity || 0}
     </span>
   </td>
 
   <!-- Total -->
   <td class="align-middle">
-    <div class="fw-bold text-success">
+    <div class="fw-bold fs-4 text-success">
       ${formatCurrency((comp.unit_price || 0) * (bc.quantity || 0))}
     </div>
   </td>
