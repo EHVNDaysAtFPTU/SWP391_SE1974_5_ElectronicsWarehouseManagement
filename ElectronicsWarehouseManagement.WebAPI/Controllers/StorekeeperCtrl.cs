@@ -229,6 +229,24 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
             return BadRequest(result);
         }
 
+        [HttpPatch("transfers/{transferId:int}")]
+        public async Task<IActionResult> UpdateTransferRequest([FromRoute] int transferId, UpdateTransferRequestReq request)
+        {
+            var result = await _storekeeperService.UpdateTransferRequestAsync(transferId, request, int.Parse(HttpContext.Session.GetString("UserId")!));
+            if (result.Success)
+                return Ok(result);
+            return BadRequest(result);
+        }
+
+        [HttpPost("transfers/{transferId:int}/cancel")]
+        public async Task<IActionResult> CancelTransferRequest([FromRoute] int transferId)
+        {
+            var result = await _storekeeperService.CancelTransferRequestAsync(transferId, int.Parse(HttpContext.Session.GetString("UserId")!));
+            if (result.Success)
+                return Ok(result);
+            return BadRequest(result);
+        }
+
         [HttpGet("customers")]
         public async Task<IActionResult> GetCustomers()
         {

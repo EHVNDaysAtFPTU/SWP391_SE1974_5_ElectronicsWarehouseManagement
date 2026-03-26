@@ -72,7 +72,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
         [HttpPost("transfer-requests/{transferId:int}/decisions")]
         public async Task<IActionResult> PostTransferReq([FromRoute] int transferId, [FromBody] TransferDecisionRequest request)
         {
-            string? userIdString = HttpContext.Session.GetString("User");
+            string? userIdString = HttpContext.Session.GetString("UserId");
             int? approverId = null;
             if (!string.IsNullOrEmpty(userIdString) && int.TryParse(userIdString, out int parsedId))
                 approverId = parsedId;

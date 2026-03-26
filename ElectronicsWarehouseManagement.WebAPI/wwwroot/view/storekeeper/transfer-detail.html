@@ -1,23 +1,72 @@
 <!DOCTYPE html>
-<html>
+<html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Transfer Detail</title>
+    <title>Chi tiết Phiếu Chuyển Kho</title>
     <style>
-        body{font-family:Arial;padding:30px;background:#eef2ff}
-        .card{background:white;padding:20px;border-radius:8px}
-        button{padding:8px 12px;border:none;border-radius:6px;cursor:pointer}
-        .back{background:#64748b;color:white}
-        .confirm{background:#f59e0b;color:white}
+        :root{--muted:#64748b;--accent:#3b82f6}
+        body{font-family:Inter, 'Segoe UI', Roboto, Arial, sans-serif;padding:24px;background:#eff6ff;color:#0f172a;margin:0}
+        .container{max-width:1000px;margin:0 auto}
+        .card{background:#fff;padding:24px;border-radius:12px;box-shadow:0 10px 30px rgba(2,6,23,0.06)}
+        .header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:20px}
+        .title{display:flex;flex-direction:column;gap:6px}
+        h2{margin:0;font-size:22px;color:#1e293b}
+        .meta{color:var(--muted);font-size:13px}
+        .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:12px}
+        .info-block{background:#f8fafc;padding:16px;border-radius:10px;border:1px solid #e2e8f0}
+        table{width:100%;border-collapse:collapse;margin-top:12px}
+        th,td{padding:12px;border-bottom:1px solid #f1f5f9;text-align:left;font-size:14px}
+        thead th{background:#f1f5f9;color:#334155;font-weight:600}
+        .actions{display:flex;gap:12px;margin-top:24px}
+        .btn{padding:10px 16px;border-radius:8px;border:none;cursor:pointer;font-weight:600;font-size:14px;transition:0.2s}
+        .btn:hover{opacity:0.9}
+        .btn.primary{background:var(--accent);color:#fff}
+        .btn.ghost{background:transparent;border:1px solid #cbd5e1;color:#475569}
+        .table-card{background:#fff;border-radius:10px;padding:8px;border:1px solid #e2e8f0;margin-top:16px}
+        hr{border:none;border-top:1px dashed #cbd5e1;margin:24px 0}
+        h4{margin:0 0 12px 0;color:#1e293b;font-size:16px}
     </style>
 </head>
 <body>
-    <div class="card">
-        <button class="back" onclick="location.href='transfer-list.html'">⬅ Back</button>
-        <h2>Transfer Detail</h2>
-        <div id="detail"></div>
-        <div style="margin-top:20px">
-            <button id="confirmBtn" class="confirm" onclick="confirmOrder()" style="display:none">Confirm</button>
+    <div class="container">
+        <div class="card">
+            <div class="header">
+                <div class="title">
+                    <button class="btn ghost" style="width:fit-content;padding:6px 12px;margin-bottom:12px" onclick="location.href='transfer-list.html'">⬅ Quay lại</button>
+                    <h2>Chi tiết Phiếu Chuyển Kho</h2>
+                    <div class="meta">Thông tin chuyển nội bộ giữa các bin</div>
+                </div>
+                <div style="text-align:right">
+                    <div id="createdBy" class="meta">Người tạo: -</div>
+                    <div id="createdAt" class="meta">Ngày tạo: -</div>
+                </div>
+            </div>
+
+            <div id="detail">Đang tải dữ liệu...</div>
+
+            <div id="confirmSection" style="display:none; margin-top:20px; background:#eff6ff; border:1px solid #bfdbfe; padding:16px; border-radius:8px">
+                <h4 style="margin-top:0; color:#1e40af">Phân bổ Chuyển kho (Transfer)</h4>
+                <div style="margin-bottom:8px; color:#1e293b; font-size:14px">Vui lòng chọn Sản phẩm, Bin nguồn (xuất) và Bin đích (nhập) tương ứng. (Có thể phân bổ trên nhiều dòng để chuyển từ nhiều Bin nguồn sang nhiều Bin đích):</div>
+                <table style="width:100%; text-align:left; background:#fff; border-radius:6px; border-collapse: collapse; margin-top:8px;" id="allocationTable">
+                    <thead>
+                        <tr style="border-bottom:1px solid #bfdbfe; background:#eff6ff;">
+                            <th style="padding:8px">Sản phẩm</th>
+                            <th style="padding:8px; width:180px;">Bin nguồn (Từ)</th>
+                            <th style="padding:8px; width:180px;">Bin đích (Đến)</th>
+                            <th style="padding:8px; width:100px;">Số lượng</th>
+                            <th style="padding:8px; width:50px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="allocationBody">
+                    </tbody>
+                </table>
+                <button class="btn ghost" style="margin-top:12px; font-size:13px; border-color:#bfdbfe; color:#1e40af" onclick="addAllocationRow()">+ Thêm phân bổ</button>
+            </div>
+
+            <div class="actions">
+                <button id="confirmBtn" class="btn primary" onclick="confirmOrder()" style="display:none">Xác nhận phiếu</button>
+                <button class="btn ghost" onclick="location.href='transfer-list.html'">Quay lại danh sách</button>
+            </div>
         </div>
     </div>
 
@@ -28,6 +77,11 @@
         let transfer = null;
         const componentCache = {};
         const warehouseCache = {};
+        let globalProductsMap = {};
+        let availableSourceBins = [];
+        let availableDestBins = [];
+        let orderProducts = [];
+        let binAvailabilityByBin = {};
 
         function getComponents(obj) {
             if (!obj) return [];
@@ -41,54 +95,27 @@
         }
 
         function getComponentName(c) {
-            return c?.name ?? c?.Name ?? c?.metadata?.name ?? c?.Metadata?.name ?? c?.component?.metadata?.name ?? c?.component?.metadata?.Name ?? ('Component #' + (c.component_id ?? c.componentId ?? c.component?.id ?? '?'));
-        }
-
-        async function resolveCustomers(transfers) {
-            if (!Array.isArray(transfers) || transfers.length === 0) return;
-            try {
-                const res = await fetch(BASE + '/storekeeper/customers', { credentials: 'include' });
-                if (!res.ok) return;
-                const json = await res.json();
-                if (!json?.success || !Array.isArray(json.data)) return;
-                json.data.forEach(c => { customerCache[c.id ?? c.customer_id ?? c.customerId] = c; });
-            } catch (e) { /* ignore */ }
-            transfers.forEach(t => {
-                const cid = t.customer_id ?? t.CustomerId ?? t.customerId ?? null;
-                if (cid && customerCache[cid]) t._customerName = customerCache[cid].name ?? customerCache[cid].customer_name ?? customerCache[cid].displayName ?? customerCache[cid].fullName ?? null;
-            });
-        }
-
-        async function load() {
-            const res = await fetch(BASE + '/storekeeper/transfers/' + id, {credentials:'include'});
-            const json = await res.json();
-            transfer = json.data;
-            // resolve component names and warehouse info before rendering
-            const comps = getComponents(transfer);
-            await resolveComponentNames(comps);
-            await resolveWarehouses(transfer);
-            render();
+            return c?.name ?? c?.Name ?? c?.metadata?.name ?? c?.Metadata?.name ?? c?.component?.metadata?.name ?? c?.component?.metadata?.Name ?? ('Sản phẩm #' + (c.component_id ?? c.componentId ?? c.component?.id ?? '?'));
         }
 
         async function resolveComponentNames(comps) {
             if (!Array.isArray(comps)) return;
             await Promise.all(comps.map(async c => {
                 const currentName = getComponentName(c);
-                if (currentName && !currentName.startsWith('Component #')) return;
-                const id = c.component_id ?? c.componentId ?? c.component?.id;
-                if (!id) return;
-                if (componentCache[id]) {
-                    // attach cached metadata
+                if (currentName && !currentName.startsWith('Sản phẩm #')) return;
+                const cid = c.component_id ?? c.componentId ?? c.component?.id;
+                if (!cid) return;
+                if (componentCache[cid]) {
                     c.component = c.component ?? {};
-                    c.component.metadata = componentCache[id].metadata ?? componentCache[id].Metadata ?? componentCache[id];
+                    c.component.metadata = componentCache[cid].metadata ?? componentCache[cid].Metadata ?? componentCache[cid];
                     return;
                 }
                 try {
-                    const cres = await fetch(BASE + '/storekeeper/components/' + id, { credentials: 'include' });
+                    const cres = await fetch(BASE + '/storekeeper/components/' + cid, { credentials: 'include' });
                     if (!cres.ok) return;
                     const cjson = await cres.json();
                     if (cjson?.success && cjson.data) {
-                        componentCache[id] = cjson.data;
+                        componentCache[cid] = cjson.data;
                         c.component = c.component ?? {};
                         c.component.metadata = cjson.data.metadata ?? cjson.data.Metadata ?? cjson.data;
                     }
@@ -100,41 +127,149 @@
             if (!t) return;
             try {
                 // bin_from
-                const binFrom = t.bin_from ?? t.binFrom ?? null;
+                let binFrom = t.bin_from ?? t.binFrom ?? null;
+                const binFromId = binFrom?.id ?? binFrom?.ID ?? t.bin_from_id ?? t.binFromId;
+                if (binFromId && (!binFrom || !(binFrom.location_in_warehouse || binFrom.locationInWarehouse || binFrom.binCode))) {
+                    try {
+                        const bres = await fetch(BASE + '/storekeeper/bins/' + binFromId, { credentials: 'include' });
+                        if (bres.ok) {
+                            const bjson = await bres.json();
+                            if (bjson?.success && bjson.data) { t.bin_from = bjson.data; binFrom = bjson.data; }
+                        }
+                    } catch (e) { }
+                }
+                
                 if (binFrom) {
-                    const w = binFrom.warehouse ?? binFrom.Warehouse ?? null;
-                    const wid = (typeof binFrom.warehouse === 'object') ? (binFrom.warehouse?.id) : (binFrom.warehouse ?? binFrom.warehouse_id ?? binFrom.warehouseId ?? binFrom.WarehouseId);
-                    const needFetch = !w || (typeof w !== 'object');
-                    if (needFetch && wid && !warehouseCache[wid]) {
+                    const wid = typeof binFrom.warehouse === 'object' ? binFrom.warehouse?.id : (binFrom.warehouse ?? binFrom.warehouse_id ?? binFrom.warehouseId);
+                    t._fromWarehouseId = wid;
+                    if (wid && !warehouseCache[wid]) {
                         try {
                             const wres = await fetch(BASE + '/storekeeper/warehouses/' + wid, { credentials: 'include' });
                             if (wres.ok) {
                                 const wjson = await wres.json();
                                 if (wjson?.success && wjson.data) warehouseCache[wid] = wjson.data;
                             }
-                        } catch (e) { console.error('warehouse fetch failed', e); }
+                        } catch (e) { }
                     }
-                    if (warehouseCache[wid]) binFrom.warehouse = warehouseCache[wid];
+                    if (wid && warehouseCache[wid]) binFrom.warehouse = warehouseCache[wid];
                 }
 
                 // bin_to
-                const binTo = t.bin_to ?? t.binTo ?? null;
+                let binTo = t.bin_to ?? t.binTo ?? null;
+                const binToId = binTo?.id ?? binTo?.ID ?? t.bin_to_id ?? t.binToId;
+                if (binToId && (!binTo || !(binTo.location_in_warehouse || binTo.locationInWarehouse || binTo.binCode))) {
+                    try {
+                        const bres2 = await fetch(BASE + '/storekeeper/bins/' + binToId, { credentials: 'include' });
+                        if (bres2.ok) {
+                            const bjson2 = await bres2.json();
+                            if (bjson2?.success && bjson2.data) { t.bin_to = bjson2.data; binTo = bjson2.data; }
+                        }
+                    } catch (e) { }
+                }
+
                 if (binTo) {
-                    const w2 = binTo.warehouse ?? binTo.Warehouse ?? null;
-                    const wid2 = (typeof binTo.warehouse === 'object') ? (binTo.warehouse?.id) : (binTo.warehouse ?? binTo.warehouse_id ?? binTo.warehouseId ?? binTo.WarehouseId);
-                    const needFetch2 = !w2 || (typeof w2 !== 'object');
-                    if (needFetch2 && wid2 && !warehouseCache[wid2]) {
+                    const wid2 = typeof binTo.warehouse === 'object' ? binTo.warehouse?.id : (binTo.warehouse ?? binTo.warehouse_id ?? binTo.warehouseId);
+                    t._toWarehouseId = wid2;
+                    if (wid2 && !warehouseCache[wid2]) {
                         try {
                             const wres2 = await fetch(BASE + '/storekeeper/warehouses/' + wid2, { credentials: 'include' });
                             if (wres2.ok) {
                                 const wjson2 = await wres2.json();
                                 if (wjson2?.success && wjson2.data) warehouseCache[wid2] = wjson2.data;
                             }
-                        } catch (e) { console.error('warehouse fetch failed', e); }
+                        } catch (e) { }
                     }
-                    if (warehouseCache[wid2]) binTo.warehouse = warehouseCache[wid2];
+                    if (wid2 && warehouseCache[wid2]) binTo.warehouse = warehouseCache[wid2];
                 }
             } catch (e) { console.error('resolveWarehouses failed', e); }
+        }
+
+        async function load() {
+            try {
+                const res = await fetch(BASE + '/storekeeper/transfers/' + id, {credentials:'include'});
+                if (!res.ok) throw new Error('Không thể tải phiếu báo cáo');
+                const json = await res.json();
+                if (!json.success || !json.data) throw new Error(json.msg || 'Không có dữ liệu');
+                transfer = json.data;
+
+                // find related transfers (grouping)
+                let related = [];
+                try {
+                    const listRes = await fetch(BASE + '/storekeeper/transfers', { credentials: 'include' });
+                    if (listRes.ok) {
+                        const listJson = await listRes.json();
+                        if (listJson?.success && Array.isArray(listJson.data)) {
+                            const all = listJson.data.filter(t => t.type === 3);
+                            const baseDesc = (transfer.description ?? '').toString();
+                            const baseCreated = Date.parse(transfer.creation_date ?? transfer.creationDate ?? transfer.creationTime ?? '');
+                            const baseCreator = transfer.creator_id ?? transfer.CreatorId ?? transfer.creator ?? transfer.Creator ?? null;
+                            const baseCreatorStr = (baseCreator ?? '').toString();
+
+                            related = all.filter(t => {
+                                try {
+                                    if ((t.description ?? '').toString() !== baseDesc) return false;
+                                    const tCreator = (t.creator_id ?? t.CreatorId ?? t.creator ?? t.Creator ?? '').toString();
+                                    if (baseCreatorStr && tCreator && baseCreatorStr !== tCreator) return false;
+                                    
+                                    const tCreated = Date.parse(t.creation_date ?? t.creationDate ?? t.creationTime ?? '');
+                                    if (!isNaN(baseCreated) && !isNaN(tCreated)) {
+                                        return Math.abs(baseCreated - tCreated) <= 60000;
+                                    }
+                                    return true;
+                                } catch (e) { return false; }
+                            });
+                        }
+                    }
+                } catch (e) { }
+
+                const relatedDetails = [];
+                const seen = new Set();
+                const mainId = transfer.request_id ?? transfer.RequestId ?? transfer.requestId ?? transfer.id ?? transfer.ID ?? null;
+                if (mainId) { relatedDetails.push(transfer); seen.add(String(mainId)); }
+
+                for (const r of related) {
+                    try {
+                        const idToFetch = r.request_id ?? r.RequestId ?? r.requestId ?? r.id ?? r.ID;
+                        if (!idToFetch || seen.has(String(idToFetch))) continue;
+                        const dres = await fetch(BASE + '/storekeeper/transfers/' + idToFetch, { credentials: 'include' });
+                        if (dres.ok) {
+                            const djson = await dres.json();
+                            if (djson?.success && djson.data) { relatedDetails.push(djson.data); seen.add(String(idToFetch)); }
+                        }
+                    } catch (e) { }
+                }
+
+                if (!seen.has(String(mainId))) relatedDetails.unshift(transfer);
+                transfer._related = relatedDetails;
+
+                const allComps = [];
+                for (const t of relatedDetails) {
+                    try { await resolveWarehouses(t); } catch (e) { }
+                    const compsT = getComponents(t) || [];
+                    compsT.forEach(c => allComps.push(c));
+                }
+                await resolveComponentNames(allComps);
+                render();
+                
+                // Set creator info
+                let createdBy = transfer.created_by_name ?? transfer.createdByName ?? transfer.created_by ?? transfer.createdBy ?? transfer.creator?.display_name ?? transfer.creator?.username ?? transfer.creator?.fullName ?? transfer.creator?.name ?? null;
+                if (!createdBy && (transfer.creator_id || transfer.creatorId)) {
+                    try {
+                        const uid = transfer.creator_id ?? transfer.creatorId;
+                        const ures = await fetch(BASE.replace('/storekeeper','') + '/users/' + uid, {credentials: 'include'});
+                        if (ures.ok) {
+                            const ujson = await ures.json();
+                            if (ujson?.success && ujson.data) createdBy = ujson.data.display_name ?? ujson.data.username ?? ujson.data.fullname ?? ujson.data.Username ?? uid;
+                        }
+                    } catch(e) {}
+                }
+                if (!createdBy) createdBy = '-';
+                const createdAt = transfer.creation_date ?? transfer.creationDate ?? transfer.created_at ?? transfer.createdAt ?? null;
+                document.getElementById('createdBy').innerText = 'Người tạo: ' + createdBy;
+                document.getElementById('createdAt').innerText = 'Ngày tạo: ' + (createdAt ? new Date(createdAt).toLocaleString('vi-VN') : '-');
+            } catch (err) {
+                document.getElementById('detail').innerHTML = `<div style="color:#ef4444;font-weight:600;padding:12px">Lỗi: ${err.message}</div>`;
+            }
         }
 
         function render() {
@@ -142,99 +277,331 @@
 
             function getStatusText(status){
                 switch(status){
-                    case 0: return 'Unknown';
-                    case 1: return 'Pending';
-                    case 2: return 'Approved - Waiting Confirm';
-                    case 3: return 'Rejected';
-                    default: return 'Completed';
+                    case 0: return 'Không xác định';
+                    case 1: return 'Chờ xử lý';
+                    case 2: return 'Đã duyệt - Chờ xác nhận';
+                    case 3: return 'Bị từ chối';
+                    default: return 'Hoàn thành';
                 }
             }
 
-            const fromWarehouse = transfer.bin_from?.warehouse?.warehouseName ?? transfer.bin_from?.warehouse?.name ?? '-';
-            const fromBin = transfer.bin_from?.location_in_warehouse ?? transfer.bin_from?.locationInWarehouse ?? transfer.bin_from?.binCode ?? transfer.bin_from?.code ?? '-';
-            const toWarehouse = transfer.bin_to?.warehouse?.warehouseName ?? transfer.bin_to?.warehouse?.name ?? '-';
-            const toBin = transfer.bin_to?.location_in_warehouse ?? transfer.bin_to?.locationInWarehouse ?? transfer.bin_to?.binCode ?? transfer.bin_to?.code ?? '-';
-            const statusText = getStatusText(transfer.status);
+            const related = transfer._related ?? [transfer];
+
+            const fromBinsPairs = new Set();
+            const fromBinsArr = [];
+            const toBinsPairs = new Set();
+            const toBinsArr = [];
+            const productsMap = {};
+            const statuses = new Set();
+
+            related.forEach(t => {
+                const fw = t.bin_from?.warehouse?.warehouseName ?? t.bin_from?.warehouse?.name ?? '-';
+                const fb = t.bin_from?.location_in_warehouse ?? t.bin_from?.locationInWarehouse ?? t.bin_from?.binCode ?? t.bin_from?.code ?? '-';
+                const fKey = `${fw}||${fb}`;
+                if (!fromBinsPairs.has(fKey)) { fromBinsPairs.add(fKey); fromBinsArr.push(`${fw} / <b>${fb}</b>`); }
+
+                const tw = t.bin_to?.warehouse?.warehouseName ?? t.bin_to?.warehouse?.name ?? '-';
+                const tb = t.bin_to?.location_in_warehouse ?? t.bin_to?.locationInWarehouse ?? t.bin_to?.binCode ?? t.bin_to?.code ?? '-';
+                const tKey = `${tw}||${tb}`;
+                if (!toBinsPairs.has(tKey)) { toBinsPairs.add(tKey); toBinsArr.push(`${tw} / <b>${tb}</b>`); }
+
+                const comps = getComponents(t);
+                comps.forEach(c => {
+                    const cid = c.component_id ?? c.componentId ?? c.component?.id ?? 'unknown';
+                    const name = getComponentName(c);
+                    const qty = parseFloat(c.quantity ?? c.Quantity ?? c.qty ?? 0) || 0;
+                    if (!productsMap[cid]) productsMap[cid] = { name: name, total: 0 };
+                    productsMap[cid].total += qty;
+                });
+                statuses.add(t.status ?? t.Status ?? 0);
+            });
+            globalProductsMap = productsMap;
+
+            const statusText = statuses.size === 1 ? getStatusText(Array.from(statuses)[0]) : 'Multiple';
 
             let html = `
                 <div class="info-grid">
                     <div class="info-block">
-                        <div style="font-weight:700">Description</div>
-                        <div class="meta">${transfer.description ?? '-'}</div>
+                        <div style="font-weight:700;margin-bottom:6px;color:#0f172a">Mô tả phiếu</div>
+                        <div class="meta" style="font-size:14px">${transfer.description ?? '-'}</div>
+                        <div style="height:16px"></div>
+                        <div style="font-weight:700;margin-bottom:6px;color:#0f172a">Trạng thái</div>
+                        <div class="meta" style="font-size:14px;color:var(--accent);font-weight:600">${statusText}</div>
                     </div>
                     <div class="info-block">
-                        <div style="font-weight:700">Status</div>
-                        <div class="meta">${statusText}</div>
-                        <div style="height:8px"></div>
-                        <div style="font-weight:700">From Warehouse / Bin</div>
-                        <div class="meta">${fromWarehouse} / ${fromBin}</div>
-                        <div style="height:6px"></div>
-                        <div style="font-weight:700">To Warehouse / Bin</div>
-                        <div class="meta">${toWarehouse} / ${toBin}</div>
-                        <div style="height:6px"></div>
-                        <div style="font-weight:700">Customer</div>
-                        <div class="meta">${transfer._customerName ?? (transfer.customer_id ? ('Customer ID: ' + transfer.customer_id) : '-')}</div>
+                        <div style="font-weight:700;margin-bottom:6px;color:#0f172a">Từ Kho / Bin xuất</div>
+                        <div class="meta" style="font-size:14px">${fromBinsArr.join('<br>')}</div>
+                        <div style="height:16px"></div>
+                        <div style="font-weight:700;margin-bottom:6px;color:#0f172a">Đến Kho / Bin nhập</div>
+                        <div class="meta" style="font-size:14px">${toBinsArr.join('<br>')}</div>
                     </div>
                 </div>
                 <hr />
-                <h4>Products</h4>
+                <h4>Danh sách Sản phẩm</h4>
                 <div class="table-card">
                     <table>
                         <thead>
-                            <tr><th>Name</th><th style="width:120px">Số lượng</th><th style="width:140px">Đơn giá</th></tr>
+                            <tr><th>Tên hàng</th><th style="width:120px">Số lượng</th></tr>
                         </thead>
                         <tbody>
 `;
 
-            const comps = getComponents(transfer);
-            comps.forEach(c => {
-                const name = getComponentName(c);
-                const qty = c.quantity ?? c.Quantity ?? c.qty ?? 0;
-                const price = c.unit_price ?? c.unitPrice ?? c.UnitPrice ?? '';
-                html += `<tr><td>${name}</td><td>${qty}</td><td>${price}</td></tr>`;
-            });
+            const prodKeys = Object.keys(productsMap);
+            if (prodKeys.length === 0) {
+                html += `<tr><td colspan="2" style="text-align:center;color:#64748b;padding:20px">Không có sản phẩm nào</td></tr>`;
+            } else {
+                prodKeys.forEach(k => {
+                    const p = productsMap[k];
+                    html += `<tr><td style="font-weight:500">${p.name}</td><td>${p.total}</td></tr>`;
+                });
+            }
 
             html += `</tbody></table></div>`;
-
             document.getElementById('detail').innerHTML = html;
 
             // show confirm button for appropriate statuses
-            if (transfer.status === 2) document.getElementById('confirmBtn').style.display = 'inline-block';
-            else document.getElementById('confirmBtn').style.display = 'none';
+            if (transfer.status === 2) {
+                document.getElementById('confirmSection').style.display = 'block';
+                document.getElementById('confirmBtn').style.display = 'inline-block';
+                loadBinsForConfirm();
+            } else {
+                if (document.getElementById('confirmSection')) document.getElementById('confirmSection').style.display = 'none';
+                document.getElementById('confirmBtn').style.display = 'none';
+            }
+        }
+
+        async function loadBinsForConfirm() {
+            try {
+                orderProducts = Object.keys(globalProductsMap).map(cid => ({
+                    id: cid, name: globalProductsMap[cid].name, maxQty: globalProductsMap[cid].total
+                }));
+                document.getElementById('allocationBody').innerHTML = '';
+                orderProducts.forEach(p => addAllocationRow(p.id, p.maxQty));
+
+                const wFromId = transfer._fromWarehouseId ?? transfer.warehouse_from_id ?? transfer.warehouseFromId ?? transfer.bin_from?.warehouse?.id;
+                const wToId = transfer._toWarehouseId ?? transfer.warehouse_to_id ?? transfer.warehouseToId ?? transfer.bin_to?.warehouse?.id;
+                
+                if (wFromId) {
+                    const res = await fetch(BASE + '/storekeeper/warehouses/' + wFromId, { credentials: 'include' });
+                    if (res.ok) {
+                        const json = await res.json();
+                        if (json?.success && json.data) availableSourceBins = json.data.bins ?? json.data;
+                    }
+                }
+                if (wToId) {
+                    const res = await fetch(BASE + '/storekeeper/warehouses/' + wToId, { credentials: 'include' });
+                    if (res.ok) {
+                        const json = await res.json();
+                        if (json?.success && json.data) availableDestBins = json.data.bins ?? json.data;
+                    }
+                }
+
+                document.getElementById('allocationBody').innerHTML = '';
+                orderProducts.forEach(p => addAllocationRow(p.id, p.maxQty));
+
+                for (let b of availableSourceBins) {
+                    const binId = b.id ?? b.ID ?? b.binId;
+                    if (!binId) continue;
+                    try {
+                        const bres = await fetch(BASE + '/storekeeper/bins/' + binId, { credentials: 'include' });
+                        if (!bres.ok) continue;
+                        const bjson = await bres.json();
+                        if (bjson?.success) {
+                            const dataArr = Array.isArray(bjson.data) ? bjson.data : (Array.isArray(bjson.data?.components) ? bjson.data.components : null);
+                            if (Array.isArray(dataArr)) {
+                                binAvailabilityByBin[binId] = {};
+                                for (const cb of dataArr) {
+                                    const cid = cb.component_id ?? cb.ComponentId ?? cb.componentId ?? cb.component?.componentId ?? cb.component?.id;
+                                    const qty = parseFloat(cb.quantity ?? cb.Quantity ?? cb.component?.quantity ?? cb.Quantity ?? 0) || 0;
+                                    if (cid) binAvailabilityByBin[binId][cid] = qty;
+                                }
+                            }
+                        }
+                    } catch(e) {}
+                }
+            } catch (e) { console.error('loadBins err', e); }
+        }
+
+        function addAllocationRow(defaultProductId = '', defaultQty = '') {
+            const tbody = document.getElementById('allocationBody');
+            const row = document.createElement('tr');
+            row.style.borderBottom = '1px solid #f9fafb';
+
+            let productOptions = '<option value="">-- Chọn sản phẩm --</option>';
+            orderProducts.forEach(p => {
+                const selected = p.id == defaultProductId ? 'selected' : '';
+                productOptions += `<option value="${p.id}" ${selected}>${p.name} (cần chuyển: ${p.maxQty})</option>`;
+            });
+
+            let binSrcOptions = '<option value="">-- Chọn Bin nguồn --</option>';
+            availableSourceBins.forEach(b => {
+                const lbl = b.location_in_warehouse ?? b.locationInWarehouse ?? b.binCode ?? ('Bin ' + b.id);
+                binSrcOptions += `<option value="${b.id ?? b.ID ?? b.binId}">${lbl}</option>`;
+            });
+
+            let binDestOptions = '<option value="">-- Chọn Bin đích --</option>';
+            availableDestBins.forEach(b => {
+                const lbl = b.location_in_warehouse ?? b.locationInWarehouse ?? b.binCode ?? ('Bin ' + b.id);
+                binDestOptions += `<option value="${b.id ?? b.ID ?? b.binId}">${lbl}</option>`;
+            });
+
+            row.innerHTML = `
+                <td style="padding:8px"><select class="alloc-product" style="width:100%; padding:6px; border-radius:4px; border:1px solid #ccc">${productOptions}</select></td>
+                <td style="padding:8px"><select class="alloc-bin-src" style="width:100%; padding:6px; border-radius:4px; border:1px solid #ccc">${binSrcOptions}</select></td>
+                <td style="padding:8px"><select class="alloc-bin-dest" style="width:100%; padding:6px; border-radius:4px; border:1px solid #ccc">${binDestOptions}</select></td>
+                <td style="padding:8px"><input type="number" class="alloc-qty" value="${defaultQty}" min="1" style="width:100%; padding:6px; border-radius:4px; border:1px solid #ccc"></td>
+                <td style="padding:8px; text-align:center"><button class="btn ghost" style="color:#ef4444; border-color:#fca5a5; padding:4px 8px" onclick="this.closest('tr').remove()">X</button></td>
+            `;
+            tbody.appendChild(row);
         }
 
         async function confirmOrder() {
-            if (!confirm('Confirm this transfer?')) return;
-            const comps = getComponents(transfer);
-            // For internal transfer confirmation, send both bins_from and bins_to if available
-            // Build bins_from and bins_to from transfer details
+            if (!confirm('Xác nhận phân bổ và chuyển kho?')) return;
             const related = transfer._related ?? [transfer];
-            const binsFrom = [];
-            const binsTo = [];
+            const isValidStatus = related.some(t => t.status === 2);
+            if (!isValidStatus) return alert('Phiếu này không ở trạng thái chờ xác nhận.');
+
+            const rows = Array.from(document.querySelectorAll('#allocationBody tr'));
+            if (rows.length === 0) return alert('Vui lòng thêm ít nhất 1 phân bổ.');
+
+            // Validate allocations
+            const allocationSummary = {}; 
+            const globalBinsFromStockCheck = {}; 
+            const pairMap = {}; // key: srcId_destId -> { srcId, destId, components }
+
+            for (let i = 0; i < rows.length; i++) {
+                const r = rows[i];
+                const pId = parseInt(r.querySelector('.alloc-product').value) || 0;
+                const bSrcId = parseInt(r.querySelector('.alloc-bin-src').value) || 0;
+                const bDestId = parseInt(r.querySelector('.alloc-bin-dest').value) || 0;
+                const qty = Number(r.querySelector('.alloc-qty').value) || 0;
+
+                if (!pId) return alert(`Dòng ${i+1}: Vui lòng chọn sản phẩm.`);
+                if (!bSrcId) return alert(`Dòng ${i+1}: Vui lòng chọn Bin nguồn.`);
+                if (!bDestId) return alert(`Dòng ${i+1}: Vui lòng chọn Bin đích.`);
+                if (bSrcId === bDestId) return alert(`Dòng ${i+1}: Bin nguồn và Bin đích không được trùng nhau.`);
+                if (qty <= 0) return alert(`Dòng ${i+1}: Số lượng phải lớn hơn 0.`);
+
+                // validate against stock
+                const stock = (binAvailabilityByBin[bSrcId] && binAvailabilityByBin[bSrcId][pId]) ? binAvailabilityByBin[bSrcId][pId] : 0;
+                let alreadyAllocated = globalBinsFromStockCheck[bSrcId]?.[pId] || 0;
+                if (qty + alreadyAllocated > stock) {
+                    const pNameElem = r.querySelector('.alloc-product');
+                    const bNameElem = r.querySelector('.alloc-bin-src');
+                    const pName = pNameElem.options[pNameElem.selectedIndex]?.text.split(' (')[0] || pId;
+                    const bName = bNameElem.options[bNameElem.selectedIndex]?.text || bSrcId;
+                    return alert(`Dòng ${i+1}: Tồn kho của Bin nguồn [${bName}] không đủ! (Chỉ còn ${stock} khả dụng cho sản phẩm "${pName}")`);
+                }
+
+                allocationSummary[pId] = (allocationSummary[pId] || 0) + qty;
+
+                if (!globalBinsFromStockCheck[bSrcId]) globalBinsFromStockCheck[bSrcId] = {};
+                globalBinsFromStockCheck[bSrcId][pId] = (globalBinsFromStockCheck[bSrcId][pId] || 0) + qty;
+                
+                const key = bSrcId + "_" + bDestId;
+                if (!pairMap[key]) pairMap[key] = { srcId: bSrcId, destId: bDestId, components: {} };
+                pairMap[key].components[pId] = (pairMap[key].components[pId] || 0) + qty;
+            }
+
+            for (const p of orderProducts) {
+                const sum = allocationSummary[p.id] || 0;
+                if (sum !== p.maxQty) {
+                    return alert(`Sản phẩm "${p.name}" được yêu cầu chuyển ${p.maxQty}, nhưng bạn đã phân bổ tổng ${sum}. Vui lòng phân bổ cho khớp.`);
+                }
+            }
+
+            let errMsg = '';
+            let allSuccess = true;
+
             for (const t of related) {
-                const binFromId = t.bin_from_id ?? t.binFromId ?? t.bin_from?.id ?? t.bin_from?.ID;
-                const binToId = t.bin_to_id ?? t.binToId ?? t.bin_to?.id ?? t.bin_to?.ID;
+                const reqId = t.id ?? t.ID ?? t.request_id ?? t.requestId ?? t.RequestId;
+                if (!reqId || t.status === 4 || t.status === 0 || t.status === 3) continue;
+
+                const payload = { request_id: reqId, bins_from: [], bins_to: [] };
+                
                 const comps = getComponents(t) || [];
-                const compsPayload = comps.map(c => ({ component_id: c.component_id ?? c.componentId ?? c.component?.id, quantity: c.quantity ?? c.qty ?? c.Quantity }));
-                if (binFromId && compsPayload.length > 0) binsFrom.push({ bin_id: binFromId, components: compsPayload });
-                if (binToId && compsPayload.length > 0) binsTo.push({ bin_id: binToId, components: compsPayload });
-            }
-            const payload = { request_id: transfer.id, bins_from: binsFrom.length ? binsFrom : undefined, bins_to: binsTo.length ? binsTo : undefined };
+                const compsPayload = comps.map(c => ({ component_id: parseInt(c.component_id ?? c.componentId ?? c.component?.id), quantity: Number((c.quantity ?? c.qty ?? c.Quantity) || 0) }));
 
-            const res = await fetch(BASE + '/storekeeper/transfers/confirm', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(payload)
-            });
-            if (!res.ok) {
-                const txt = await res.text().catch(()=>null);
-                console.error('confirm error', txt || res.statusText);
-                return alert('Tạo thất bại: ' + (txt || res.statusText));
+                if (compsPayload.length === 0) continue;
+
+                let subSuccess = true;
+                let localPairMap = {}; // mapping for this specific request payload
+                
+                for (const comp of compsPayload) {
+                    let qtyRemaining = comp.quantity;
+                    
+                    for (const key of Object.keys(pairMap)) {
+                        if (qtyRemaining <= 0) break;
+                        const pair = pairMap[key];
+                        const avail = pair.components[comp.component_id] || 0;
+                        if (avail > 0) {
+                            const take = Math.min(qtyRemaining, avail);
+                            pair.components[comp.component_id] -= take;
+                            qtyRemaining -= take;
+                            
+                            if (!localPairMap[key]) localPairMap[key] = { srcId: pair.srcId, destId: pair.destId, components: [] };
+                            
+                            const existing = localPairMap[key].components.find(c => c.component_id === comp.component_id);
+                            if (existing) {
+                                existing.quantity += take;
+                            } else {
+                                localPairMap[key].components.push({ component_id: comp.component_id, quantity: take });
+                            }
+                        }
+                    }
+                    if (qtyRemaining > 0) {
+                        subSuccess = false; break;
+                    }
+                }
+
+                if (!subSuccess) {
+                    errMsg = 'Phân bổ không khớp với danh sách sản phẩm yêu cầu.';
+                    allSuccess = false;
+                    break;
+                }
+
+                // Push equal sized paired allocations
+                for (const key of Object.keys(localPairMap)) {
+                    const pair = localPairMap[key];
+                    // IMPORTANT: clone the array to ensure components structure doesn't conflict by reference
+                    const compsToSubmit = JSON.parse(JSON.stringify(pair.components));
+                    payload.bins_from.push({ bin_id: pair.srcId, components: compsToSubmit });
+                    payload.bins_to.push({ bin_id: pair.destId, components: compsToSubmit });
+                }
+
+                try {
+                    const res = await fetch(BASE + '/storekeeper/transfers/confirm', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(payload)
+                    });
+                    if (!res.ok) {
+                        const txt = await res.text().catch(()=>null);
+                        allSuccess = false;
+                        let msg = txt || res.statusText;
+                        try { const obj = JSON.parse(txt); if(obj.msg || obj.message) msg = obj.msg || obj.message; } catch(e) {}
+                        errMsg = msg;
+                        break;
+                    }
+                    const json = await res.json();
+                    if (!json?.success) {
+                        allSuccess = false;
+                        errMsg = json?.msg || json?.message || 'Có lỗi xảy ra';
+                        break;
+                    }
+                } catch (e) {
+                    allSuccess = false;
+                    errMsg = e.message;
+                    break;
+                }
             }
-            let json;
-            try { json = await res.json(); } catch(e) { return alert('Server returned invalid response'); }
-            if (json?.success) { alert('Confirmed'); location.href='transfer-list.html'; }
-            else alert(json?.msg || json?.message || 'Error');
+
+            if (allSuccess) {
+                alert('Đã xác nhận phân bổ và chuyển kho thành công!');
+                location.href = 'transfer-list.html';
+            } else {
+                alert('Xác nhận bị lỗi: ' + errMsg);
+                location.reload();
+            }
         }
-
         load();
     </script>
 </body>

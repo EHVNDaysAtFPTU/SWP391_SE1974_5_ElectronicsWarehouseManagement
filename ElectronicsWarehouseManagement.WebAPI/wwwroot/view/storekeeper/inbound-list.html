@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -63,6 +63,8 @@
                 </thead>
                 <tbody id="orderTable"></tbody>
             </table>
+            <div id="pagination" class="pagination"></div>
+        </div>
 
     <div class="modal" id="detailModal">
         <div class="modal-content">
@@ -115,150 +117,107 @@
         }
 
         async function load() {
-            // load transfers summary
-            let res = await fetch(BASE + "/storekeeper/transfers", { credentials: "include" });
-            let result = await res.json();
-
-            const inboundListSummary = (result.data || []).filter(x => x.type === 1);
-            const warehouseCache = {};
-
-            const inboundList = await Promise.all(inboundListSummary.map(async t0 => {
-                try {
-                    // fetch full transfer detail first (to get components)
-                    const dres = await fetch(BASE + "/storekeeper/transfers/" + (getId(t0)), { credentials: 'include' });
-                    if (dres.ok) {
-                        const djson = await dres.json();
-                        if (djson?.success && djson.data) t0 = djson.data;
-                    }
-
-                    // if bin_to already contains useful info, attach helper name and try to resolve warehouse object if missing
-                    if (t0.bin_to && (t0.bin_to.location_in_warehouse || t0.bin_to.locationInWarehouse || t0.bin_to.binCode)) {
-                        try {
-                            const toName = t0.bin_to?.warehouse?.name ?? t0.bin_to?.warehouse?.warehouseName ?? t0.bin_to?.warehouse ?? null;
-                            t0._toWarehouseName = toName ?? null;
-                            // if warehouse object is missing but warehouse id exists, try fetch warehouse and cache it
-                            const wid = t0.bin_to?.warehouse?.id ?? t0.bin_to?.warehouse_id ?? t0.bin_to?.warehouseId ?? t0.bin_to?.WarehouseId;
-                            if (!t0.bin_to?.warehouse && wid) {
-                                if (!warehouseCache[wid]) {
-                                    try {
-                                        const wres = await fetch(BASE + "/storekeeper/warehouses/" + wid, { credentials: 'include' });
-                                        if (wres.ok) {
-                                            const wjson = await wres.json();
-                                            if (wjson?.success && wjson.data) warehouseCache[wid] = wjson.data;
-                                        }
-                                    } catch (e) { console.error('warehouse fetch failed', e); }
-                                }
-                                if (warehouseCache[wid]) {
-                                    t0.bin_to.warehouse = warehouseCache[wid];
-                                    t0._toWarehouseName = warehouseCache[wid].name ?? warehouseCache[wid].warehouseName ?? t0._toWarehouseName;
-                                }
-                            }
-                        } catch (e) { /* ignore */ }
-                        return t0;
-                    }
-
-                    const binId = t0.bin_to_id ?? t0.binToId ?? t0.bin_to?.id ?? t0.bin_to?.ID;
-                    if (!binId) return t0;
-
-                    const bres = await fetch(BASE + "/storekeeper/bins/" + binId, { credentials: 'include' });
-                    if (bres.ok) {
-                        const bjson = await bres.json();
-                        if (bjson?.success && bjson.data) {
-                            t0.bin_to = bjson.data;
-                            // try to attach warehouse object if only id is present
-                            const w = t0.bin_to.warehouse ?? t0.bin_to.Warehouse ?? null;
-                            // determine warehouse id: if `warehouse` is an object use its id, otherwise if it's primitive (number/string) use it
-                            const wid = (typeof t0.bin_to?.warehouse === 'object') ? (t0.bin_to.warehouse?.id) : (t0.bin_to?.warehouse ?? t0.bin_to.warehouse_id ?? t0.bin_to.warehouseId ?? t0.bin_to.WarehouseId);
-                            const needFetch = !t0.bin_to?.warehouse || (typeof t0.bin_to.warehouse !== 'object');
-                            if (needFetch && wid) {
-                                if (!warehouseCache[wid]) {
-                                    try {
-                                        const wres = await fetch(BASE + "/storekeeper/warehouses/" + wid, { credentials: 'include' });
-                                        if (wres.ok) {
-                                            const wjson = await wres.json();
-                                            if (wjson?.success && wjson.data) warehouseCache[wid] = wjson.data;
-                                        }
-                                    } catch (e) { console.error('warehouse fetch failed', e); }
-                                }
-                                if (warehouseCache[wid]) t0.bin_to.warehouse = warehouseCache[wid];
-                            }
-                            // set helper to-warehouse name
-                            try {
-                                const toName = t0.bin_to?.warehouse?.name ?? t0.bin_to?.warehouse?.warehouseName ?? t0.bin_to?.warehouse ?? null;
-                                t0._toWarehouseName = toName ?? null;
-                            } catch (e) { /* ignore */ }
+            try {
+                let res = await fetch(BASE + "/storekeeper/transfers", { credentials: "include" });
+                let result = await res.json();
+                
+                const inboundListSummary = (result.data || []).filter(x => x.type === 1);
+                
+                const inboundList = [];
+                for (let t0 of inboundListSummary) {
+                    try {
+                        const dres = await fetch(BASE + "/storekeeper/transfers/" + (getId(t0)), { credentials: 'include' });
+                        if (dres.ok) {
+                            const djson = await dres.json();
+                            if (djson?.success && djson.data) t0 = djson.data;
                         }
+
+                        const binId = t0.bin_to_id ?? t0.binToId ?? t0.bin_to?.id ?? t0.bin_to?.ID;
+                        if (binId && (!t0.bin_to || t0.bin_to.id === undefined)) {
+                            const bres = await fetch(BASE + "/storekeeper/bins/" + binId, { credentials: 'include' });
+                            if (bres.ok) {
+                                const bjson = await bres.json();
+                                if (bjson?.success && bjson.data) {
+                                    t0.bin_to = bjson.data;
+                                }
+                            }
+                        }
+                        
+                        const wId = t0.bin_to?.warehouse ?? t0.bin_to?.warehouse_id ?? t0.bin_to?.warehouseId ?? (typeof t0.bin_to?.warehouse === 'object' ? t0.bin_to.warehouse.id : null) ?? t0.warehouse_to_id;
+                        if (wId && (!t0.bin_to?.warehouse || typeof t0.bin_to.warehouse !== 'object')) {
+                            const wres = await fetch(BASE + "/storekeeper/warehouses/" + wId, { credentials: 'include' });
+                            if (wres.ok) {
+                                const wjson = await wres.json();
+                                if (wjson?.success && wjson.data) {
+                                    t0._toWarehouseName = wjson.data.name ?? wjson.data.warehouseName;
+                                    if(t0.bin_to) t0.bin_to.warehouse = wjson.data;
+                                }
+                            }
+                        } else if (t0.bin_to?.warehouse && typeof t0.bin_to.warehouse === 'object') {
+                            t0._toWarehouseName = t0.bin_to.warehouse.name ?? t0.bin_to.warehouse.warehouseName;
+                        }
+                        
+                    } catch (e) {
+                        console.error('detail fetch failed', e);
                     }
-                } catch (e) {
-                    console.error('detail/bin fetch failed', e);
-                    return t0;
+                    inboundList.push(t0);
                 }
-                return t0;
-            }));
 
-            // store inbound list globally for pagination/filter
-            window._inboundListData = inboundList;
-            window._inboundFiltered = inboundList.slice();
-            window._inboundPageSize = 5;
-            window._inboundCurrentPage = 1;
+                window._inboundListData = inboundList;
+                window._inboundFiltered = inboundList.slice();
+                window._inboundPageSize = 5;
+                window._inboundCurrentPage = 1;
+                renderPage(1);
+            } catch (err) { }
+        }
 
-            function renderPage(page){
-                const pageSize = window._inboundPageSize;
-                const data = window._inboundFiltered || [];
-                const total = data.length;
-                const pages = Math.max(1, Math.ceil(total / pageSize));
-                if(page < 1) page = 1; if(page > pages) page = pages;
-                window._inboundCurrentPage = page;
-                const start = (page-1)*pageSize;
-                const slice = data.slice(start, start+pageSize);
-                let html = "";
-                slice.forEach(o => {
+        window.renderPage = function (page) {
+            window._inboundCurrentPage = page;
+            const size = window._inboundPageSize;
+            const all = window._inboundFiltered || [];
+            const start = (page - 1) * size;
+            const items = all.slice(start, start + size);
 
-                let statusText = getStatusText(o.status);
-                let statusClass = o.status === 3 ? "status-complete" : "status-pending";
+            let html = "";
+            items.forEach(o => {
+                let statusText = getStatusText(o.status ?? o.Status);
+                let statusClass = (o.status === 3 || o.Status === 3) ? "status-complete" : "status-pending";
 
-                // read using JSON names returned by API (snake_case) with fallbacks
                 const binTo = o['bin_to'] ?? o.bin_to ?? null;
-                let warehouse = '-';
-                if (o._toWarehouseName) warehouse = o._toWarehouseName;
-                else if (binTo?.warehouse) warehouse = binTo.warehouse.name ?? binTo.warehouse.warehouseName ?? binTo.warehouse;
-                else if (o.warehouse) warehouse = o.warehouse.name ?? o.warehouse.warehouseName ?? o.warehouse;
-                const bin = binTo?.location_in_warehouse ?? binTo?.locationInWarehouse ?? binTo?.binCode ?? o.location_in_warehouse ?? o.locationInWarehouse ?? '-';
+                let warehouse = o._toWarehouseName ?? (binTo?.warehouse?.name ?? binTo?.warehouse?.warehouseName) ?? '-';
+                let bin = binTo?.location_in_warehouse ?? binTo?.locationInWarehouse ?? binTo?.binCode ?? o.location_in_warehouse ?? o.locationInWarehouse ?? '-';
+                
+                const isPending = (o.status === 1 || o.Status === 1 || o.status === 2 || o.Status === 2);
+                if (isPending) bin = '<i>Chưa phân bổ</i>';
 
                 const comps = getComponents(o);
                 const totalItems = comps.reduce((s, c) => s + (c.quantity ?? c.Quantity ?? c.qty ?? 0), 0);
 
-                // chỉ dẫn sang trang chi tiết (trang chi tiết có nút confirm)
-                let action = `<button class="detail-btn" onclick="goDetail('${getId(o)}')">Detail</button>`;
+                let action = `<button class="action-btn" onclick="goDetail('${getId(o)}')">Detail</button>`;
 
-                    html += `
-<tr>
-<td>${o.description}</td>
-<td>${formatDate(o.creation_date)}</td>
-<td>${warehouse}</td>
-<td>${bin}</td>
-<td>${totalItems}</td>
-<td class="${statusClass}">${statusText}</td>
-<td>${action}</td>
-</tr>`;
-                });
+                html += `
+                <tr>
+                    <td>${o.description ?? '-'}</td>
+                    <td>${formatDate(o.creation_date)}</td>
+                    <td>${warehouse}</td>
+                    <td>${bin}</td>
+                    <td>${totalItems}</td>
+                    <td class="${statusClass}">${statusText}</td>
+                    <td>${action}</td>
+                </tr>`;
+            });
 
-                document.getElementById("orderTable").innerHTML = html;
+            document.getElementById("orderTable").innerHTML = html;
 
-                // render pagination
-                const totalItemsAll = (window._inboundFiltered || []).length;
-                const totalPages = Math.max(1, Math.ceil(totalItemsAll / window._inboundPageSize));
-                const pag = document.getElementById('pagination');
-                pag.innerHTML = '';
-                for(let i=1;i<=totalPages;i++){
-                    const cls = 'page-item' + (i===page? ' active':'');
-                    pag.insertAdjacentHTML('beforeend', `<div class="${cls}" onclick="renderPage(${i})">${i}</div>`);
-                }
+            const totalItemsAll = (window._inboundFiltered || []).length;
+            const totalPages = Math.max(1, Math.ceil(totalItemsAll / window._inboundPageSize));
+            const pag = document.getElementById('pagination');
+            pag.innerHTML = '';
+            for(let i=1;i<=totalPages;i++){
+                const cls = 'page-item' + (i===page? ' active':'');
+                pag.insertAdjacentHTML('beforeend', `<div class="${cls}" onclick="renderPage(${i})">${i}</div>`);
             }
-
-            // initially render first page
-            renderPage(1);
-        }
+        };
 
 
         function goDetail(id) {
