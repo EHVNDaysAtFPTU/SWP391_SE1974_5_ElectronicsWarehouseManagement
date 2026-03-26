@@ -287,6 +287,8 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
                         return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Unit price is required for component with ID '{componentReq.ComponentId}' in inbound transfer request.");
                     item.UnitPrice = componentReq.UnitPrice.Value;
                 }
+                else if (request.Type == TransferType.Outbound)
+                    item.UnitPrice = component.UnitPrice;
                 tComponents.Add(item);
             }
             var transferRequest = new TransferRequest
@@ -523,6 +525,8 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
                             return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Unit price is required for component with ID '{componentReq.ComponentId}' in inbound transfer request.");
                         item.UnitPrice = componentReq.UnitPrice.Value;
                     }
+                    else if (transferRequest.Type == TransferType.Outbound)
+                        item.UnitPrice = component.UnitPrice;
                     tComponents.Add(item);
                 }
                 _dbCtx.TransferRequestComponents.RemoveRange(transferRequest.TransferRequestComponents);
