@@ -486,6 +486,10 @@
             // collect bins and warehouses (deduped)
             const binSet = new Set();
             const bins = [];
+            // compute requested totals and finished totals across related transfers so
+            // the aggregated view shows outstanding quantities (requested - finished From)
+            const compRequestedTotals = {}; // compId -> { name, total }
+            const compFinishedTotals = {}; // compId -> total finished (From)
             const productsMap = {}; // compId -> { name, total }
 
             related.forEach(t => {
@@ -499,15 +503,38 @@
 
                 const comps = getComponents(t);
                 comps.forEach(c => {
-                    // canonicalize component id to avoid treating same product as different keys
-                    const cidRaw = c.component_id ?? c.componentId ?? c.component?.id ?? c.component?.componentId ?? c.component?.metadata?.id ?? c.component?.metadata?.componentId ?? 'unknown';
+                    const cidRaw = c.component_id ?? c.componentId ?? c.component?.id ?? c.component?.componentId ?? 'unknown';
                     const cid = String(cidRaw);
                     const name = getComponentName(c);
                     const qty = Number(c.quantity ?? c.Quantity ?? c.qty ?? c.component?.quantity ?? 0) || 0;
-                    if (!productsMap[cid]) productsMap[cid] = { name: name, total: 0 };
-                    productsMap[cid].total += qty;
+                    if (!compRequestedTotals[cid]) compRequestedTotals[cid] = { name: name, total: 0 };
+                    if (!compRequestedTotals[cid].name || compRequestedTotals[cid].name.startsWith('Component #')) compRequestedTotals[cid].name = name;
+                    compRequestedTotals[cid].total += qty;
                 });
+
+                try {
+                    const finishedArr = t.finished_components ?? t.finishedComponents ?? t.finished_components_list ?? t.finishedComponentsList ?? t.FinishedTransferRequestComponents;
+                    if (Array.isArray(finishedArr)) {
+                        finishedArr.forEach(fc => {
+                            const type = fc.type ?? fc.Type ?? null;
+                            if (type === undefined || type === null) return;
+                            if (Number(type) !== 1) return; // only count From movements as taken
+                            const fcid = String(fc.component_id ?? fc.componentId ?? fc.component?.id ?? fc.component?.componentId ?? 'unknown');
+                            const fq = Number(fc.quantity ?? fc.Quantity ?? 0) || 0;
+                            compFinishedTotals[fcid] = (compFinishedTotals[fcid] || 0) + fq;
+                        });
+                    }
+                } catch (e) { /* ignore */ }
             });
+
+            // finalize productsMap = requested - finished (min 0)
+            Object.keys(compRequestedTotals).forEach(k => {
+                const req = Number(compRequestedTotals[k].total || 0);
+                const fin = Number(compFinishedTotals[k] || 0);
+                const remaining = Math.max(0, req - fin);
+                productsMap[k] = { name: compRequestedTotals[k].name, total: remaining };
+            });
+
             globalProductsMap = productsMap;
 
             // compute warehouse display: if no bins resolved, fallback to transfer.warehouse_from / warehouse_to or transfer.warehouse
@@ -765,56 +792,33 @@
                 pairMap[bId][pId] = (pairMap[bId][pId] || 0) + qty;
             }
 
-            // Submit for each related transfer similar to previous behavior
-            const related = transfer._related ?? [transfer];
-            let allSuccess = true; let errMsg = '';
-            for (const t of related) {
-                const reqId = t.id ?? t.ID ?? t.request_id ?? t.requestId ?? t.RequestId;
-                if (!reqId || t.status === 4 || t.status === 0 || t.status === 3) continue;
+            // Submit single confirm for the current transfer only using user's allocations (bins_from)
+            const reqId = transfer.request_id ?? transfer.RequestId ?? transfer.requestId ?? transfer.id ?? transfer.ID;
+            if (!reqId) return alert('Cannot determine transfer request ID to confirm.');
 
-                const comps = getComponents(t) || [];
-                const compsPayload = comps.map(c => ({ component_id: parseInt(c.component_id ?? c.componentId ?? c.component?.id), quantity: Number((c.quantity ?? c.qty ?? c.Quantity) || 0) }));
-                if (compsPayload.length === 0) continue;
-
-                let localPairMap = {};
-                let subSuccess = true;
-                for (const comp of compsPayload) {
-                    let qtyRemaining = comp.quantity;
-                    for (const [binId, map] of Object.entries(pairMap)) {
-                        if (qtyRemaining <= 0) break;
-                        const avail = map[comp.component_id] || 0;
-                        if (avail > 0) {
-                            const take = Math.min(qtyRemaining, avail);
-                            map[comp.component_id] -= take;
-                            qtyRemaining -= take;
-                            if (!localPairMap[binId]) localPairMap[binId] = {};
-                            localPairMap[binId][comp.component_id] = (localPairMap[binId][comp.component_id] || 0) + take;
-                        }
-                    }
-                    if (qtyRemaining > 0) {
-                        // will be treated as missing by server
-                    }
+            // Only include components that belong to this transfer
+            // Build payload from user-selected allocations (bins_from). Do not include bins_to for outbound.
+            const payload = { request_id: reqId, bins_from: [] };
+            for (const [binId, compsObj] of Object.entries(pairMap)) {
+                const compsArr = Object.keys(compsObj).map(cid => ({ component_id: parseInt(cid), quantity: compsObj[cid] }));
+                if (compsArr.length > 0) {
+                    payload.bins_from.push({ bin_id: parseInt(binId), components: compsArr });
                 }
-
-                // build payload
-                const payload = { request_id: reqId, bins_from: [], bins_to: [] };
-                for (const [srcId, compsObj] of Object.entries(localPairMap)) {
-                    const compsArr = Object.keys(compsObj).map(cid => ({ component_id: parseInt(cid), quantity: compsObj[cid] }));
-                    payload.bins_from.push({ bin_id: parseInt(srcId), components: compsArr });
-                    payload.bins_to.push({ bin_id: parseInt(srcId), components: JSON.parse(JSON.stringify(compsArr)) });
-                }
-
-                try {
-                    const res = await fetch(BASE + '/storekeeper/transfers/confirm', {
-                        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(payload)
-                    });
-                    if (!res.ok) { const txt = await res.text().catch(()=>null); allSuccess = false; errMsg = txt || res.statusText; break; }
-                    const j = await res.json(); if (!j?.success) { allSuccess = false; errMsg = j?.msg || j?.message || 'Error'; break; }
-                } catch(e) { allSuccess = false; errMsg = e.message; break; }
             }
 
-            if (allSuccess) { alert('Outbound processed successfully'); location.href='outbound-list.html'; }
-            else { alert('Operation failed: ' + errMsg); location.reload(); }
+            console.debug('Confirm payload (single transfer):', payload);
+            if (payload.bins_from.length === 0) return alert('No bins selected that match this transfer.');
+
+            try {
+                // log payload for debugging
+                console.debug('Confirm payload (single transfer):', payload);
+                const res = await fetch(BASE + '/storekeeper/transfers/confirm', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(payload)
+                });
+                if (!res.ok) { const txt = await res.text().catch(()=>null); return alert('Operation failed: ' + (txt || res.statusText)); }
+                const j = await res.json(); if (!j?.success) return alert('Operation failed: ' + (j?.msg || j?.message || 'Error'));
+                alert('Outbound processed successfully'); location.href='outbound-list.html';
+            } catch (e) { alert('Operation failed: ' + e.message); location.reload(); }
         }
 
         load();
