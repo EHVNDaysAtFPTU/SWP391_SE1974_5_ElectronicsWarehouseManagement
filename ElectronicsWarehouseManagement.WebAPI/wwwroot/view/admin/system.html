@@ -91,7 +91,6 @@
             maintenanceCheck.checked = cfg.maintenanceMode;
             messageInput.value = cfg.maintenanceMessage || "";
 
-            // ✅ FIX TIME (KHÔNG UTC)
             scheduledEndInput.value = cfg.scheduledEnd
                 ? cfg.scheduledEnd.substring(0, 16)
                 : "";
@@ -115,7 +114,6 @@
         async function saveConfig() {
             const timeStr = scheduledEndInput.value || null;
 
-            // If a time is provided, build a full local DateTime (today or tomorrow if time already passed)
             let scheduledLocalStr = null;
             if (timeStr) {
                 const [hh, mm] = timeStr.split(':').map(x => parseInt(x, 10));
@@ -185,7 +183,6 @@
                 if (diff <= 0) {
                     countdownEl.innerText = "00:00:00";
 
-                    // 🔥 chỉ update UI (KHÔNG gọi API)
                     maintenanceCheck.checked = false;
                     scheduledEndInput.value = "";
                     scheduledEndTime = null;
