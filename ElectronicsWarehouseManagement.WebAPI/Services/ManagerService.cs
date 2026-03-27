@@ -432,7 +432,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
 
                 InboundToday = await _dbCtx.FinishedTransferRequestComponents
                 .Where(ftr =>
-                    ftr.Request.TypeInt == 1 && 
+                    ftr.Request.TypeInt == 1 &&
                     ftr.Request.ExecutionTime >= start &&
                     ftr.Request.ExecutionTime < end)
                 .SumAsync(ftr => ftr.Quantity),

@@ -21,7 +21,7 @@
         <nav class="nav flex-column mt-3">
             <a class="nav-link" href="home.html">Dashboard</a>
             <a class="nav-link active" href="component-inventory.html">Components</a>
-            <a class="nav-link" href="transfers.html">Transfers</a>
+            <a class="nav-link" href="transfers.html">Requests</a>
             <a class="nav-link" href="warehouses.html">Warehouses</a>
             <a class="nav-link" href="bin.html">Bins</a>
             <a class="nav-link" href="customer.html">Customers</a>
@@ -42,7 +42,7 @@
             </div>
 
             <div class="profile-dropdown" id="profileDropdown">
-                <a onclick="openProfile()">Profile</a>
+                <a href="profile.html">My Profile</a>
                 <hr class="my-1">
                 <a href="#" onclick="logout()" class="text-danger">Logout</a>
             </div>
@@ -52,7 +52,7 @@
     <!-- Main Content -->
     <main class="main-content">
         <div class="container-fluid">
-            
+
             <!-- Filters Card -->
             <div class="card shadow-sm p-3 mb-4">
                 <div class="row g-3 align-items-end">
@@ -88,7 +88,7 @@
                         <button class="btn btn-sm btn-outline-primary" onclick="loadItems(1)">Refresh</button>
                     </div>
                 </div>
-                
+
                 <div class="table-responsive">
                     <table class="table table-hover align-middle mb-0">
                         <thead class="table-light">
@@ -120,7 +120,7 @@
                     </div>
                 </div>
             </div>
-            
+
         </div>
     </main>
 
