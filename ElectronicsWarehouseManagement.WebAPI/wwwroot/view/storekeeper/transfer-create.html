@@ -493,46 +493,20 @@ Unit: ${unit} · Available: ${totalAvail}
         }
 
         /* ADD ROW */
-        async function addItemAsync(id, name, unit, available) {
-            // refresh selected bins availability
-            await loadSelectedBinsContents();
-            const selected = getSelectedBins();
-            const aggAvail = aggregatedAvailability[id] ?? aggregatedAvailability[id?.toString?.()] ?? 0;
-            return addItem(id, name, unit, aggAvail, selected);
+        function addItemAsync(id, name, unit, available) {
+            // no bin selection: just add item with provided available quantity
+            return addItem(id, name, unit, available, []);
         }
 
         function addItem(id, name, unit, available, selectedBins) {
             count++;
-
-            let binCellHtml = '';
-            let initialAvail = available;
-            if (selectedBins && selectedBins.length > 1) {
-                // filter selected bins to those that actually contain this component
-                const filtered = selectedBins.filter(b => {
-                    const q = (binAvailabilityByBin[b.id] && binAvailabilityByBin[b.id][id]) ? binAvailabilityByBin[b.id][id] : 0;
-                    return q > 0;
-                });
-                    if (filtered.length === 0) {
-                    alert('Product "' + name + '" is not present in the selected bins. Please choose different bins.');
-                    return;
-                }
-                if (filtered.length > 1) {
-                    binCellHtml = '<select data-row-bin style="margin-right:8px" onchange="onRowBinChange(this)"><option value="">-- Tự động tối ưu --</option>';
-                    for (const b of filtered) binCellHtml += `<option value="${b.id}">${b.label}</option>`;
-                    binCellHtml += '</select>';
-                    initialAvail = available; // use aggregated availability when auto
-                } else {
-                    const firstBinId = filtered[0].id;
-                    initialAvail = (binAvailabilityByBin[firstBinId] && binAvailabilityByBin[firstBinId][id]) ? binAvailabilityByBin[firstBinId][id] : available;
-                }
-            }
-
+            const initialAvail = available;
             const row = `
 <tr data-available="${initialAvail}">
 <td>${count}</td>
 <td data-id="${id}">${name}</td>
 <td>${unit}</td>
-<td>${binCellHtml ? binCellHtml : ''}<input type="number" value="1" min="1" max="${initialAvail}" onchange="calc()" style="width:80px;margin-left:8px"></td>
+<td><input type="number" value="1" min="1" max="${initialAvail}" onchange="calc()" style="width:80px;margin-left:8px"></td>
 <td><button class="remove" onclick="removeRow(this)">X</button></td>
 </tr>`;
             document.getElementById("tableBody").insertAdjacentHTML("beforeend", row);

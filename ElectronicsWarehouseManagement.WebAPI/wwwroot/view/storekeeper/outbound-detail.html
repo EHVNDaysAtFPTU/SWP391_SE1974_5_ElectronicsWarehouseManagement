@@ -734,6 +734,10 @@
             for (const p of orderProducts) {
                 const requested = p.maxQty;
                 const allocated = allocationSummary[p.id] || 0;
+                // Prevent confirming when allocated quantity exceeds requested quantity
+                if (allocated > requested) {
+                    return alert(`Đã phân bổ (${allocated}) nhiều hơn yêu cầu (${requested}) cho "${p.name}". Vui lòng điều chỉnh phân bổ.`);
+                }
                 if (allocated !== requested) diffs.push({ id: p.id, name: p.name, requested, allocated });
             }
 

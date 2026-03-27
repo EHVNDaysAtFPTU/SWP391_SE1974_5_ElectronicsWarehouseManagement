@@ -479,6 +479,10 @@
             for (const p of orderProducts) {
                 const requested = p.maxQty;
                 const allocated = allocationSummary[p.id] || 0;
+                // Prevent confirming when allocated quantity exceeds requested quantity
+                if (allocated > requested) {
+                    return alert(`Allocated quantity for "${p.name}" (${allocated}) exceeds requested (${requested}). Please adjust allocations.`);
+                }
                 if (allocated !== requested) diffs.push({ id: p.id, name: p.name, requested, allocated });
             }
 
