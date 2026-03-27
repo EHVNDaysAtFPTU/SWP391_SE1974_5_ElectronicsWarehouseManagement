@@ -431,16 +431,18 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
                     .CountAsync(),
 
                 InboundToday = await _dbCtx.FinishedTransferRequestComponents
-                    .Where(ftr => ftr.TypeInt == (int)FinishedTransferRequestComponentType.In
-                        && ftr.Request.ExecutionTime >= start
-                        && ftr.Request.ExecutionTime < end)
-                    .SumAsync(c => c.Quantity),
+                .Where(ftr =>
+                    ftr.Request.TypeInt == 1 && 
+                    ftr.Request.ExecutionTime >= start &&
+                    ftr.Request.ExecutionTime < end)
+                .SumAsync(ftr => ftr.Quantity),
 
                 OutboundToday = await _dbCtx.FinishedTransferRequestComponents
-                    .Where(ftr => ftr.TypeInt == (int)FinishedTransferRequestComponentType.Out
-                        && ftr.Request.ExecutionTime >= start
-                        && ftr.Request.ExecutionTime < end)
-                    .SumAsync(c => c.Quantity)
+                .Where(ftr =>
+                    ftr.Request.TypeInt == 2 &&
+                    ftr.Request.ExecutionTime >= start &&
+                    ftr.Request.ExecutionTime < end)
+                .SumAsync(ftr => ftr.Quantity),
             };
 
             return new ApiResult<DashboardSummaryResp>(resp);
@@ -452,7 +454,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
 
             var data = await _dbCtx.FinishedTransferRequestComponents
                 .Include(ftr => ftr.Request)
-                .Where(ftr => ftr.Request.ExecutionTime >= start)
+                .Where(ftr => ftr.Request.ExecutionTime >= start && ftr.Request.TypeInt == 1 || ftr.Request.TypeInt == 2)
                 .Select(ftr => new
                 {
                     Date = ftr.Request.ExecutionTime.Value.Date,
