@@ -1,4 +1,4 @@
-﻿let search = "";
+let search = "";
 let sortBy = "";
 let sortDirection = "asc";
 let currentPage = 1;
@@ -79,7 +79,7 @@ function renderTable(data) {
             <td class="align-middle fw-bold" style="max-width: 200px;">${customer.phone || ""}</td>
             <td class="align-middle fw-bold text-primary">${customer.email || ""}</td>
             <td class="align-middle fw-bold">${customer.address || ""}</td>
-            <td class="align-middle fw-bold">${customer.created_at || ""}</td>
+            <td class="align-middle fw-bold">${formatDate(customer.created_at)}</td>
             <td>
         <button class="btn btn-sm btn-warning" onclick='openEdit(${JSON.stringify(customer)})'>
             Edit
@@ -125,10 +125,10 @@ function renderPagination(pages) {
 }
 async function saveCustomer() {
     const customer = {
-        customer_name: customerName.value,
-        phone: phone.value,
-        email: email.value,
-        address: address.value
+        customer_name: document.getElementById("customerName").value,
+        phone: document.getElementById("phone").value,
+        email: document.getElementById("email").value,
+        address: document.getElementById("address").value
     };
 
     try {
@@ -144,7 +144,7 @@ async function saveCustomer() {
 
         alert("Customer created!");
 
-        bootstrap.Modal.getInstance(formModal).hide();
+        bootstrap.Modal.getInstance(document.getElementById("formModal")).hide();
         clearForm();
         loadCustomers(1);
 
@@ -153,8 +153,8 @@ async function saveCustomer() {
     }
 }
 function openEdit(customer) {
-    document.getElementById("customerId").value = customer.customer_id;
-    document.getElementById("customerName").value = customer.customer_name || "";
+    document.getElementById("customerId").value = customer.id;
+    document.getElementById("customerName").value = customer.name || "";
     document.getElementById("phone").value = customer.phone || "";
     document.getElementById("email").value = customer.email || "";
     document.getElementById("address").value = customer.address || "";
@@ -188,10 +188,10 @@ async function updateCustomer() {
     const id = document.getElementById("customerId").value;
 
     const customer = {
-        customer_name: customerName.value,
-        phone: phone.value,
-        email: email.value,
-        address: address.value
+        customer_name: document.getElementById("customerName").value,
+        phone: document.getElementById("phone").value,
+        email: document.getElementById("email").value,
+        address: document.getElementById("address").value
     };
 
     try {
@@ -207,7 +207,7 @@ async function updateCustomer() {
 
         alert("Update Sucessfully!");
 
-        bootstrap.Modal.getInstance(formModal).hide();
+        bootstrap.Modal.getInstance(document.getElementById("formModal")).hide();
         clearForm();
         loadCustomers(1);
 
