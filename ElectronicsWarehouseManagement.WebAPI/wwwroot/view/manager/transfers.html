@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Transfers | Manager</title>
+    <title>Requests | Manager</title>
 
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -31,7 +31,7 @@
     <!-- Header -->
     <header class="header d-flex justify-content-between align-items-center">
         <div>
-            <h5 class="mb-0">Transfer Requests</h5>
+            <h5 class="mb-0">Requests</h5>
             <small class="text-muted">Manage stock movements and approvals</small>
         </div>
 
@@ -42,7 +42,7 @@
             </div>
 
             <div class="profile-dropdown" id="profileDropdown">
-                <a href="profile.html">My Profile</a>
+                <a onclick="openProfile()">Profile</a>
                 <hr class="my-1">
                 <a href="#" onclick="logout()" class="text-danger">Logout</a>
             </div>

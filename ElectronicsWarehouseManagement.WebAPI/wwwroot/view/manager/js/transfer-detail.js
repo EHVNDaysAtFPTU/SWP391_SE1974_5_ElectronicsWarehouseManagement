@@ -49,10 +49,10 @@ async function loadTransferDetail(id) {
 function displayTransferInfo(t) {
     document.getElementById("tId").textContent = t.id;
     document.getElementById("tStatusBadge").innerHTML = getStatusBadge(t);
-    document.getElementById("tDesc").textContent = t.description || "Internal movement request";
+    document.getElementById("tDesc").textContent = t.description || "";
     document.getElementById("tType").textContent = getTypeText(t.type);
-    document.getElementById("tCustomer").textContent = t.customer?.name || "Internal";
-    document.getElementById("tCreator").textContent = t.creator?.username || "System";
+    document.getElementById("tCustomer").textContent = t.customer?.name || "";
+    document.getElementById("tCreator").textContent = t.creator?.username || "";
     document.getElementById("tCreatedDate").textContent = formatDate(t.creation_date);
     document.getElementById("tExecutedDate").textContent = t.execution_date ? formatDate(t.execution_date) : "Not Yet";
 
