@@ -46,11 +46,6 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
                         failedReason = "Missing source or destination warehouse for internal transfer.";
                         return false;
                     }
-                    if (WarehouseFromId == WarehouseToId)
-                    {
-                        failedReason = "Source and destination warehouses cannot be the same.";
-                        return false;
-                    }
                     break;
                 case TransferType.Inbound:
                     if (WarehouseToId is null)
