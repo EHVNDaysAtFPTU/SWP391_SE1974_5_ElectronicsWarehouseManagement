@@ -188,43 +188,11 @@
                 return;
             }
 
-            // find related transfers that likely belong to the same outbound (same description and close creation time)
+            // Related transfers grouping removed — show only the current transfer as related.
+            // Keeping a single-element related array avoids extra API calls and prevents
+            // duplicate/incorrect grouping in UI for outbound details.
             let related = [];
-            try {
-                const listRes = await fetch(BASE + '/storekeeper/transfers', { credentials: 'include' });
-                if (listRes.ok) {
-                    const listJson = await listRes.json();
-                    if (listJson?.success && Array.isArray(listJson.data)) {
-                        const all = listJson.data.filter(t => t.type === 2);
-                        const baseDesc = (transfer.description ?? '').toString();
-                        const baseCreated = Date.parse(transfer.creation_date ?? transfer.creationDate ?? transfer.creationTime ?? transfer.CreationDate ?? '');
-                        const baseCreator = transfer.creator_id ?? transfer.CreatorId ?? transfer.creator ?? transfer.Creator ?? null;
-                        const baseRequestId = transfer.request_id ?? transfer.RequestId ?? transfer.requestId ?? transfer.id ?? transfer.ID ?? null;
-                        // Prefer grouping by request_id when available (list page aggregates by request_id). Fallback to description+time heuristic.
-                        related = all.filter(t => {
-                            try {
-                                const tRequestId = t.request_id ?? t.RequestId ?? t.requestId ?? t.id ?? t.ID ?? null;
-                                if (baseRequestId && tRequestId && String(baseRequestId) === String(tRequestId)) return true;
-
-                                if ((t.description ?? '').toString() !== baseDesc) return false;
-                                const tCreator = (t.creator_id ?? t.CreatorId ?? t.creator ?? t.Creator ?? '').toString();
-                                const baseCreatorStr = (baseCreator ?? '').toString();
-                                if (baseCreatorStr && tCreator && baseCreatorStr !== tCreator) return false;
-
-                                const tCreated = Date.parse(t.creation_date ?? t.creationDate ?? t.creationTime ?? '');
-                                if (!isNaN(baseCreated) && !isNaN(tCreated)) {
-                                    return Math.abs(baseCreated - tCreated) <= 60000;
-                                }
-                                return true;
-                            } catch (e) { return false; }
-                        });
-                        // set customer name for items in 'all' when nested object provided
-                        try {
-                            listJson.data.forEach(item => { if (item && item.customer) item._customerName = item.customer.name ?? item.customer.displayName ?? item.customer.fullname ?? item.customer.company ?? null; });
-                        } catch(e) { /* ignore */ }
-                    }
-                }
-            } catch (e) { /* ignore */ }
+            related = [];
 
             // fetch full details for related transfers and aggregate (dedupe by id)
             const relatedDetails = [];
