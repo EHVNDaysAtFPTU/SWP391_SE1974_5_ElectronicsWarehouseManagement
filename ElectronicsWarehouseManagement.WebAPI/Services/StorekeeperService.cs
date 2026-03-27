@@ -81,7 +81,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
 
         public async Task<ApiResult<ComponentResp>> GetComponentAsync(int componentId)
         {
-            var component = await _dbCtx.Components.AsNoTracking().Include(c => c.Categories).Where(c => c.ComponentId == componentId).Select(i => new ComponentResp(i, true)).FirstOrDefaultAsync();
+            var component = await _dbCtx.Components.AsNoTracking().Include(c => c.Categories).Include(c => c.ComponentBins).Where(c => c.ComponentId == componentId).Select(i => new ComponentResp(i, true)).FirstOrDefaultAsync();
             if (component is null)
                 return new ApiResult<ComponentResp>(ApiResultCode.NotFound);
             return new ApiResult<ComponentResp>(component);
