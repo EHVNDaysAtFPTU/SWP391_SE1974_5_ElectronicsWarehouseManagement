@@ -17,7 +17,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.DTO
 
         public bool Verify(out string failedReason)
         {
-            if (RequestId <= 0)
+            if (RequestId < 0)
             {
                 failedReason = "Invalid transfer ID.";
                 return false;
