@@ -294,31 +294,8 @@
                 window.location.href = 'login.html';
             }
         }
-
-        // Open profile: fetch /me/info then navigate to profile page with cached data
-        async function openProfile(){
-            try{
-                const apiRoot = BASE; // BASE is already api root
-                const res = await fetch(apiRoot + '/me/info', { credentials: 'include' });
-                if(!res.ok){
-                    // if not authorized, go to login
-                    window.location.href = 'login.html';
-                    return;
-                }
-                const j = await res.json().catch(()=>null);
-                if(!j || !j.success || !j.data){
-                    window.location.href = 'login.html';
-                    return;
-                }
-                // store profile to localStorage for profile.html to read
-                try{ localStorage.setItem('me_profile', JSON.stringify(j.data)); }catch(e){/* ignore */}
-                // navigate to profile page
-                window.location.href = 'profile.html';
-            }catch(e){
-                console.error('openProfile error', e);
-                // fallback: navigate to profile page (it can try to load itself)
-                window.location.href = 'profile.html';
-            }
+        function openProfile() {
+            window.location.href = "/me/index.html";
         }
 
         async function load() {
