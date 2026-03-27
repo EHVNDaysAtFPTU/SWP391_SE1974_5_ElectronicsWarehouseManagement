@@ -500,8 +500,7 @@
             let errMsg = '';
 
             for (const t of related) {
-                const reqId = t.id ?? t.ID ?? t.request_id ?? t.requestId ?? t.RequestId;
-                if (!reqId) continue;
+                const reqId = t.id;
                 // skip finished/canceled/rejected
                 if (t.status === 4 || t.status === 6 || t.status === 3) continue;
 

@@ -871,7 +871,7 @@
 
             // Build single payload for this transfer: include bins_from and bins_to per allocation row
             const reqId = transfer.id ?? transfer.ID ?? transfer.request_id ?? transfer.requestId;
-            if (!reqId) return alert('Cannot determine transfer request ID to confirm.');
+            if (reqId === null || reqId === undefined) return alert('Cannot determine transfer request ID to confirm.');
 
             // Build paired allocations (source -> destination) so server receives matching bins_from and bins_to
             const pairMap = {}; // key = `${srcId}||${destId}` -> { bin_from: srcId, bin_to: destId, components: { compId: qty } }

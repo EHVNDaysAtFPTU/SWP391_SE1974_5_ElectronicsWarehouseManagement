@@ -794,7 +794,7 @@
 
             // Submit single confirm for the current transfer only using user's allocations (bins_from)
             const reqId = transfer.request_id ?? transfer.RequestId ?? transfer.requestId ?? transfer.id ?? transfer.ID;
-            if (!reqId) return alert('Cannot determine transfer request ID to confirm.');
+            if (reqId === null || reqId === undefined) return alert('Cannot determine transfer request ID to confirm.');
 
             // Only include components that belong to this transfer
             // Build payload from user-selected allocations (bins_from). Do not include bins_to for outbound.
@@ -942,7 +942,6 @@
 
             try{
                 const reqId = getTransferRequestId(transfer) ?? Number(id);
-                if (!reqId) { console.error('submitFullEdit: invalid request id', { transfer, id }); return alert('Không xác định được ID phiếu để cập nhật.'); }
                 console.log('submitFullEdit: PATCH', reqId, payload);
                 const res = await fetch(BASE + '/storekeeper/transfers/' + reqId, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(payload) });
                 const rawText = await res.text().catch(()=>null);
@@ -986,8 +985,6 @@
             const payload = { desc: val };
             try{
                 const reqId = getTransferRequestId(transfer) ?? Number(id);
-                if (!reqId) { console.error('submitEditDesc: invalid request id', { transfer, id }); return alert('Không xác định được ID phiếu để cập nhật.'); }
-                console.log('submitEditDesc: PATCH', reqId, payload);
                 const res = await fetch(BASE + '/storekeeper/transfers/' + reqId, {
                     method: 'PATCH', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(payload)
                 });
