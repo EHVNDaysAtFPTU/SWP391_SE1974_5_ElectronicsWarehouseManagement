@@ -78,3 +78,7 @@ function logout() {
             alert("Error during logout");
         });
 }
+
+function openProfile() {
+    window.location.href = "/me/index.html";
+}
