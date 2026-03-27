@@ -21,7 +21,7 @@
         <nav class="nav flex-column mt-3">
             <a class="nav-link" href="home.html">Dashboard</a>
             <a class="nav-link" href="component-inventory.html">Components</a>
-            <a class="nav-link active" href="transfers.html">Transfers</a>
+            <a class="nav-link active" href="transfers.html">Requests</a>
             <a class="nav-link" href="warehouses.html">Warehouses</a>
             <a class="nav-link" href="bin.html">Bins</a>
             <a class="nav-link" href="customer.html">Customers</a>
@@ -31,7 +31,8 @@
     <!-- Header -->
     <header class="header d-flex justify-content-between align-items-center">
         <div>
-            <h5 class="mb-0">Request Details</h5>
+            <h5 class="mb-0">Transfer Request Details</h5>
+            <small class="text-muted">Review movement info and items</small>
         </div>
 
         <div class="profile-container position-relative">
@@ -41,7 +42,7 @@
             </div>
 
             <div class="profile-dropdown" id="profileDropdown">
-                <a onclick="openProfile()">Profile</a>
+                <a href="profile.html">My Profile</a>
                 <hr class="my-1">
                 <a href="#" onclick="logout()" class="text-danger">Logout</a>
             </div>
@@ -51,7 +52,7 @@
     <!-- Main Content -->
     <main class="main-content">
         <div class="container-fluid">
-            
+
             <div class="mb-4">
                 <button class="btn btn-sm btn-secondary" onclick="goBack()">Back to List</button>
             </div>
@@ -62,12 +63,12 @@
                     <div class="glass-card p-4 h-100">
                         <div class="d-flex justify-content-between align-items-start mb-4">
                             <div>
-                                <small class="text-muted text-uppercase fw-bold ls-1">Request ID</small>
+                                <small class="text-muted text-uppercase fw-bold ls-1">Transfer ID</small>
                                 <h3 class="fw-bold mb-0">#<span id="tId"></span></h3>
                             </div>
                             <div id="tStatusBadge"></div>
                         </div>
-                        
+
                         <div class="mb-4">
                             <label class="small text-muted text-uppercase d-block ls-1 mb-1">Description</label>
                             <p id="tDesc" class="mb-0 fs-5 fw-medium text-dark"></p>
@@ -101,7 +102,7 @@
                 <div class="col-md-5">
                     <div class="glass-card p-4 h-100">
                         <h6 class="fw-bold text-uppercase ls-1 text-muted mb-4">Logistics Route</h6>
-                        
+
                         <div class="route-step mb-4 ps-3 border-start border-2 border-primary">
                             <label class="small text-muted text-uppercase d-block ls-1">Origin Warehouse</label>
                             <div id="tOrigin" class="fw-bold"></div>
@@ -124,7 +125,7 @@
 
             <!-- Components Table -->
             <div id="componentsCard" class="glass-card p-4 mt-4 d-none">
-                <h6 class="fw-bold text-muted mb-3">Request Line Items</h6>
+                <h6 class="fw-bold text-muted mb-3">Transfer Line Items</h6>
                 <div class="table-responsive">
                     <table class="table table-hover align-middle" id="itemsTable">
                         <thead class="table-light">
@@ -158,9 +159,9 @@
             <!-- Loading indicator -->
             <div id="loader" class="text-center py-5">
                 <div class="spinner-border text-primary" role="status"></div>
-                <p class="mt-2 text-muted">Loading request data...</p>
+                <p class="mt-2 text-muted">Loading transfer data...</p>
             </div>
-            
+
         </div>
     </main>
 
