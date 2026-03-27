@@ -31,10 +31,10 @@ public class ApiResult<T>
 
     [JsonPropertyName("code")]
     public ApiResultCode ResultCode { get; }
-    
+
     [JsonPropertyName("msg")]
     public string Message { get; } = "Success";
-    
+
     [JsonPropertyName("data"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public T? Data { get; }
 
@@ -70,7 +70,7 @@ public class ApiResult
 
     [JsonPropertyName("success")]
     public bool Success { get; }
-    
+
     [JsonPropertyName("msg")]
     public string Message { get; } = "Success";
 

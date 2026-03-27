@@ -27,9 +27,8 @@
 
                 <!-- Menu -->
                 <div class="menu">
-                    <p>
-                        User Management
-                    </p>
+                    <p onclick="goUser()">User Management</p>
+                    <p onclick="goConfig()">System Config</p>
                 </div>
             </div>
         </div>
@@ -315,9 +314,7 @@
             window.location.href = "/login.html";
         }
 
-        // navigate to profile page
         function openProfile() {
-            // If the profile page is at wwwroot/view/me/index.html:
             window.location.href = "/me/index.html";
         }
         function toggleUserMenu(event) {
@@ -330,6 +327,13 @@
         });
         function showError(msg) {
             alert(msg || "Something went wrong!");
+        }
+        function goUser() {
+            window.location.href = "/home.html";
+        }
+
+        function goConfig() {
+            window.location.href = "/system.html";
         }
 
         document.addEventListener("DOMContentLoaded", loadUsers);

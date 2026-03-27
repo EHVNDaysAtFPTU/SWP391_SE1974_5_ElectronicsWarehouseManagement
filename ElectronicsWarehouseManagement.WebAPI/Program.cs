@@ -1,5 +1,6 @@
 using ElectronicsWarehouseManagement.Repositories.DBContext;
 using ElectronicsWarehouseManagement.Repositories.Entities;
+using ElectronicsWarehouseManagement.WebAPI.Filters;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -20,11 +21,14 @@ namespace ElectronicsWarehouseManagement.WebAPI
             string? connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
             builder.Services.AddDbContext<EWMDbCtx>(options => options.UseSqlServer(connectionString));
 
-            builder.Services.AddControllers()
+            builder.Services.AddControllers(options =>
+            {
+                options.Filters.Add<MaintenanceFilter>();
+            })
                 .AddJsonOptions(options =>
-                {
-                    options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
-                });
+                 {
+         options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+                  });
 
             builder.Services.AddDistributedMemoryCache();
             builder.Services.AddSession(options =>
@@ -56,7 +60,7 @@ namespace ElectronicsWarehouseManagement.WebAPI
                             context.Response.ContentType = "application/json; charset=utf-8";
                             ApiResult payload = new ApiResult(ApiResultCode.Unauthorized);
                             //if (!string.IsNullOrWhiteSpace(context.HttpContext.Session.GetString("User")))
-                                //payload = new ApiResult(ApiResultCode.SessionExpired);
+                            //payload = new ApiResult(ApiResultCode.SessionExpired);
                             await context.Response.WriteAsync(JsonSerializer.Serialize(payload));
                         }
                     };
@@ -66,7 +70,7 @@ namespace ElectronicsWarehouseManagement.WebAPI
 
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
-            
+
             builder.Services.AddDIService();
 
             builder.Services.AddRateLimiter(options =>
