@@ -636,21 +636,40 @@ Unit: ${unit} · Available: ${totalAvail}
                 }
             }
 
-            // send one internal transfer request per source bin
-            for (const binId of Object.keys(payloadByBin)) {
-                const payload = payloadByBin[binId];
+            // create single internal transfer request for all products (do not create one request per bin)
+            // aggregate components across rows
+            const compMap = {};
+            for (const r of rows) {
+                const compId = parseInt(r.cells[1].dataset.id);
+                const qty = Number(r.querySelector('input[type=number]').value) || 0;
+                if (!compMap[compId]) compMap[compId] = 0;
+                compMap[compId] += qty;
+            }
+            const componentsPayload = Object.keys(compMap).map(k => ({ component_id: parseInt(k), quantity: compMap[k] }));
+
+            const payload = {
+                desc: document.getElementById('desc').value || '',
+                warehouse_from_id: parseInt(document.getElementById('warehouseFrom').value) || null,
+                warehouse_to_id: parseInt(document.getElementById('warehouseTo').value) || null,
+                components: componentsPayload,
+                bin_from_ids: selectedFrom // keep selected source bins for client reference (server ignores unknown extra fields)
+            };
+
+            try {
                 const res = await fetch(BASE + "/transfers/transfer/create", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     credentials: "include",
                     body: JSON.stringify(payload)
                 });
-                if(!res.ok){ const txt = await res.text().catch(()=>null); console.error('server error', txt || res.statusText); return alert('Creation failed for bin ' + binId + ': ' + (txt || res.statusText)); }
+                if(!res.ok){ const txt = await res.text().catch(()=>null); console.error('server error', txt || res.statusText); return alert('Creation failed: ' + (txt || res.statusText)); }
                 const json = await res.json().catch(()=>null);
-                if(!json || !json.success) return alert('Creation failed for bin ' + binId + ': ' + (json?.msg || 'unknown'));
+                if(!json || !json.success) return alert('Creation failed: ' + (json?.msg || 'unknown'));
+                alert('Transfer request created successfully.');
+                location.reload();
+            } catch(e) {
+                alert('Network error: ' + e.message);
             }
-            alert('Transfer request(s) created successfully for ' + Object.keys(payloadByBin).length + ' bin(s).');
-            location.reload();
         }
 
         /* INIT */

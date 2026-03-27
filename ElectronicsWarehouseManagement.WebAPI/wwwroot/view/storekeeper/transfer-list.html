@@ -176,25 +176,30 @@
                     // If transfer detail includes finished_components with nested bin, use it as bin_finish
                     const finishedArr = t.finished_components ?? t.finishedComponents ?? t.finished_components_list ?? t.finishedComponentsList;
                     if (Array.isArray(finishedArr) && finishedArr.length > 0) {
-                        // finished_components may contain separate bins for source/target in internal transfers
-                        // type === 1 => source (from), type === 0 => destination (to)
-                        t.bin_finish_from = null;
-                        t.bin_finish_to = null;
+                        // finished_components may contain multiple bins for source/target in internal transfers
+                        // collect lists for both from (type===1) and to (type===0)
+                        t.bin_finish_from_list = [];
+                        t.bin_finish_to_list = [];
                         for (const fc of finishedArr) {
                             const binObj = fc.bin ?? fc.Bin ?? null;
                             const binRef = binObj ? binObj : ((fc.bin_id || fc.binId) ? { id: fc.bin_id ?? fc.binId } : null);
                             if (!binRef) continue;
                             if (fc.type === 1) {
-                                t.bin_finish_from = binRef;
+                                t.bin_finish_from_list.push(binRef);
                             } else if (fc.type === 0) {
-                                t.bin_finish_to = binRef;
+                                t.bin_finish_to_list.push(binRef);
                             } else {
-                                // fallback: place into to if empty, otherwise from
-                                if (!t.bin_finish_to) t.bin_finish_to = binRef; else if (!t.bin_finish_from) t.bin_finish_from = binRef;
+                                // unknown type: treat as destination by default
+                                t.bin_finish_to_list.push(binRef);
                             }
                         }
+                        // keep single-field fallbacks for consumers expecting them
+                        if (!t.bin_finish_from_list.length) t.bin_finish_from = null;
+                        else t.bin_finish_from = t.bin_finish_from_list[0];
+                        if (!t.bin_finish_to_list.length) t.bin_finish_to = null;
+                        else t.bin_finish_to = t.bin_finish_to_list[0];
                         // if none had explicit types, pick largest-quantity as representative for "to"
-                        if (!t.bin_finish_from && !t.bin_finish_to) {
+                        if ((!t.bin_finish_from_list || t.bin_finish_from_list.length === 0) && (!t.bin_finish_to_list || t.bin_finish_to_list.length === 0)) {
                             const fc = finishedArr.reduce((a, b) => ((b.quantity ?? 0) > (a.quantity ?? 0) ? b : a), finishedArr[0]);
                             const binFromFinished = fc.bin ?? fc.Bin ?? null;
                             if (binFromFinished) t.bin_finish_to = binFromFinished;
@@ -324,24 +329,45 @@
                 const toWarehouses = new Set();
                 const toBins = new Set();
                 group.forEach(o => {
-                    // prefer separate finished bins when present
-                    const binFinishFrom = o.bin_finish_from ?? o.binFinishFrom ?? null;
+                    // prefer separate finished bins when present (support lists)
+                    const binFinishFromList = o.bin_finish_from_list ?? o.binFinishFromList ?? null;
+                    const binFinishToList = o.bin_finish_to_list ?? o.binFinishToList ?? null;
+                    const binFinishFrom = o.bin_finish_from ?? o.binFinishFrom ?? null; // fallback single
                     const binFinishTo = o.bin_finish_to ?? o.binFinishTo ?? null;
                     const bFrom = o.bin_from ?? o.binFrom;
                     const bTo = o.bin_to ?? o.binTo;
 
-                    // If transfer is Pending(1) or Approved(2), show Not allocated for bins
                     const isPendingOrApproved = (o.status === 1 || o.Status === 1 || o.status === 2 || o.Status === 2);
-                    // Always show warehouse name even when Pending/Approved; show bin as Not allocated in those states
-                    const fw = (o._finishFromWarehouseName ?? o._fromWarehouseName ?? (binFinishFrom?.warehouse?.name ?? binFinishFrom?.warehouse?.warehouseName ?? binFinishFrom?.warehouse) ?? (bFrom?.warehouse?.name ?? bFrom?.warehouse?.warehouseName ?? bFrom?.warehouse) ?? '-');
-                    const fb = isPendingOrApproved ? '<i>Not allocated</i>' : (binFinishFrom?.location_in_warehouse ?? binFinishFrom?.locationInWarehouse ?? binFinishFrom?.binCode ?? bFrom?.location_in_warehouse ?? bFrom?.locationInWarehouse ?? bFrom?.binCode ?? '-');
-                    if (fw !== '-') fromWarehouses.add(fw);
-                    if (fb !== '-') fromBins.add(fb);
 
-                    const tw = (o._finishToWarehouseName ?? o._toWarehouseName ?? (binFinishTo?.warehouse?.name ?? binFinishTo?.warehouse?.warehouseName ?? binFinishTo?.warehouse) ?? (bTo?.warehouse?.name ?? bTo?.warehouse?.warehouseName ?? bTo?.warehouse) ?? '-');
-                    const tb = isPendingOrApproved ? '<i>Not allocated</i>' : (binFinishTo?.location_in_warehouse ?? binFinishTo?.locationInWarehouse ?? binFinishTo?.binCode ?? bTo?.location_in_warehouse ?? bTo?.locationInWarehouse ?? bTo?.binCode ?? '-');
-                    if (tw !== '-') toWarehouses.add(tw);
-                    if (tb !== '-') toBins.add(tb);
+                    // collect all source bins
+                    if (Array.isArray(binFinishFromList) && binFinishFromList.length>0) {
+                        binFinishFromList.forEach(bf => {
+                            const fw = (bf?.warehouse?.name ?? bf?.warehouse?.warehouseName ?? o._fromWarehouseName ?? o.warehouse_from?.name ?? '-') ;
+                            const fb = isPendingOrApproved ? '<i>Not allocated</i>' : (bf?.location_in_warehouse ?? bf?.locationInWarehouse ?? bf?.binCode ?? '-');
+                            if (fw !== '-') fromWarehouses.add(fw);
+                            if (fb !== '-') fromBins.add(fb);
+                        });
+                    } else {
+                        const fw = (o._finishFromWarehouseName ?? o._fromWarehouseName ?? (binFinishFrom?.warehouse?.name ?? binFinishFrom?.warehouse?.warehouseName ?? binFinishFrom?.warehouse) ?? (bFrom?.warehouse?.name ?? bFrom?.warehouse?.warehouseName ?? bFrom?.warehouse) ?? '-');
+                        const fb = isPendingOrApproved ? '<i>Not allocated</i>' : (binFinishFrom?.location_in_warehouse ?? binFinishFrom?.locationInWarehouse ?? binFinishFrom?.binCode ?? bFrom?.location_in_warehouse ?? bFrom?.locationInWarehouse ?? bFrom?.binCode ?? '-');
+                        if (fw !== '-') fromWarehouses.add(fw);
+                        if (fb !== '-') fromBins.add(fb);
+                    }
+
+                    // collect all destination bins
+                    if (Array.isArray(binFinishToList) && binFinishToList.length>0) {
+                        binFinishToList.forEach(bt => {
+                            const tw = (bt?.warehouse?.name ?? bt?.warehouse?.warehouseName ?? o._toWarehouseName ?? o.warehouse_to?.name ?? '-') ;
+                            const tb = isPendingOrApproved ? '<i>Not allocated</i>' : (bt?.location_in_warehouse ?? bt?.locationInWarehouse ?? bt?.binCode ?? '-');
+                            if (tw !== '-') toWarehouses.add(tw);
+                            if (tb !== '-') toBins.add(tb);
+                        });
+                    } else {
+                        const tw = (o._finishToWarehouseName ?? o._toWarehouseName ?? (binFinishTo?.warehouse?.name ?? binFinishTo?.warehouse?.warehouseName ?? binFinishTo?.warehouse) ?? (bTo?.warehouse?.name ?? bTo?.warehouse?.warehouseName ?? bTo?.warehouse) ?? '-');
+                        const tb = isPendingOrApproved ? '<i>Not allocated</i>' : (binFinishTo?.location_in_warehouse ?? binFinishTo?.locationInWarehouse ?? binFinishTo?.binCode ?? bTo?.location_in_warehouse ?? bTo?.locationInWarehouse ?? bTo?.binCode ?? '-');
+                        if (tw !== '-') toWarehouses.add(tw);
+                        if (tb !== '-') toBins.add(tb);
+                    }
                 });
                 const rowText = ((group[0].description ?? '') + ' ' + Array.from(fromWarehouses).join(' ') + ' ' + Array.from(fromBins).join(' ') + ' ' + Array.from(toWarehouses).join(' ') + ' ' + Array.from(toBins).join(' ')).toLowerCase();
                 return rowText.includes(q);
@@ -371,24 +397,43 @@
                     const statuses = new Set();
                     
                     group.forEach(o => {
-                        // prefer finished bins for from/to when available
-                        const binFinishFrom = o.bin_finish_from ?? o.binFinishFrom ?? null;
+                        // prefer finished bins for from/to when available (support lists)
+                        const binFinishFromList = o.bin_finish_from_list ?? o.binFinishFromList ?? null;
+                        const binFinishToList = o.bin_finish_to_list ?? o.binFinishToList ?? null;
+                        const binFinishFrom = o.bin_finish_from ?? o.binFinishFrom ?? null; // fallback single
                         const binFinishTo = o.bin_finish_to ?? o.binFinishTo ?? null;
                         const bFrom = o.bin_from ?? o.binFrom;
                         const bTo = o.bin_to ?? o.binTo;
 
                         const isPendingOrApproved = (o.status === 1 || o.Status === 1 || o.status === 2 || o.Status === 2);
 
-                        // always show warehouse name (use top-level warehouse_from/warehouse_to as fallback)
-                        const fw = (o._finishFromWarehouseName ?? o._fromWarehouseName ?? (o.warehouse_from?.name ?? o.warehouse_from?.warehouseName) ?? (binFinishFrom?.warehouse?.name ?? binFinishFrom?.warehouse?.warehouseName ?? binFinishFrom?.warehouse) ?? (bFrom?.warehouse?.name ?? bFrom?.warehouse?.warehouseName ?? bFrom?.warehouse) ?? '-');
-                        const fb = isPendingOrApproved ? '<i>Not allocated</i>' : (binFinishFrom?.location_in_warehouse ?? binFinishFrom?.locationInWarehouse ?? binFinishFrom?.binCode ?? bFrom?.location_in_warehouse ?? bFrom?.locationInWarehouse ?? bFrom?.binCode ?? '-');
-                        if (fw !== '-') fromWarehouses.add(fw);
-                        if (fb !== '-') fromBins.add(fb);
+                        if (Array.isArray(binFinishFromList) && binFinishFromList.length>0) {
+                            binFinishFromList.forEach(bf => {
+                                const fw = (bf?.warehouse?.name ?? bf?.warehouse?.warehouseName ?? o._fromWarehouseName ?? o.warehouse_from?.name ?? '-');
+                                const fb = isPendingOrApproved ? '<i>Not allocated</i>' : (bf?.location_in_warehouse ?? bf?.locationInWarehouse ?? bf?.binCode ?? '-');
+                                if (fw !== '-') fromWarehouses.add(fw);
+                                if (fb !== '-') fromBins.add(fb);
+                            });
+                        } else {
+                            const fw = (o._finishFromWarehouseName ?? o._fromWarehouseName ?? (o.warehouse_from?.name ?? o.warehouse_from?.warehouseName) ?? (binFinishFrom?.warehouse?.name ?? binFinishFrom?.warehouse?.warehouseName ?? binFinishFrom?.warehouse) ?? (bFrom?.warehouse?.name ?? bFrom?.warehouse?.warehouseName ?? bFrom?.warehouse) ?? '-');
+                            const fb = isPendingOrApproved ? '<i>Not allocated</i>' : (binFinishFrom?.location_in_warehouse ?? binFinishFrom?.locationInWarehouse ?? binFinishFrom?.binCode ?? bFrom?.location_in_warehouse ?? bFrom?.locationInWarehouse ?? bFrom?.binCode ?? '-');
+                            if (fw !== '-') fromWarehouses.add(fw);
+                            if (fb !== '-') fromBins.add(fb);
+                        }
 
-                        const tw = (o._finishToWarehouseName ?? o._toWarehouseName ?? (o.warehouse_to?.name ?? o.warehouse_to?.warehouseName) ?? (binFinishTo?.warehouse?.name ?? binFinishTo?.warehouse?.warehouseName ?? binFinishTo?.warehouse) ?? (bTo?.warehouse?.name ?? bTo?.warehouse?.warehouseName ?? bTo?.warehouse) ?? '-');
-                        const tb = isPendingOrApproved ? '<i>Not allocated</i>' : (binFinishTo?.location_in_warehouse ?? binFinishTo?.locationInWarehouse ?? binFinishTo?.binCode ?? bTo?.location_in_warehouse ?? bTo?.locationInWarehouse ?? bTo?.binCode ?? '-');
-                        if (tw !== '-') toWarehouses.add(tw);
-                        if (tb !== '-') toBins.add(tb);
+                        if (Array.isArray(binFinishToList) && binFinishToList.length>0) {
+                            binFinishToList.forEach(bt => {
+                                const tw = (bt?.warehouse?.name ?? bt?.warehouse?.warehouseName ?? o._toWarehouseName ?? o.warehouse_to?.name ?? '-');
+                                const tb = isPendingOrApproved ? '<i>Not allocated</i>' : (bt?.location_in_warehouse ?? bt?.locationInWarehouse ?? bt?.binCode ?? '-');
+                                if (tw !== '-') toWarehouses.add(tw);
+                                if (tb !== '-') toBins.add(tb);
+                            });
+                        } else {
+                            const tw = (o._finishToWarehouseName ?? o._toWarehouseName ?? (o.warehouse_to?.name ?? o.warehouse_to?.warehouseName) ?? (binFinishTo?.warehouse?.name ?? binFinishTo?.warehouse?.warehouseName ?? binFinishTo?.warehouse) ?? (bTo?.warehouse?.name ?? bTo?.warehouse?.warehouseName ?? bTo?.warehouse) ?? '-');
+                            const tb = isPendingOrApproved ? '<i>Not allocated</i>' : (binFinishTo?.location_in_warehouse ?? binFinishTo?.locationInWarehouse ?? binFinishTo?.binCode ?? bTo?.location_in_warehouse ?? bTo?.locationInWarehouse ?? bTo?.binCode ?? '-');
+                            if (tw !== '-') toWarehouses.add(tw);
+                            if (tb !== '-') toBins.add(tb);
+                        }
 
                         const comps = getComponents(o);
                         totalItems += comps.reduce((s, c) => s + (c.quantity ?? c.Quantity ?? c.qty ?? c.QuantityDouble ?? 0), 0);
