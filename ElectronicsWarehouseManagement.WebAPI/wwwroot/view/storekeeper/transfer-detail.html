@@ -529,29 +529,60 @@
             related.forEach(t => {
                 const isPendingOrApproved = (t.status === 1 || t.Status === 1 || t.status === 2 || t.Status === 2);
                 // always show warehouse (use top-level warehouse_from as fallback), but mark bin as Not allocated when pending/approved
-                const fw = (t._finishFromWarehouseName ?? t._fromWarehouseName ?? (t.warehouse_from?.name ?? t.warehouse_from?.warehouseName) ?? (t.bin_finish_from?.warehouse?.name ?? t.bin_finish_from?.warehouse?.warehouseName ?? t.bin_from?.warehouse?.warehouseName ?? t.bin_from?.warehouse?.name) ?? '-');
-                const fbComputed = (t.bin_finish_from?.location_in_warehouse ?? t.bin_finish_from?.locationInWarehouse ?? t.bin_finish_from?.binCode ?? t.bin_from?.location_in_warehouse ?? t.bin_from?.locationInWarehouse ?? t.bin_from?.binCode ?? t.bin_from?.code ?? '-');
-                const fb = isPendingOrApproved ? '<i>Not allocated</i>' : fbComputed;
-                const fKey = `${fw}||${fb}`;
-                if (!fromBinsPairs.has(fKey)) { fromBinsPairs.add(fKey); fromBinsArr.push(`${fw} / <b>${fb}</b>`); }
-
-                // prefer to show any finished-to bins first (if multiple, join)
-                let tw = '-';
-                let tb = '-';
-                if (t.bin_finish_list && t.bin_finish_list.length>0) {
-                    const names = t.bin_finish_list.map(b => b?.warehouse?.name ?? b?.warehouse?.warehouseName ?? '').filter(x=>x);
-                    tw = names.length ? Array.from(new Set(names)).join(', ') : (t.bin_to?.warehouse?.name ?? t.bin_to?.warehouse?.warehouseName ?? (t.warehouse_to?.name ?? t.warehouse_to?.warehouseName) ?? '-');
-                    tb = t.bin_finish_list.map(b => b?.location_in_warehouse ?? b?.locationInWarehouse ?? b?.binCode ?? '-').join(', ');
-                } else if (t.bin_finish_to) {
-                    tw = (t._finishToWarehouseName ?? t._toWarehouseName ?? t.bin_finish_to?.warehouse?.name ?? t.bin_finish_to?.warehouse?.warehouseName ?? t.bin_to?.warehouse?.name ?? t.bin_to?.warehouse?.warehouseName ?? (t.warehouse_to?.name ?? t.warehouse_to?.warehouseName) ?? '-');
-                    const tbComputed = (t.bin_finish_to?.location_in_warehouse ?? t.bin_finish_to?.locationInWarehouse ?? t.bin_finish_to?.binCode ?? t.bin_to?.location_in_warehouse ?? t.bin_to?.locationInWarehouse ?? t.bin_to?.binCode ?? t.bin_to?.code ?? '-');
-                    tb = isPendingOrApproved ? '<i>Not allocated</i>' : tbComputed;
+                // collect source (From) bins: prefer finished_components with type===1; fallback to bin_from / warehouse_from
+                const finishedArrLocal = t.finished_components ?? t.finishedComponents ?? t.finished_components_list ?? t.finishedComponentsList ?? t.FinishedTransferRequestComponents;
+                if (Array.isArray(finishedArrLocal) && finishedArrLocal.length > 0) {
+                    // add every finished component that is a source (type===1)
+                    finishedArrLocal.forEach(fc => {
+                        try {
+                            const fctype = fc.type ?? fc.Type ?? fc.typeInt ?? fc.TypeInt;
+                            if (fctype !== 1) return;
+                            const binObj = fc.bin ?? fc.Bin ?? null;
+                            const binRef = binObj ? binObj : ((fc.bin_id || fc.binId) ? { id: fc.bin_id ?? fc.binId } : null);
+                            const wid = binRef?.warehouse ?? binRef?.warehouse_id ?? binRef?.warehouseId ?? (typeof binRef?.warehouse === 'object' ? binRef.warehouse.id : null) ?? t.warehouse_from_id ?? t.warehouse_to_id;
+                            const wname = binRef?.warehouse?.name ?? binRef?.warehouse?.warehouseName ?? (t.warehouse_from?.name ?? t.warehouse_from?.warehouseName) ?? (warehouseCache[wid]?.name ?? warehouseCache[wid]?.warehouseName) ?? '-';
+                            const bLoc = binRef?.location_in_warehouse ?? binRef?.locationInWarehouse ?? binRef?.binCode ?? binRef?.code ?? '-';
+                            const bDisplay = isPendingOrApproved ? '<i>Not allocated</i>' : bLoc;
+                            const fKey = `${wname}||${bDisplay}`;
+                            if (!fromBinsPairs.has(fKey)) { fromBinsPairs.add(fKey); fromBinsArr.push(`${wname} / <b>${bDisplay}</b>`); }
+                        } catch (e) { /* ignore */ }
+                    });
                 } else {
-                    tw = (t.bin_to?.warehouse?.warehouseName ?? t.bin_to?.warehouse?.name ?? (t.warehouse_to?.name ?? t.warehouse_to?.warehouseName) ?? '-');
-                    tb = isPendingOrApproved ? '<i>Not allocated</i>' : (t.bin_to?.location_in_warehouse ?? t.bin_to?.locationInWarehouse ?? t.bin_to?.binCode ?? t.bin_to?.code ?? '-');
+                    const fw = (t._finishFromWarehouseName ?? t._fromWarehouseName ?? (t.warehouse_from?.name ?? t.warehouse_from?.warehouseName) ?? (t.bin_finish_from?.warehouse?.name ?? t.bin_finish_from?.warehouse?.warehouseName ?? t.bin_from?.warehouse?.warehouseName ?? t.bin_from?.warehouse?.name) ?? '-');
+                    const fbComputed = (t.bin_finish_from?.location_in_warehouse ?? t.bin_finish_from?.locationInWarehouse ?? t.bin_finish_from?.binCode ?? t.bin_from?.location_in_warehouse ?? t.bin_from?.locationInWarehouse ?? t.bin_from?.binCode ?? t.bin_from?.code ?? '-');
+                    const fb = isPendingOrApproved ? '<i>Not allocated</i>' : fbComputed;
+                    const fKey = `${fw}||${fb}`;
+                    if (!fromBinsPairs.has(fKey)) { fromBinsPairs.add(fKey); fromBinsArr.push(`${fw} / <b>${fb}</b>`); }
                 }
-                const tKey = `${tw}||${tb}`;
-                if (!toBinsPairs.has(tKey)) { toBinsPairs.add(tKey); toBinsArr.push(`${tw} / <b>${tb}</b>`); }
+
+                // prefer to show any finished-to bins first (use finished_components with type===0)
+                if (Array.isArray(finishedArrLocal) && finishedArrLocal.length>0) {
+                    finishedArrLocal.forEach(fc => {
+                        try {
+                            const fctype = fc.type ?? fc.Type ?? fc.typeInt ?? fc.TypeInt;
+                            if (fctype !== 0) return;
+                            const binObj = fc.bin ?? fc.Bin ?? null;
+                            const binRef = binObj ? binObj : ((fc.bin_id || fc.binId) ? { id: fc.bin_id ?? fc.binId } : null);
+                            const wid = binRef?.warehouse ?? binRef?.warehouse_id ?? binRef?.warehouseId ?? (typeof binRef?.warehouse === 'object' ? binRef.warehouse.id : null) ?? t.warehouse_to_id ?? t.warehouse_from_id;
+                            const twName = binRef?.warehouse?.name ?? binRef?.warehouse?.warehouseName ?? (t.warehouse_to?.name ?? t.warehouse_to?.warehouseName) ?? (warehouseCache[wid]?.name ?? warehouseCache[wid]?.warehouseName) ?? '-';
+                            const tbLoc = (binRef?.location_in_warehouse ?? binRef?.locationInWarehouse ?? binRef?.binCode ?? binRef?.code ?? '-');
+                            const tbDisplay = isPendingOrApproved ? '<i>Not allocated</i>' : tbLoc;
+                            const tKey = `${twName}||${tbDisplay}`;
+                            if (!toBinsPairs.has(tKey)) { toBinsPairs.add(tKey); toBinsArr.push(`${twName} / <b>${tbDisplay}</b>`); }
+                        } catch(e) { /* ignore */ }
+                    });
+                } else if (t.bin_finish_to) {
+                    const twName = (t._finishToWarehouseName ?? t._toWarehouseName ?? t.bin_finish_to?.warehouse?.name ?? t.bin_finish_to?.warehouse?.warehouseName ?? t.bin_to?.warehouse?.name ?? t.bin_to?.warehouse?.warehouseName ?? (t.warehouse_to?.name ?? t.warehouse_to?.warehouseName) ?? '-');
+                    const tbComputed = (t.bin_finish_to?.location_in_warehouse ?? t.bin_finish_to?.locationInWarehouse ?? t.bin_finish_to?.binCode ?? t.bin_to?.location_in_warehouse ?? t.bin_to?.locationInWarehouse ?? t.bin_to?.binCode ?? t.bin_to?.code ?? '-');
+                    const tbDisplay = isPendingOrApproved ? '<i>Not allocated</i>' : tbComputed;
+                    const tKey = `${twName}||${tbDisplay}`;
+                    if (!toBinsPairs.has(tKey)) { toBinsPairs.add(tKey); toBinsArr.push(`${twName} / <b>${tbDisplay}</b>`); }
+                } else {
+                    const twName = (t.bin_to?.warehouse?.warehouseName ?? t.bin_to?.warehouse?.name ?? (t.warehouse_to?.name ?? t.warehouse_to?.warehouseName) ?? '-');
+                    const tbDisplay = isPendingOrApproved ? '<i>Not allocated</i>' : (t.bin_to?.location_in_warehouse ?? t.bin_to?.locationInWarehouse ?? t.bin_to?.binCode ?? t.bin_to?.code ?? '-');
+                    const tKey = `${twName}||${tbDisplay}`;
+                    if (!toBinsPairs.has(tKey)) { toBinsPairs.add(tKey); toBinsArr.push(`${twName} / <b>${tbDisplay}</b>`); }
+                }
 
                 const comps = getComponents(t);
                 comps.forEach(c => {
@@ -842,34 +873,36 @@
             const reqId = transfer.id ?? transfer.ID ?? transfer.request_id ?? transfer.requestId;
             if (!reqId) return alert('Cannot determine transfer request ID to confirm.');
 
-            const binsFromPayload = [];
-            const binsToPayload = [];
+            // Build paired allocations (source -> destination) so server receives matching bins_from and bins_to
+            const pairMap = {}; // key = `${srcId}||${destId}` -> { bin_from: srcId, bin_to: destId, components: { compId: qty } }
             for (let i = 0; i < rows.length; i++) {
                 const r = rows[i];
                 const pId = parseInt(r.querySelector('.alloc-product').value) || 0;
                 const bSrcId = parseInt(r.querySelector('.alloc-bin-src').value) || 0;
                 const bDestId = parseInt(r.querySelector('.alloc-bin-dest').value) || 0;
                 const qty = Number(r.querySelector('.alloc-qty').value) || 0;
-                if (bSrcId) binsFromPayload.push({ bin_id: bSrcId, components: [{ component_id: pId, quantity: qty }] });
-                if (bDestId) binsToPayload.push({ bin_id: bDestId, components: [{ component_id: pId, quantity: qty }] });
+                const key = `${bSrcId}||${bDestId}`;
+                if (!pairMap[key]) pairMap[key] = { bin_from: bSrcId, bin_to: bDestId, components: {} };
+                if (!pairMap[key].components[pId]) pairMap[key].components[pId] = 0;
+                pairMap[key].components[pId] += qty;
             }
 
-            // ensure arrays have same length (server Verify requires equal counts when both present)
-            // If lengths differ, merge entries so counts equal by combining extras into last element
-            function normalizePairArrays(aFrom, aTo) {
-                if (aFrom.length === aTo.length) return { aFrom, aTo };
-                // combine smaller into larger by appending components
-                if (aFrom.length > aTo.length) {
-                    // append empty to aTo
-                    while (aTo.length < aFrom.length) aTo.push({ bin_id: aFrom[aTo.length].bin_id, components: [] });
-                } else {
-                    while (aFrom.length < aTo.length) aFrom.push({ bin_id: aTo[aFrom.length].bin_id, components: [] });
-                }
-                return { aFrom, aTo };
-            }
+            const binsFromPayload = [];
+            const binsToPayload = [];
+            Object.values(pairMap).forEach(p => {
+                const fromArr = Object.keys(p.components).map(cid => ({ component_id: parseInt(cid), quantity: p.components[cid] }));
+                const toArr = JSON.parse(JSON.stringify(fromArr));
+                // push pair (even if one side empty, keep parity)
+                binsFromPayload.push({ bin_id: p.bin_from, components: fromArr });
+                binsToPayload.push({ bin_id: p.bin_to, components: toArr });
+            });
 
-            const norm = normalizePairArrays(binsFromPayload, binsToPayload);
-            const payload = { request_id: reqId, bins_from: norm.aFrom, bins_to: norm.aTo };
+            // remove any entries that have no components on both sides
+            const filteredFrom = binsFromPayload.filter(b => Array.isArray(b.components) && b.components.length > 0);
+            const filteredTo = binsToPayload.filter(b => Array.isArray(b.components) && b.components.length > 0);
+            if (filteredFrom.length === 0 && filteredTo.length === 0) return alert('No components selected to confirm.');
+
+            const payload = { request_id: reqId, bins_from: binsFromPayload, bins_to: binsToPayload };
 
             try {
                 console.debug('Transfer confirm payload (from+to):', payload);
