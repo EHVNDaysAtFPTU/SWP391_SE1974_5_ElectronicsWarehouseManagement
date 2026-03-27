@@ -2,6 +2,8 @@
 using ElectronicsWarehouseManagement.WebAPI.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 
 namespace ElectronicsWarehouseManagement.WebAPI.Controllers
 {
@@ -9,26 +11,39 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
     [Route("api/me")]
     public class UserCtrl : ControllerBase
     {
-        readonly IUserService _userService;
+    readonly IUserService _userService;
+    readonly IAuthService _authService;
 
-        private readonly ILogger<UserCtrl> _logger;
+    private readonly ILogger<UserCtrl> _logger;
 
-        public UserCtrl(IUserService authService, ILogger<UserCtrl> logger)
-        {
-            _userService = authService;
-            _logger = logger;
-        }
+    public UserCtrl(IUserService authService, IAuthService authService2, ILogger<UserCtrl> logger)
+    {
+        _userService = authService;
+        _authService = authService2;
+        _logger = logger;
+    }
 
         [Authorize]
         [HttpPatch("password")]
         public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordReq request)
         {
             string username = HttpContext.Session.GetString("User") ?? "";
+            string? idStr = HttpContext.Session.GetString("UserId");
             ApiResult result = await _userService.ChangePasswordAsync(username, request);
             if (result.Success)
             {
-                HttpContext.Session.Remove("User");
-                HttpContext.Session.Remove("UserId");
+                if (!string.IsNullOrWhiteSpace(idStr) && int.TryParse(idStr, out int uid))
+                {
+                    try
+                    {
+                        await _authService.LogoutAsync(uid);
+                    }
+                    catch { /* ignore errors */ }
+                }
+
+                // Clear session and sign out cookie
+                HttpContext.Session.Clear();
+                await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
                 return Ok(result);
             }
             return BadRequest(result);

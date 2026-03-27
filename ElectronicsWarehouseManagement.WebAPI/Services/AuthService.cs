@@ -10,6 +10,7 @@ public interface IAuthService
 {
     Task<(ApiResult resp, User? user)> LoginAsync(LoginReq request);
     Task<ApiResult> LogoutAsync(int userId);
+    Task<ApiResult> LogoutByUsernameAsync(string username);
     Task<ApiResult> ForgotPasswordAsync(ForgotPasswordReq request, string baseUrl);
     Task<ApiResult> ResetPasswordAsync(ResetPasswordReq request);
 }
@@ -20,7 +21,7 @@ internal class AuthService : IAuthService
     readonly IEmailService _emailService;
     readonly ILogger<AuthService> _logger;
 
-    static List<int> loggedInUsers = [];
+    static HashSet<int> loggedInUsers = new HashSet<int>();
     static Dictionary<string, (int userId, DateTime expiration)> _passwordResetTokens = [];
 
     public AuthService(EWMDbCtx dbCtx, IEmailService emailService, ILogger<AuthService> logger)
@@ -71,6 +72,21 @@ internal class AuthService : IAuthService
         if (!loggedInUsers.Contains(userId))
             return new ApiResult(ApiResultCode.InvalidRequest, "User is not logged in.");
         loggedInUsers.Remove(userId);
+        return new ApiResult();
+    }
+
+    public async Task<ApiResult> LogoutByUsernameAsync(string username)
+    {
+        if (string.IsNullOrWhiteSpace(username))
+            return new ApiResult(ApiResultCode.InvalidRequest, "Invalid username.");
+        var user = await _dbCtx.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Username == username || u.Email == username);
+        if (user is null)
+            return new ApiResult(ApiResultCode.NotFound);
+        if (loggedInUsers.Contains(user.UserId))
+        {
+            loggedInUsers.Remove(user.UserId);
+            return new ApiResult();
+        }
         return new ApiResult();
     }
 
