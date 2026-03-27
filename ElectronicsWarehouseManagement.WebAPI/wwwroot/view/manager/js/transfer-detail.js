@@ -35,7 +35,7 @@ async function loadTransferDetail(id) {
         const t = result.data;
         displayTransferInfo(t);
         await displayComponents(t);
-        
+
         // Finalize visibility
         document.getElementById("loader").classList.add("d-none");
         document.getElementById("transferInfo").classList.remove("d-none");
@@ -55,7 +55,7 @@ function displayTransferInfo(t) {
     document.getElementById("tCreator").textContent = t.creator?.username || "System";
     document.getElementById("tCreatedDate").textContent = formatDate(t.creation_date);
     document.getElementById("tExecutedDate").textContent = t.execution_date ? formatDate(t.execution_date) : "Not Yet";
-    
+
     document.getElementById("tOrigin").textContent = t.warehouse_from?.name || "-";
     document.getElementById("tDest").textContent = t.warehouse_to?.name || "-";
 
@@ -85,7 +85,21 @@ async function displayComponents(t) {
         if (!finishedMap[fc.component_id]) {
             finishedMap[fc.component_id] = { qty: 0, bins: new Set() };
         }
-        finishedMap[fc.component_id].qty += fc.quantity;
+
+        // Double counting fix for Internal Transfers (which have both In and Out records)
+        // In (0), Out (1)
+        // If Outbound (2), count Out (1). Otherwise (Inbound/Internal), count In (0).
+        let shouldSum = false;
+        if (t.type === 2) { // Outbound
+            if (fc.type === 1) shouldSum = true;
+        } else { // Inbound (1) or Internal (3)
+            if (fc.type === 0) shouldSum = true;
+        }
+
+        if (shouldSum) {
+            finishedMap[fc.component_id].qty += fc.quantity;
+        }
+
         if (fc.bin?.location_in_warehouse) finishedMap[fc.component_id].bins.add(fc.bin.location_in_warehouse);
     });
 
@@ -94,12 +108,19 @@ async function displayComponents(t) {
     let totalReal = 0;
 
     for (const c of (t.components || [])) {
-        const metadata = await fetchComponentMetadata(c.component_id);
+        const componentData = await fetchComponentMetadata(c.component_id);
+        const metadata = componentData.metadata || {};
         const finishedInfo = finishedMap[c.component_id] || { qty: 0, bins: new Set() };
         const realQty = finishedInfo.qty;
         const binList = Array.from(finishedInfo.bins).join(", ") || "-";
-        
-        const price = c.unit_price || 0;
+
+        // Price logic: If not Inbound (Type 1), use current inventory price
+        // This fixes Internal Transfers having 0 price and ensures current price for Outbound
+        let price = c.unit_price || 0;
+        if (t.type !== 1 || price === 0) {
+            price = componentData.unit_price || 0;
+        }
+
         const extRequested = price * c.quantity;
         const extReal = price * realQty;
 
@@ -128,7 +149,7 @@ async function displayComponents(t) {
     }
 
     document.getElementById("grandTotal").textContent = formatCurrency(shouldShowRealQty ? totalReal : totalRequested);
-    
+
     if (t.status === STATUS.MISSING_COMPONENTS) {
         document.getElementById("missingAlert").classList.remove("d-none");
     }
@@ -137,7 +158,7 @@ async function displayComponents(t) {
 async function fetchComponentMetadata(id) {
     try {
         const result = await apiFetch(`/api/manager/get-component/${id}?fullInfo=true`);
-        return result.success ? result.data.metadata : {};
+        return result.success ? result.data : {};
     } catch {
         return {};
     }
