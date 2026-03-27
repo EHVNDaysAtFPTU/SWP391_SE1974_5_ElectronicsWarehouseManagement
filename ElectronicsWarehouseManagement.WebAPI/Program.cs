@@ -1,4 +1,4 @@
-using ElectronicsWarehouseManagement.Repositories.DBContext;
+﻿using ElectronicsWarehouseManagement.Repositories.DBContext;
 using ElectronicsWarehouseManagement.Repositories.Entities;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Identity;
@@ -55,8 +55,6 @@ namespace ElectronicsWarehouseManagement.WebAPI
                             context.Response.StatusCode = StatusCodes.Status401Unauthorized;
                             context.Response.ContentType = "application/json; charset=utf-8";
                             ApiResult payload = new ApiResult(ApiResultCode.Unauthorized);
-                            //if (!string.IsNullOrWhiteSpace(context.HttpContext.Session.GetString("User")))
-                                //payload = new ApiResult(ApiResultCode.SessionExpired);
                             await context.Response.WriteAsync(JsonSerializer.Serialize(payload));
                         }
                     };
@@ -116,7 +114,7 @@ namespace ElectronicsWarehouseManagement.WebAPI
                         partitionKey: key,
                         factory: _ => new FixedWindowRateLimiterOptions
                         {
-                            PermitLimit = 120,
+                            PermitLimit = 240,
                             Window = TimeSpan.FromMinutes(1),
                             QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
                             QueueLimit = 0
@@ -179,19 +177,14 @@ namespace ElectronicsWarehouseManagement.WebAPI
             app.UseSession();
             app.UseAuthentication();
             app.UseAuthorization();
-            //app.UseDefaultFiles();
 
-            //app.UseStaticFiles(new StaticFileOptions
-            //{
-            //    OnPrepareResponse = ctx =>
-            //    {
-            //        if (!ctx.Context.Request.Path.StartsWithSegments("/view", StringComparison.OrdinalIgnoreCase))
-            //            return;
-            //        ctx.Context.Response.StatusCode = StatusCodes.Status404NotFound;
-            //        ctx.Context.Response.ContentLength = 0;
-            //        ctx.Context.Response.Body = Stream.Null;
-            //    }
-            //});
+            app.Use(async (context, next) =>
+            {
+                string? idStr = context.Session.GetString("UserId");
+                if (!string.IsNullOrEmpty(idStr) && int.TryParse(idStr, out int userId))
+                    AuthService.UpdateLoginTime(userId);
+                await next();
+            });
 
             app.MapControllers();
             app.Run();
