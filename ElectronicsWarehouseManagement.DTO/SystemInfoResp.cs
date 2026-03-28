@@ -17,35 +17,36 @@ namespace ElectronicsWarehouseManagement.DTO
         public TimeSpan Uptime { get; set; }
 
         [JsonPropertyName("vendor")]
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public string? VendorID { get; set; }
+        public string VendorID { get; set; } = "";
 
         [JsonPropertyName("cpu_model")]
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public string? CPUModel { get; set; }
+        public string CPUModel { get; set; } = "";
 
         [JsonPropertyName("p_cores")]
-        public int PhysicalCores { get; set; }
+        public uint PhysicalCores { get; set; }
 
         [JsonPropertyName("l_cores")]
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public int? LogicalCores { get; set; }
+        public uint LogicalCores { get; set; }
 
         [JsonPropertyName("os")]
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public string? OSName { get; set; }
+        public string OSName { get; set; } = "";
 
         [JsonPropertyName("os_ver")]
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public string? OSVersion { get; set; }
+        public string OSVersion { get; set; } = "";
 
         [JsonPropertyName("machine_memory_usage")]
         public double MachineMemoryUsageMB { get; set; }
 
         [JsonPropertyName("machine_total_memory")]
-        public long MachineTotalMemoryMB { get; set; }
+        public ulong MachineTotalMemoryMB { get; set; }
 
         [JsonPropertyName("machine_memory_usage_paged")]
         public double MachineMemoryUsagePagedMB { get; set; }
+
+        [JsonPropertyName("machine_total_memory_paged")]
+        public ulong MachineMemoryTotalPagedMB { get; set; }
+
+        [JsonPropertyName("machine_cpu_usage")]
+        public ulong MachineCPUUsagePercent { get; set; }
     }
 }

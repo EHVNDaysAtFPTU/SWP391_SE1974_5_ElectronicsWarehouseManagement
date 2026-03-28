@@ -43,6 +43,10 @@
 					<p id="cpuUsage" class="value">-</p>
 				</article>
 				<article class="card">
+					<p class="label">Machine CPU Usage</p>
+					<p id="machineCpuUsage" class="value">-</p>
+				</article>
+				<article class="card">
 					<p class="label">Process Memory</p>
 					<p id="processMemory" class="value">-</p>
 				</article>
@@ -96,6 +100,10 @@
 							<th>Total Machine Memory</th>
 							<td id="machineTotalMemory">-</td>
 						</tr>
+						<tr>
+							<th>Total Machine Paged Memory</th>
+							<td id="machineTotalMemoryPaged">-</td>
+						</tr>
 					</tbody>
 				</table>
 
@@ -147,22 +155,41 @@
 			return parsed;
 		}
 
-		function formatFixed(value, digits = 2) {
+		function formatDecimal(value, digits = 2) {
 			const parsed = toNumber(value);
 			if (parsed === null) return "-";
 			return parsed.toLocaleString("en-US", {
-				minimumFractionDigits: digits,
+				minimumFractionDigits: 0,
 				maximumFractionDigits: digits
 			});
 		}
 
+		function formatInteger(value) {
+			const parsed = toNumber(value);
+			if (parsed === null) return "-";
+			return parsed.toLocaleString("en-US", {
+				minimumFractionDigits: 0,
+				maximumFractionDigits: 0
+			});
+		}
+
 		function formatMb(value) {
-			const formatted = formatFixed(value, 2);
+			const formatted = formatDecimal(value, 2);
+			return formatted === "-" ? "-" : `${formatted} MB`;
+		}
+
+		function formatMbInteger(value) {
+			const formatted = formatInteger(value);
 			return formatted === "-" ? "-" : `${formatted} MB`;
 		}
 
 		function formatPercent(value) {
-			const formatted = formatFixed(value, 2);
+			const formatted = formatDecimal(value, 2);
+			return formatted === "-" ? "-" : `${formatted}%`;
+		}
+
+		function formatPercentInteger(value) {
+			const formatted = formatInteger(value);
 			return formatted === "-" ? "-" : `${formatted}%`;
 		}
 
@@ -228,6 +255,7 @@
 
 		function render(data) {
 			setText("cpuUsage", formatPercent(data?.cpu_usage));
+			setText("machineCpuUsage", formatPercentInteger(data?.machine_cpu_usage));
 			setText("processMemory", formatMb(data?.memory_usage));
 			setText("processPagedMemory", formatMb(data?.memory_usage_paged));
 			setText("machineMemory", formatMb(data?.machine_memory_usage));
@@ -238,9 +266,10 @@
 			setText("osVersion", data?.os_ver || "-");
 			setText("vendor", data?.vendor || "-");
 			setText("cpuModel", data?.cpu_model || "-");
-			setText("physicalCores", data?.p_cores ?? "-");
-			setText("logicalCores", data?.l_cores ?? "-");
-			setText("machineTotalMemory", formatMb(data?.machine_total_memory));
+			setText("physicalCores", formatInteger(data?.p_cores));
+			setText("logicalCores", formatInteger(data?.l_cores));
+			setText("machineTotalMemory", formatMbInteger(data?.machine_total_memory));
+			setText("machineTotalMemoryPaged", formatMbInteger(data?.machine_total_memory_paged));
 
 			updateMemoryBar(data?.machine_memory_usage, data?.machine_total_memory);
 			setText("lastUpdated", new Date().toLocaleString("vi-VN"));
