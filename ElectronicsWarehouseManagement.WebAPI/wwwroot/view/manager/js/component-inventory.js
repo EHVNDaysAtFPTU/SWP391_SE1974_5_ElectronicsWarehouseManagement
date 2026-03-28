@@ -87,7 +87,7 @@ function renderTable(data) {
             <td class="align-middle fw-semibold">${component.metadata?.name || "N/A"}</td>
             <td class="align-middle text-truncate" style="max-width: 200px;">${component.metadata?.desc || ""}</td>
             <td class="align-middle">${component.unit || ""}</td>
-            <td class="align-middle fw-bold text-primary">${formatCurrency(component.unit_price || 0)}</td>
+            <td class="align-middle fw-bold text-primary">${component.quantity ||0}</td>
 
 
             <td class="align-middle">
@@ -199,7 +199,7 @@ async function toggleDetail(id, button) {
                         <div class="row g-3">
                             <div class="col-6 col-sm-4">
                                 <label class="small text-uppercase text-muted d-block">Price</label>
-                                <span class="fw-bold">${formatCurrency(component.unit_price || 0)}</span>
+                                <span class="fw-bold text-success">${formatCurrency(component.unit_price || 0)}</span>
                             </div>
                             <div class="col-6 col-sm-4">
                                 <label class="small text-uppercase text-muted d-block">Unit</label>
