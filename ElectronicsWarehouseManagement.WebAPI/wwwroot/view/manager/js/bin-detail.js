@@ -148,17 +148,17 @@ async function renderBinComponents(binComponents) {
     </span>
   </td>
 
-  <!-- Price -->
-  <td class="align-middle">
-    <span class="fs-4 fw-bold text-success border rounded-pill">
-      ${formatCurrency(comp.unit_price || 0)}
-    </span>
-  </td>
 
   <!-- Quantity -->
   <td class="align-middle">
     <span class=" fs-4 fw-bold text-black rounded-pill">
       ${bc.quantity || 0}
+    </span>
+  </td>
+   <!-- Price -->
+  <td class="align-middle">
+    <span class="fs-4 fw-bold text-success border rounded-pill">
+      ${formatCurrency(comp.unit_price || 0)}
     </span>
   </td>
 
