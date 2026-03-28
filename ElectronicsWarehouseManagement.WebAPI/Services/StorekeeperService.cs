@@ -326,6 +326,18 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             // verify components in confirmation request to match those in original transfer request
             List<TransferRequestComponent> originalComponentsInTransferRequest = transferRequest.TransferRequestComponents.OrderBy(c => c.ComponentId).ToList();
 
+            if (request.BinsFrom != null && request.BinsTo != null)
+            {
+                foreach (ConfirmTransferBinReq ctBinTakeFrom in request.BinsFrom ?? [])
+                {
+                    foreach (ConfirmTransferBinReq ctBinAddTo in request.BinsTo ?? [])
+                    {
+                        if (ctBinTakeFrom.BinId == ctBinAddTo.BinId && ctBinTakeFrom.Components.All(cFrom => ctBinAddTo.Components.Any(cTo => cTo.ComponentId == cFrom.ComponentId && cTo.Quantity == cFrom.Quantity)))
+                            return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Bin with ID '{ctBinTakeFrom.BinId}' cannot be both source and destination with the same components and quantities.");
+                    }
+                }
+            }
+
             List<ConfirmTransferRequestComponentReq> confirmComponentsTakeFromBin = [];
             foreach (ConfirmTransferBinReq ctBinTakeFrom in request.BinsFrom ?? [])
             {
