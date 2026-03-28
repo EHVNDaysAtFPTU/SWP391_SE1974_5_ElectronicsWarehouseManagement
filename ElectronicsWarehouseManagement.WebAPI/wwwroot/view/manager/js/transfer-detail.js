@@ -129,11 +129,13 @@ async function displayComponents(t) {
 
         const row = `
             <tr>
-                <td>
-                    <img src="${metadata.image_url || '/uploads/img/default-component.png'}" 
-                         style="width:60px;height:60px;object-fit:contain" 
-                         onerror="this.src='/uploads/img/default-component.png'">
-                </td>
+               <td>
+    ${metadata?.image_url
+                ? `<img src="${metadata.image_url}" 
+                 class="img-fluid rounded-3 shadow-sm border mb-3" 
+                 style="max-height: 200px;">`
+                : '<div class="bg-white border rounded d-flex align-items-center justify-content-center mb-3" style="height: 150px;"><i class="text-muted">No image</i></div>'}
+</td>
                 <td>
                     <div class="fw-bold">${metadata.name || "Unknown"}</div>
                     <small class="text-muted">ID: ${c.component_id} | ${metadata.manufacturer || "N/A"}</small>
