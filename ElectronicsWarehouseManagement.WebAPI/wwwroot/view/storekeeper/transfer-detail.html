@@ -96,7 +96,7 @@
                 if (Array.isArray(obj[k]) && obj[k].length>0 && (obj[k][0].quantity !== undefined || obj[k][0].component_id !== undefined))
                     return obj[k];
             }
-        // Full edit modal and functions
+
         async function openFullEdit(){
             if (!transfer) return alert('No transfer loaded');
             if (transfer.status !== 1) return alert('Only pending transfers can be edited');
@@ -164,7 +164,7 @@
                 raw.push({ component_id: compId, quantity: qty, unit_price: price });
             }
 
-            // aggregate duplicates
+      
             const agg = {};
             raw.forEach(it => {
                 const id = it.component_id;
@@ -189,13 +189,12 @@
                 if(!res.ok){ const txt = await res.text().catch(()=>null); return alert('Update failed: ' + (txt || res.statusText)); }
                 const j = await res.json().catch(()=>null);
                 if(!j?.success) return alert(j?.msg || j?.message || 'Update failed');
-                // reload canonical transfer from server
+            
                 try{ const fres = await fetch(BASE + '/storekeeper/transfers/' + reqId, { credentials: 'include' }); if(fres.ok){ const fj = await fres.json(); if(fj?.success && fj.data){ transfer = fj.data; await resolveWarehouses(transfer); await resolveComponentNames(getComponents(transfer)); } } }catch(e){}
                 closeFullEdit(); alert('Updated'); try{ render(); }catch(e){}
             }catch(e){ alert('Network error: ' + e.message); }
         }
 
-        // Edit description modal and functions
         function openEditDesc(){
             const cur = transfer?.description ?? '';
             let mm = document.getElementById('editModal');
@@ -248,8 +247,7 @@
             if (!Array.isArray(comps)) return;
             await Promise.all(comps.map(async c => {
                     const currentName = getComponentName(c);
-                    // currentName may be a placeholder like 'Product #...' or Vietnamese 'Sản phẩm #...'
-                    // only fetch metadata when name looks like the placeholder
+                   
                     if (currentName && !currentName.startsWith('Product #') && !currentName.startsWith('Sản phẩm #')) return;
                 const cid = c.component_id ?? c.componentId ?? c.component?.id;
                 if (!cid) return;
@@ -266,10 +264,8 @@
                         componentCache[cid] = cjson.data;
                         c.component = c.component ?? {};
                         c.component.metadata = cjson.data.metadata ?? cjson.data.Metadata ?? cjson.data;
-                        // if original object had a placeholder name like 'Product #...', replace it with resolved name
                         const resolvedName = cjson.data.metadata?.name ?? cjson.data.Metadata?.name ?? cjson.data.name ?? cjson.data.Name ?? null;
                         if (resolvedName) {
-                            // only overwrite if current name is a placeholder or missing
                             const current = c.name ?? c.Name ?? '';
                             if (!current || current.toString().startsWith('Product #') || current.toString().startsWith('Sản phẩm #') || current.toString().startsWith('Component #')) {
                                 c.name = resolvedName;
@@ -284,7 +280,6 @@
         async function resolveWarehouses(t) {
             if (!t) return;
             try {
-                // bin_from
                 let binFrom = t.bin_from ?? t.binFrom ?? null;
                 const binFromId = binFrom?.id ?? binFrom?.ID ?? t.bin_from_id ?? t.binFromId;
                 if (binFromId && (!binFrom || !(binFrom.location_in_warehouse || binFrom.locationInWarehouse || binFrom.binCode))) {
@@ -312,7 +307,6 @@
                     if (wid && warehouseCache[wid]) binFrom.warehouse = warehouseCache[wid];
                 }
 
-                // bin_to
                 let binTo = t.bin_to ?? t.binTo ?? null;
                 const binToId = binTo?.id ?? binTo?.ID ?? t.bin_to_id ?? t.binToId;
                 if (binToId && (!binTo || !(binTo.location_in_warehouse || binTo.locationInWarehouse || binTo.binCode))) {
@@ -340,7 +334,6 @@
                     if (wid2 && warehouseCache[wid2]) binTo.warehouse = warehouseCache[wid2];
                 }
 
-                // finished_components: set bin_finish_from / bin_finish_to or bin_finish_list
                 try {
                     const finishedArr = t.finished_components ?? t.finishedComponents ?? t.finished_components_list ?? t.finishedComponentsList;
                     if (Array.isArray(finishedArr) && finishedArr.length > 0) {
@@ -360,7 +353,6 @@
                         if (bins.length > 1) t.bin_finish_list = bins;
                         if (!t.bin_finish_from && bins.length === 1) t.bin_finish_to = bins[0];
 
-                        // set fallback warehouse ids for allocation logic
                         if (!t._fromWarehouseId && t.bin_finish_from) {
                             const bf = t.bin_finish_from;
                             t._fromWarehouseId = bf?.warehouse?.id ?? bf?.warehouse_id ?? bf?.warehouseId ?? null;
@@ -370,7 +362,6 @@
                             t._toWarehouseId = bt?.warehouse?.id ?? bt?.warehouse_id ?? bt?.warehouseId ?? null;
                         }
 
-                        // resolve warehouse objects for finish bins
                         for (const bin of (t.bin_finish_list ?? [t.bin_finish_from, t.bin_finish_to].filter(Boolean))) {
                             if (!bin) continue;
                             const bwId = bin?.warehouse ?? bin?.warehouse_id ?? bin?.warehouseId ?? (typeof bin?.warehouse === 'object' ? bin.warehouse.id : null) ?? t.warehouse_to_id ?? t.warehouse_from_id;
@@ -387,7 +378,7 @@
                             }
                         }
                     }
-                } catch (e) { /* ignore */ }
+                } catch (e) { }
             } catch (e) { console.error('resolveWarehouses failed', e); }
         }
 
@@ -399,35 +390,10 @@
                 if (!json.success || !json.data) throw new Error(json.msg || 'No data');
                 transfer = json.data;
 
-                // find related transfers (grouping)
-                let related = [];
-                try {
-                    const listRes = await fetch(BASE + '/storekeeper/transfers', { credentials: 'include' });
-                    if (listRes.ok) {
-                        const listJson = await listRes.json();
-                        if (listJson?.success && Array.isArray(listJson.data)) {
-                            const all = listJson.data.filter(t => t.type === 3);
-                            const baseDesc = (transfer.description ?? '').toString();
-                            const baseCreated = Date.parse(transfer.creation_date ?? transfer.creationDate ?? transfer.creationTime ?? '');
-                            const baseCreator = transfer.creator_id ?? transfer.CreatorId ?? transfer.creator ?? transfer.Creator ?? null;
-                            const baseCreatorStr = (baseCreator ?? '').toString();
-
-                            related = all.filter(t => {
-                                try {
-                                    if ((t.description ?? '').toString() !== baseDesc) return false;
-                                    const tCreator = (t.creator_id ?? t.CreatorId ?? t.creator ?? t.Creator ?? '').toString();
-                                    if (baseCreatorStr && tCreator && baseCreatorStr !== tCreator) return false;
-                                    
-                                    const tCreated = Date.parse(t.creation_date ?? t.creationDate ?? t.creationTime ?? '');
-                                    if (!isNaN(baseCreated) && !isNaN(tCreated)) {
-                                        return Math.abs(baseCreated - tCreated) <= 60000;
-                                    }
-                                    return true;
-                                } catch (e) { return false; }
-                            });
-                        }
-                    }
-                } catch (e) { }
+           
+            // related grouping removed: do not fetch list to infer related transfers
+            // Keep related empty so we only operate on the current transfer
+            let related = [];
 
                 const relatedDetails = [];
                 const seen = new Set();
@@ -457,12 +423,11 @@
                     try {
                         const finishedArr = t.finished_components ?? t.finishedComponents ?? t.finished_components_list ?? t.finishedComponentsList ?? t.FinishedTransferRequestComponents;
                         if (Array.isArray(finishedArr)) finishedArr.forEach(fc => allComps.push(fc));
-                    } catch(e) { /* ignore */ }
+                    } catch(e) {  }
                 }
                 await resolveComponentNames(allComps);
                 render();
                 
-                // Set creator info
                 let createdBy = transfer.created_by_name ?? transfer.createdByName ?? transfer.created_by ?? transfer.createdBy ?? transfer.creator?.display_name ?? transfer.creator?.username ?? transfer.creator?.fullName ?? transfer.creator?.name ?? null;
                 if (!createdBy && (transfer.creator_id || transfer.creatorId)) {
                     try {
@@ -494,7 +459,6 @@
                 const json = await res.json();
                 if (json?.success) {
                     alert('Transfer canceled');
-                    // update status locally and rerender
                     transfer.status = 6;
                     render();
                 } else alert(json?.msg || json?.message || 'Error');
@@ -528,11 +492,8 @@
 
             related.forEach(t => {
                 const isPendingOrApproved = (t.status === 1 || t.Status === 1 || t.status === 2 || t.Status === 2);
-                // always show warehouse (use top-level warehouse_from as fallback), but mark bin as Not allocated when pending/approved
-                // collect source (From) bins: prefer finished_components with type===1; fallback to bin_from / warehouse_from
                 const finishedArrLocal = t.finished_components ?? t.finishedComponents ?? t.finished_components_list ?? t.finishedComponentsList ?? t.FinishedTransferRequestComponents;
                 if (Array.isArray(finishedArrLocal) && finishedArrLocal.length > 0) {
-                    // add every finished component that is a source (type===1)
                     finishedArrLocal.forEach(fc => {
                         try {
                             const fctype = fc.type ?? fc.Type ?? fc.typeInt ?? fc.TypeInt;
@@ -545,7 +506,7 @@
                             const bDisplay = isPendingOrApproved ? '<i>Not allocated</i>' : bLoc;
                             const fKey = `${wname}||${bDisplay}`;
                             if (!fromBinsPairs.has(fKey)) { fromBinsPairs.add(fKey); fromBinsArr.push(`${wname} / <b>${bDisplay}</b>`); }
-                        } catch (e) { /* ignore */ }
+                        } catch (e) {  }
                     });
                 } else {
                     const fw = (t._finishFromWarehouseName ?? t._fromWarehouseName ?? (t.warehouse_from?.name ?? t.warehouse_from?.warehouseName) ?? (t.bin_finish_from?.warehouse?.name ?? t.bin_finish_from?.warehouse?.warehouseName ?? t.bin_from?.warehouse?.warehouseName ?? t.bin_from?.warehouse?.name) ?? '-');
@@ -555,7 +516,6 @@
                     if (!fromBinsPairs.has(fKey)) { fromBinsPairs.add(fKey); fromBinsArr.push(`${fw} / <b>${fb}</b>`); }
                 }
 
-                // prefer to show any finished-to bins first (use finished_components with type===0)
                 if (Array.isArray(finishedArrLocal) && finishedArrLocal.length>0) {
                     finishedArrLocal.forEach(fc => {
                         try {
@@ -569,7 +529,7 @@
                             const tbDisplay = isPendingOrApproved ? '<i>Not allocated</i>' : tbLoc;
                             const tKey = `${twName}||${tbDisplay}`;
                             if (!toBinsPairs.has(tKey)) { toBinsPairs.add(tKey); toBinsArr.push(`${twName} / <b>${tbDisplay}</b>`); }
-                        } catch(e) { /* ignore */ }
+                        } catch(e) {  }
                     });
                 } else if (t.bin_finish_to) {
                     const twName = (t._finishToWarehouseName ?? t._toWarehouseName ?? t.bin_finish_to?.warehouse?.name ?? t.bin_finish_to?.warehouse?.warehouseName ?? t.bin_to?.warehouse?.name ?? t.bin_to?.warehouse?.warehouseName ?? (t.warehouse_to?.name ?? t.warehouse_to?.warehouseName) ?? '-');
@@ -598,7 +558,6 @@
 
             const statusText = statuses.size === 1 ? getStatusText(Array.from(statuses)[0]) : 'Multiple';
 
-            // If no from/to bins were discovered from related items, fallback to top-level warehouse_from/warehouse_to
             if (fromBinsArr.length === 0) {
                 const fw = transfer.warehouse_from?.name ?? transfer.warehouse_from?.warehouseName ?? transfer.warehouse_from ?? '-';
                 const fb = (transfer.status === 1 || transfer.status === 2) ? '<i>Not allocated</i>' : '-';
@@ -659,7 +618,6 @@
 
             html += `</tbody></table></div>`;
 
-            // Transfer detail: show finished component movements (what was moved, qty, from/to bins)
             const finishedRows = [];
             related.forEach(t => {
                 const finishedArr = t.finished_components ?? t.finishedComponents ?? t.finished_components_list ?? t.finishedComponentsList ?? t.FinishedTransferRequestComponents;
@@ -686,10 +644,8 @@
                 html += `</tbody></table></div>`;
             }
                 document.getElementById('detail').innerHTML = html;
-                // show edit only when pending (status === 1)
                 try { const eb = document.getElementById('editDescBtn'); if (eb) eb.style.display = (transfer.status === 1 ? 'inline-block' : 'none'); const ef = document.getElementById('editFullBtn'); if(ef) ef.style.display = (transfer.status === 1 ? 'inline-block' : 'none'); } catch(e){}
 
-            // show confirm section when any related transfer is Approved (status === 2)
             console.debug('transfer statuses', Array.from(statuses));
             if (statuses.has(2) || transfer.status === 2) {
                 const cs = document.getElementById('confirmSection');
@@ -698,13 +654,10 @@
                 if (cb) cb.style.display = 'inline-block';
                 try { loadBinsForConfirm(); } catch(e) { console.error('loadBinsForConfirm failed', e); }
             }
-            // show cancel button when pending
             if (transfer.status === 1) {
                 const cb = document.getElementById('cancelBtn'); if (cb) cb.style.display = 'inline-block';
             }
 
-            // If none of the related transfers are Approved (status 2) and this transfer is not Approved,
-            // hide the confirm / allocation UI. Otherwise leave it visible (it may have been shown above).
             if (!(statuses.has(2) || transfer.status === 2)) {
                 const cs = document.getElementById('confirmSection'); if (cs) cs.style.display = 'none';
                 const cb = document.getElementById('confirmBtn'); if (cb) cb.style.display = 'none';
@@ -714,7 +667,6 @@
 
         async function loadBinsForConfirm() {
             try {
-                // build orderProducts from resolved globalProductsMap; fallback to transfer components
                 const keys = Object.keys(globalProductsMap || {});
                 if (keys.length > 0) {
                     orderProducts = keys.map(cid => ({ id: cid, name: globalProductsMap[cid].name, maxQty: globalProductsMap[cid].total }));
@@ -743,7 +695,6 @@
                     }
                 }
 
-                // Ensure allocation rows exist even if bins are not available yet
                 document.getElementById('allocationBody').innerHTML = '';
                 orderProducts.forEach(p => addAllocationRow(p.id, p.maxQty));
 
@@ -813,10 +764,9 @@
             const rows = Array.from(document.querySelectorAll('#allocationBody tr'));
             if (rows.length === 0) return alert('Please add at least one allocation.');
 
-            // Validate allocations and aggregate by destination bin (like inbound behavior)
-            const allocationSummary = {}; // product_id -> total allocated
+            const allocationSummary = {}; 
             const globalBinsFromStockCheck = {};
-            const destMap = {}; // destBinId -> { destId, components: { compId: qty } }
+            const destMap = {}; 
 
             for (let i = 0; i < rows.length; i++) {
                 const r = rows[i];
@@ -831,7 +781,6 @@
                 if (bSrcId === bDestId) return alert(`Row ${i+1}: source and destination bins cannot be the same.`);
                 if (qty <= 0) return alert(`Row ${i+1}: quantity must be greater than 0.`);
 
-                // validate against stock
                 const stock = (binAvailabilityByBin[bSrcId] && binAvailabilityByBin[bSrcId][pId]) ? binAvailabilityByBin[bSrcId][pId] : 0;
                 let alreadyAllocated = globalBinsFromStockCheck[bSrcId]?.[pId] || 0;
                 if (qty + alreadyAllocated > stock) {
@@ -851,12 +800,10 @@
                 destMap[bDestId].components[pId] = (destMap[bDestId].components[pId] || 0) + qty;
             }
 
-            // Compare requested vs allocated
             const diffs = [];
             for (const p of orderProducts) {
                 const requested = p.maxQty;
                 const allocated = allocationSummary[p.id] || 0;
-                // Prevent confirming when allocated quantity exceeds requested quantity
                 if (allocated > requested) {
                     return alert(`Allocated quantity for "${p.name}" (${allocated}) exceeds requested (${requested}). Please adjust allocations.`);
                 }
@@ -873,12 +820,10 @@
                 if (!confirm('Confirm allocation and transfer?')) return;
             }
 
-            // Build single payload for this transfer: include bins_from and bins_to per allocation row
             const reqId = transfer.id ?? transfer.ID ?? transfer.request_id ?? transfer.requestId;
             if (reqId === null || reqId === undefined) return alert('Cannot determine transfer request ID to confirm.');
 
-            // Build paired allocations (source -> destination) so server receives matching bins_from and bins_to
-            const pairMap = {}; // key = `${srcId}||${destId}` -> { bin_from: srcId, bin_to: destId, components: { compId: qty } }
+            const pairMap = {}; 
             for (let i = 0; i < rows.length; i++) {
                 const r = rows[i];
                 const pId = parseInt(r.querySelector('.alloc-product').value) || 0;
@@ -896,12 +841,12 @@
             Object.values(pairMap).forEach(p => {
                 const fromArr = Object.keys(p.components).map(cid => ({ component_id: parseInt(cid), quantity: p.components[cid] }));
                 const toArr = JSON.parse(JSON.stringify(fromArr));
-                // push pair (even if one side empty, keep parity)
+           
                 binsFromPayload.push({ bin_id: p.bin_from, components: fromArr });
                 binsToPayload.push({ bin_id: p.bin_to, components: toArr });
             });
 
-            // remove any entries that have no components on both sides
+            
             const filteredFrom = binsFromPayload.filter(b => Array.isArray(b.components) && b.components.length > 0);
             const filteredTo = binsToPayload.filter(b => Array.isArray(b.components) && b.components.length > 0);
             if (filteredFrom.length === 0 && filteredTo.length === 0) return alert('No components selected to confirm.');

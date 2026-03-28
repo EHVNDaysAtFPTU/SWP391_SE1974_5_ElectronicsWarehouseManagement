@@ -640,11 +640,11 @@
                 if (!json.success || !json.data) return;
                 availableBins = json.data.bins ?? json.data;
                 
-                // Reload rows with populated bins
+ 
                 document.getElementById('allocationBody').innerHTML = '';
                 orderProducts.forEach(p => addAllocationRow(p.id, p.maxQty));
 
-                // Load stock for all available bins sequentially to allow validation later
+               
                 for (let b of availableBins) {
                     const binId = b.id ?? b.ID ?? b.binId;
                     if (!binId) continue;
@@ -697,7 +697,7 @@
         }
 
         async function confirmOrder() {
-            // Build allocations
+      
             const rows = Array.from(document.querySelectorAll('#allocationBody tr'));
             if (rows.length === 0) return alert('Vui lòng thêm ít nhất 1 phân bổ.');
 
@@ -729,12 +729,11 @@
                 globalBinsFromPayload[bId][pId] = (globalBinsFromPayload[bId][pId] || 0) + qty;
             }
 
-            // Compare requested vs allocated
             const diffs = [];
             for (const p of orderProducts) {
                 const requested = p.maxQty;
                 const allocated = allocationSummary[p.id] || 0;
-                // Prevent confirming when allocated quantity exceeds requested quantity
+              
                 if (allocated > requested) {
                     return alert(`Đã phân bổ (${allocated}) nhiều hơn yêu cầu (${requested}) cho "${p.name}". Vui lòng điều chỉnh phân bổ.`);
                 }
@@ -750,7 +749,7 @@
                 if (!confirm('Xác nhận phân bổ và lưu kho?')) return;
             }
 
-            // build pairMap for submitting (same logic as before)
+            
             const pairMap = {};
             for (let i = 0; i < rows.length; i++) {
                 const r = rows[i];
@@ -761,12 +760,11 @@
                 pairMap[bId][pId] = (pairMap[bId][pId] || 0) + qty;
             }
 
-            // Submit single confirm for the current transfer only using user's allocations (bins_from)
+           
             const reqId = transfer.request_id ?? transfer.RequestId ?? transfer.requestId ?? transfer.id ?? transfer.ID;
             if (reqId === null || reqId === undefined) return alert('Cannot determine transfer request ID to confirm.');
 
-            // Only include components that belong to this transfer
-            // Build payload from user-selected allocations (bins_from). Do not include bins_to for outbound.
+           
             const payload = { request_id: reqId, bins_from: [] };
             for (const [binId, compsObj] of Object.entries(pairMap)) {
                 const compsArr = Object.keys(compsObj).map(cid => ({ component_id: parseInt(cid), quantity: compsObj[cid] }));
@@ -779,7 +777,7 @@
             if (payload.bins_from.length === 0) return alert('No bins selected that match this transfer.');
 
             try {
-                // log payload for debugging
+             
                 console.debug('Confirm payload (single transfer):', payload);
                 const res = await fetch(BASE + '/storekeeper/transfers/confirm', {
                     method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(payload)
@@ -837,7 +835,7 @@
             try{ const sc = document.getElementById('fullCustomer'); if(sc){ const cid = transfer.customer_id ?? transfer.customerId ?? null; if(cid) sc.value = cid; }}catch(e){}
             const body = document.getElementById('fullComponentsBody'); body.innerHTML = '';
             const comps = getComponents(transfer) || [];
-            // populate rows as-is (no auto-aggregation) and do not trigger merging
+        
             comps.forEach(c => {
                 const cid = c.component_id ?? c.componentId ?? c.component?.id;
                 const name = getComponentName(c);
@@ -890,13 +888,13 @@
                 raw.push({ component_id: compId, quantity: qty, unit_price: price });
             }
 
-            // aggregate duplicates by component_id to avoid creating duplicated component rows on server
+
             const compMap = {};
             raw.forEach(x => {
                 const k = String(x.component_id);
                 if (!compMap[k]) compMap[k] = { component_id: x.component_id, quantity: 0, unit_price: x.unit_price };
                 compMap[k].quantity += Number(x.quantity) || 0;
-                // prefer first non-null unit_price
+              
                 if ((compMap[k].unit_price === null || compMap[k].unit_price === undefined) && (x.unit_price !== null && x.unit_price !== undefined)) compMap[k].unit_price = x.unit_price;
             });
             const componentsPayload = Object.values(compMap).map(c => {
@@ -919,7 +917,7 @@
                 const j = rawText ? JSON.parse(rawText) : null;
                 console.log('submitFullEdit: parsed response', j);
                 if(!j?.success) return alert(j?.msg || j?.message || 'Update failed');
-                // update local transfer components to reflect exactly what user saved (avoid showing server-side duplicate entries)
+               
                 try {
                     transfer.components = componentsPayload.map(c => ({ component_id: c.component_id, quantity: c.quantity, unit_price: c.unit_price }));
                     await resolveComponentNames(getComponents(transfer));

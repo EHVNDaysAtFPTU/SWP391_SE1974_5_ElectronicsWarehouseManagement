@@ -474,12 +474,12 @@
                 pairMap[bId].components[pId] = (pairMap[bId].components[pId] || 0) + qty;
             }
 
-            // Compare requested vs allocated
+          
             const diffs = [];
             for (const p of orderProducts) {
                 const requested = p.maxQty;
                 const allocated = allocationSummary[p.id] || 0;
-                // Prevent confirming when allocated quantity exceeds requested quantity
+            
                 if (allocated > requested) {
                     return alert(`Allocated quantity for "${p.name}" (${allocated}) exceeds requested (${requested}). Please adjust allocations.`);
                 }
@@ -497,7 +497,7 @@
                 if (!confirm('Confirm storage with these allocations?')) return;
             }
 
-            // Prepare to distribute allocations across related transfer requests (if grouped)
+        
             const related = transfer._related ?? [transfer];
 
             let allSuccess = true;
@@ -505,7 +505,7 @@
 
             for (const t of related) {
                 const reqId = t.id;
-                // skip finished/canceled/rejected
+            
                 if (t.status === 4 || t.status === 6 || t.status === 3) continue;
 
                 const comps = getComponents(t) || [];
@@ -608,17 +608,17 @@
         async function openFullEdit(){
             if (!transfer) return alert('No transfer loaded');
             if (transfer.status !== 1) return alert('Only pending transfers can be edited');
-            // load resources
+      
             await loadEditResources();
             document.getElementById('fullDesc').value = transfer.description ?? '';
-            // destination warehouse only for inbound
+          
             try{ const wt = document.getElementById('fullWarehouseTo'); if(wt) wt.value = transfer.warehouse_to_id ?? transfer.warehouseToId ?? transfer._toWarehouseId ?? (transfer.warehouse?.id ?? '') ; }catch(e){}
-            // customer
+      
             try{ const sc = document.getElementById('fullCustomer'); if(sc){ const cid = transfer.customer_id ?? transfer.customerId ?? null; if(cid) sc.value = cid; }}catch(e){}
-            // components
+           
             const body = document.getElementById('fullComponentsBody'); body.innerHTML = '';
             const comps = getComponents(transfer) || [];
-            // aggregate components to avoid adding duplicates when opening modal
+            
             const compAgg = {};
             comps.forEach(c => {
                 const cid = c.component_id ?? c.componentId ?? c.component?.id;
@@ -636,11 +636,11 @@
 
         function closeFullEdit(){ document.getElementById('editFullModal').classList.remove('show'); }
 
-        let editComponentsCache = []; // cached components list
+        let editComponentsCache = []; 
         let fullEditPopulating = false;
         async function loadEditResources(){
             try{
-                // components
+               
                 const cres = await fetch(BASE + '/storekeeper/components', { credentials: 'include' });
                 if (cres.ok){ const cj = await cres.json(); if(cj?.success && Array.isArray(cj.data)) editComponentsCache = cj.data; }
             }catch(e){}
@@ -662,7 +662,7 @@
 
         function addFullComponentRow(defaultComponentId = '', defaultQty = '', defaultPrice = 0, defaultName){
             const tbody = document.getElementById('fullComponentsBody');
-            // if adding with a default component id, try to merge into existing row
+          
             if(defaultComponentId){
                 const existing = Array.from(document.querySelectorAll('#fullComponentsBody .full-comp-select')).find(s => s.value == String(defaultComponentId));
                 if(existing){
@@ -674,7 +674,7 @@
             const tr = document.createElement('tr');
             let productOptions = '<option value="">-- Select product --</option>';
             (editComponentsCache || []).forEach(p => { const id = p.componentId ?? p.id; const name = p.metadata?.name ?? p.name ?? ('Product #' + id); const sel = (id == defaultComponentId) ? 'selected' : ''; productOptions += `<option value="${id}" ${sel}>${name}</option>`; });
-            // if defaultName provided but not in cache, add as option
+           
             if(defaultName && !Array.from((editComponentsCache||[]).map(x=>x.componentId??x.id)).includes(Number(defaultComponentId))){ productOptions += `<option value="${defaultComponentId}" selected>${defaultName}</option>`; }
             tr.innerHTML = `
                 <td style="padding:6px"><select class="full-comp-select" style="width:100%;padding:6px;border-radius:4px;border:1px solid #ccc">${productOptions}</select></td>
@@ -686,7 +686,7 @@
         }
 
         async function submitFullEdit(){
-            // validate and build components
+           
             const desc = document.getElementById('fullDesc').value || '';
             const wt = parseInt(document.getElementById('fullWarehouseTo').value) || null;
             const sc = document.getElementById('fullCustomer').value || null;
@@ -704,7 +704,7 @@
                 raw.push({ component_id: compId, quantity: qty, unit_price: price });
             }
 
-            // aggregate by component_id to avoid duplicates
+          
             const agg = {};
             raw.forEach(it => {
                 const id = it.component_id;
@@ -728,7 +728,7 @@
                 if(!res.ok){ const txt = await res.text().catch(()=>null); return alert('Update failed: ' + (txt || res.statusText)); }
                 const j = await res.json().catch(()=>null);
                 if(!j?.success) return alert(j?.msg || j?.message || 'Update failed');
-                // reload transfer from server to get canonical state
+               
                 try{
                     const fres = await fetch(BASE + '/storekeeper/transfers/' + reqId, { credentials: 'include' });
                 if (fres.ok){ const fj = await fres.json(); if(fj?.success && fj.data){ transfer = fj.data; // override components with submitted payload to reflect user's edit immediately

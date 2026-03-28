@@ -471,7 +471,7 @@ Unit: ${unit} · Available: ${aggAvail}
                 payloadBody.components.push({ component_id: compId, quantity: qtyRemaining });
             }
 
-            // attach customer/recipient info
+         
             try {
                 const sel = document.getElementById('customerSelect');
                 const recip = document.getElementById('recipientInput');
@@ -484,7 +484,7 @@ Unit: ${unit} · Available: ${aggAvail}
                     const opt = sel.options[sel.selectedIndex];
                     if (opt && opt.dataset && opt.dataset.raw) payloadBody.customer_info_json = JSON.parse(opt.dataset.raw);
                 } catch (e) { }
-            } catch (e) { /* ignore */ }
+            } catch (e) {  }
 
             console.log("SEND:", payloadBody);
 

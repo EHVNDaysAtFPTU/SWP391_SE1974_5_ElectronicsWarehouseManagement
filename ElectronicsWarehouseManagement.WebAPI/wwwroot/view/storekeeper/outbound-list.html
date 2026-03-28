@@ -123,12 +123,12 @@
             }
         }
 
-        // state used by paging and filtering
+       
         let globalGroups = [];
         let filteredGroups = [];
         let currentPage = 1;
         const pageSize = 10;
-// cache for warehouse details (so UI can list warehouse.bins)
+
 let globalWarehouseCache = {};
 
         async function load() {
@@ -136,14 +136,13 @@ let globalWarehouseCache = {};
             let res = await fetch(BASE + "/storekeeper/transfers", { credentials: "include" });
             let result = await res.json();
 
-            // 🔥 Outbound = type === 2
             const outboundListSummary = (result.data || []).filter(x => x.type === 2);
             const warehouseCache = {};
-            // fetch full details for each outbound transfer
+           
             const detailedTransfers = [];
             for (let t0 of outboundListSummary) {
                 try {
-                    // always try to fetch full transfer detail first (contains components and bin info)
+                   
                     const dres = await fetch(BASE + "/storekeeper/transfers/" + (getId(t0)), { credentials: 'include' });
                     if (dres.ok) {
                         const djson = await dres.json();
@@ -152,13 +151,13 @@ let globalWarehouseCache = {};
                         }
                     }
 
-                    // if binFrom already contains useful info, attach helper name and try to resolve warehouse object if missing
+                    
                     let binFromObj = t0.bin_from ?? t0.binFrom ?? null;
                     if (binFromObj && (binFromObj.location_in_warehouse || binFromObj.locationInWarehouse || binFromObj.binCode)) {
                         try {
                             const fromName = binFromObj.warehouse?.name ?? binFromObj.warehouse?.warehouseName ?? binFromObj.warehouse ?? null;
                             t0._fromWarehouseName = fromName ?? null;
-                            // if warehouse object is missing but warehouse id exists, try fetch warehouse and cache it
+                           
                             const wid = (typeof binFromObj.warehouse === 'object') ? (binFromObj.warehouse?.id) : (binFromObj.warehouse ?? binFromObj.warehouse_id ?? binFromObj.warehouseId ?? binFromObj.WarehouseId);
                             const needFetch = !binFromObj.warehouse || (typeof binFromObj.warehouse !== 'object');
                             if (needFetch && wid) {
@@ -176,13 +175,13 @@ let globalWarehouseCache = {};
                                     t0._fromWarehouseName = warehouseCache[wid].name ?? warehouseCache[wid].warehouseName ?? t0._fromWarehouseName;
                                 }
                             }
-                        } catch (e) { /* ignore */ }
+                        } catch (e) {  }
                         t0.bin_from = binFromObj;
                         detailedTransfers.push(t0);
                         continue;
                     }
 
-                    // If transfer detail includes finished_components, assign separate finish bins for from/to when possible
+                    
                     const finishedArr = t0.finished_components ?? t0.finishedComponents ?? t0.finished_components_list ?? t0.finishedComponentsList;
                     if (Array.isArray(finishedArr) && finishedArr.length > 0) {
                         t0.bin_finish_from = null;
@@ -195,7 +194,7 @@ let globalWarehouseCache = {};
                             else if (fc.type === 0) t0.bin_finish_to = binRef;
                             else if (!t0.bin_finish_to) t0.bin_finish_to = binRef;
                         }
-                        // resolve warehouses for finish_from / finish_to if present
+                      
                         if (t0.bin_finish_from) {
                             const bfFromId = t0.bin_finish_from?.warehouse ?? t0.bin_finish_from?.warehouse_id ?? t0.bin_finish_from?.warehouseId ?? (typeof t0.bin_finish_from?.warehouse === 'object' ? t0.bin_finish_from.warehouse.id : null) ?? t0.warehouse_from_id;
                             if (bfFromId && (!t0.bin_finish_from?.warehouse || typeof t0.bin_finish_from.warehouse !== 'object')) {
@@ -240,13 +239,13 @@ let globalWarehouseCache = {};
                     const bjson = await bres.json();
                     if (bjson?.success && bjson.data) {
                         t0.bin_from = bjson.data;
-                        // set helper from warehouse name
+                        
                         try {
                             const fromName = t0.bin_from?.warehouse?.name ?? t0.bin_from?.warehouse?.warehouseName ?? t0.bin_from?.warehouse ?? null;
                             t0._fromWarehouseName = fromName ?? null;
-                        } catch (e) { /* ignore */ }
+                        } catch (e) { }
 
-                        // try to resolve destination warehouse name (bin_to) so other views can use it
+                       
                         try {
                             let toName = t0.bin_to?.warehouse?.name ?? t0.bin_to?.warehouse?.warehouseName ?? t0.bin_to?.warehouse ?? null;
                             if (!toName) {
@@ -268,7 +267,7 @@ let globalWarehouseCache = {};
                     detailedTransfers.push(t0);
                 }
             }
-            // Precompute possible warehouse ids per transfer and prefetch warehouse details so UI can show all bins of a warehouse
+           
             const localWarehouseCache = {};
             try {
                 const allWarehouseIds = new Set();
@@ -288,42 +287,30 @@ let globalWarehouseCache = {};
                     t._possibleWarehouseIds.forEach(i => { if (i) allWarehouseIds.add(i); });
                 });
 
-                // fetch warehouses once and cache (so we can list all bins from the warehouse)
+              
                 await Promise.all(Array.from(allWarehouseIds).map(async wid => {
                     try {
                         const wres = await fetch(BASE + "/storekeeper/warehouses/" + wid, { credentials: 'include' });
                         if (!wres.ok) return;
                         const wj = await wres.json();
                         if (wj?.success && wj.data) localWarehouseCache[wid] = wj.data;
-                    } catch(e) { /* ignore per-item errors */ }
+                    } catch(e) {  }
                 }));
             } catch(e) {
                 console.error('warehouse prefetch failed', e);
-                /* keep localWarehouseCache empty */
-                // no-op
+                
+              
             }
 
-            // Group transfers by description and creation time to support multiple bins frontend-only
-            const groups = [];
-            detailedTransfers.forEach(t => {
+            
+           
+            const groups = detailedTransfers.map(t => {
                 const desc = (t.description ?? '').toString();
-                const createdTs = Date.parse(t.creation_date ?? t.creationDate ?? t.creationTime ?? '');
+                const createdTs = Date.parse(t.creation_date ?? t.creationDate ?? t.creationTime ?? '') || 0;
                 const creator = (t.creator_id ?? t.CreatorId ?? t.creator ?? t.Creator ?? '').toString();
-                
-                let foundGroup = groups.find(g => 
-                    g.desc === desc && 
-                    g.creator === creator && 
-                    (!isNaN(createdTs) && !isNaN(g.ts) ? Math.abs(g.ts - createdTs) <= 60000 : true)
-                );
-                
-                if (foundGroup) {
-                    foundGroup.items.push(t);
-                } else {
-                    groups.push({ desc, creator, ts: createdTs, items: [t] });
-                }
+                return { desc, creator, ts: createdTs, items: [t] };
             });
 
-            // expose fetched warehouse cache to search/render
             globalWarehouseCache = localWarehouseCache;
             globalGroups = groups;
             searchFilter();
@@ -334,7 +321,7 @@ let globalWarehouseCache = {};
                 filteredGroups = globalGroups.filter(g => {
                 const group = g.items;
                 const warehouses = new Set();
-                // normalize bins using a map to dedupe robustly (strip HTML tags, trim, lowercase)
+                
                 const binMap = new Map();
                 function normalizeLabel(x){ if (x === null || x === undefined) return ''; try { return String(x).replace(/<[^>]+>/g, '').trim().toLowerCase(); } catch(e){ return String(x); } }
                 group.forEach(o => {
@@ -343,11 +330,11 @@ let globalWarehouseCache = {};
                     const binFrom = o.bin_from ?? o.binFrom ?? null;
                     const warehouseName = o._finishFromWarehouseName ?? o._fromWarehouseName ?? (o.warehouse_from?.name ?? o.warehouse_from?.warehouseName) ?? (binFinishFrom?.warehouse?.name ?? binFinishFrom?.warehouse?.warehouseName ?? binFinishFrom?.warehouse) ?? (binFrom?.warehouse?.name ?? binFrom?.warehouse?.warehouseName ?? binFrom?.warehouse) ?? (o.warehouse?.name ?? o.warehouse?.warehouseName ?? o.warehouse) ?? '-';
                     warehouses.add(warehouseName);
-                    // Prefer bins referenced by finished_components (type=1 = From). Fallback to bin_finish_from / bin_from / transfer fields.
+                   
                     const finishedArr = o.finished_components ?? o.finishedComponents ?? o.finished_components_list ?? o.finishedComponentsList ?? o.FinishedTransferRequestComponents;
                     let chosenBinLabels = [];
                     if (Array.isArray(finishedArr) && finishedArr.length > 0) {
-                        // prefer from-type bins
+                        
                         const fromBins = finishedArr.filter(f => f.type === 1).map(f => f.bin ?? f.Bin ?? null).filter(Boolean);
                         const baseBins = (fromBins.length > 0 ? fromBins : finishedArr.map(f => f.bin ?? f.Bin ?? null).filter(Boolean));
                         chosenBinLabels = baseBins.map(b => (b.location_in_warehouse ?? b.locationInWarehouse ?? b.binCode ?? (b.id ?? b.ID ?? b.binId) ?? '').toString());
@@ -356,13 +343,11 @@ let globalWarehouseCache = {};
                         const rawBinName = binFinishFrom?.location_in_warehouse ?? binFinishFrom?.locationInWarehouse ?? binFinishFrom?.binCode ?? binFrom?.location_in_warehouse ?? binFrom?.locationInWarehouse ?? binFrom?.binCode ?? o.location_in_warehouse ?? o.locationInWarehouse ?? '-';
                         chosenBinLabels = [(typeof rawBinName === 'string') ? rawBinName.trim() : rawBinName];
                     }
-                    // add chosen bins into normalized binMap to be used for search text
                     chosenBinLabels.forEach(lbl => {
                         const n = normalizeLabel(lbl);
                         if (!binMap.has(n)) binMap.set(n, (typeof lbl === 'string') ? lbl.trim() : lbl);
                     });
 
-                    // do NOT add all warehouse bins here — only include bins actually referenced by transfers
                 });
                 const rowText = ((group[0].description ?? '') + ' ' + Array.from(warehouses).join(' ') + ' ' + Array.from(binMap.values()).join(' ')).toLowerCase();
                 return rowText.includes(q);
@@ -382,30 +367,30 @@ let globalWarehouseCache = {};
             } else {
                 paginated.forEach(groupObj => {
                     const group = groupObj.items;
-                    // aggregate bins and warehouses
+               
                     const warehouses = new Set();
-                    // use map to dedupe bins robustly while preserving first-seen label
+                
                     const binMap = new Map();
                     function normalizeLabel(x){ if (x === null || x === undefined) return ''; try { return String(x).replace(/<[^>]+>/g, '').trim().toLowerCase(); } catch(e){ return String(x); } }
-                    // compute total items by aggregating quantities per component id across the group
+                   
                     let totalItems = 0;
-                    const compTotals = {}; // compId -> total qty requested
-                    const compFinishedTotals = {}; // compId -> total qty already finished/taken from bins
+                    const compTotals = {}; 
+                    const compFinishedTotals = {}; 
                     const statuses = new Set();
                     const ids = [];
                     group.forEach(o => {
                         ids.push(getId(o));
-                        // prefer finished-from bin for outbound display
+                        
                         const binFinishFrom = o.bin_finish_from ?? o.binFinishFrom ?? null;
                         const binFrom = o.bin_from ?? o.binFrom ?? null;
                         const isPendingOrApproved = (o.status === 1 || o.Status === 1 || o.status === 2 || o.Status === 2);
                         const warehouseName = o._finishFromWarehouseName ?? o._fromWarehouseName ?? (o.warehouse_from?.name ?? o.warehouse_from?.warehouseName) ?? (binFinishFrom?.warehouse?.name ?? binFinishFrom?.warehouse?.warehouseName ?? binFinishFrom?.warehouse) ?? (binFrom?.warehouse?.name ?? binFrom?.warehouse?.warehouseName ?? binFrom?.warehouse) ?? (o.warehouse?.name ?? o.warehouse?.warehouseName ?? o.warehouse) ?? '-';
                         warehouses.add(warehouseName);
-                        // Prefer bins referenced by finished_components (type=1 = From) for display. Collect all distinct bins used by movements.
+                        
                         const finishedArr = o.finished_components ?? o.finishedComponents ?? o.finished_components_list ?? o.finishedComponentsList ?? o.FinishedTransferRequestComponents;
                         const chosenLabels = [];
                         if (Array.isArray(finishedArr) && finishedArr.length > 0) {
-                            // collect all 'From' bins first; if none, collect any bins in finishedArr
+                            
                             const fromBins = finishedArr.filter(f => f.type === 1).map(f => f.bin ?? f.Bin ?? null).filter(Boolean);
                             const baseBins = (fromBins.length > 0 ? fromBins : finishedArr.map(f => f.bin ?? f.Bin ?? null).filter(Boolean));
                             baseBins.forEach(b => chosenLabels.push((b.location_in_warehouse ?? b.locationInWarehouse ?? b.binCode ?? (b.id ?? b.ID ?? b.binId) ?? '').toString()));
@@ -414,21 +399,21 @@ let globalWarehouseCache = {};
                             const rawBin = binFinishFrom?.location_in_warehouse ?? binFinishFrom?.locationInWarehouse ?? binFinishFrom?.binCode ?? binFrom?.location_in_warehouse ?? binFrom?.locationInWarehouse ?? binFrom?.binCode ?? o.location_in_warehouse ?? o.locationInWarehouse ?? '-';
                             chosenLabels.push((typeof rawBin === 'string') ? rawBin.trim() : rawBin);
                         }
-                        // add all chosen labels into binMap (deduped by normalizeLabel)
+
                         chosenLabels.forEach(lbl => { const n = normalizeLabel(lbl); if (!binMap.has(n)) binMap.set(n, lbl); });
-                        // do NOT add all warehouse bins here — only include bins actually referenced by transfers
+                       
                         const comps = getComponents(o);
                         comps.forEach(c => {
                             const cid = String(c.component_id ?? c.componentId ?? c.component?.id ?? c.component?.componentId ?? 'unknown');
                             const qty = Number(c.quantity ?? c.Quantity ?? c.qty ?? c.component?.quantity ?? 0) || 0;
                             compTotals[cid] = (compTotals[cid] || 0) + qty;
                         });
-                        // account for finished components (deduct 'From' movements)
+                       
                         try {
                             const finishedArr = o.finished_components ?? o.finishedComponents ?? o.finished_components_list ?? o.finishedComponentsList ?? o.FinishedTransferRequestComponents;
                             if (Array.isArray(finishedArr) && finishedArr.length > 0) {
                                 finishedArr.forEach(fc => {
-                                    // only 'From' type (type===1) reduce available quantity
+                                    
                                     const type = fc.type ?? fc.Type ?? null;
                                     if (type !== undefined && type !== null && Number(type) !== 1) return;
                                     const fcid = String(fc.component_id ?? fc.componentId ?? fc.component?.id ?? fc.component?.componentId ?? 'unknown');
@@ -436,27 +421,27 @@ let globalWarehouseCache = {};
                                     compFinishedTotals[fcid] = (compFinishedTotals[fcid] || 0) + fq;
                                 });
                             }
-                        } catch(e) { /* ignore */ }
+                        } catch(e) {  }
                         statuses.add(o.status ?? o.Status ?? 0);
                     });
 
-                    // status
+                 
                     let statusText = 'Multiple';
                     if (statuses.size === 1) statusText = getStatusText(Array.from(statuses)[0]);
                     let statusClass = 'status-pending';
                     const st = statusText.toLowerCase();
                     if (st.includes('complete') || st.includes('confirmed') || st.includes('finished') || st.includes('finish')) statusClass = 'status-complete';
 
-                    // prefer opening detail by shared request_id when available (list groups by request_id)
+                   
                     let groupRequestId = null;
                     try {
                         const candidate = group.find(x => x.request_id ?? x.RequestId ?? x.requestId ?? null);
                         if (candidate) groupRequestId = candidate.request_id ?? candidate.RequestId ?? candidate.requestId ?? null;
                     } catch (e) { }
                     const openId = groupRequestId || ids[0];
-                    // action: open detail for group (prefer request_id)
+                  
                     let action = `<button class="action-btn" onclick="goDetail('${openId}')">Detail</button>`;
-                    // allow cancel when any related item is pending
+                  
                     if (Array.from(statuses).includes(1)) {
                         action += ` <button class="btn ghost" onclick="cancelOutbound('${openId}')" style="background:#fff1f0;border:1px solid #fdecec;color:#9f1239;padding:6px 10px;border-radius:8px;margin-left:6px">Cancel</button>`;
                     }
@@ -475,20 +460,18 @@ let globalWarehouseCache = {};
 
             document.getElementById("orderTable").innerHTML = html;
 
-            // Update stats
+
             const totalItems = filteredGroups.length;
             const s = totalItems === 0 ? 0 : start + 1;
             const e = Math.min(start + pageSize, totalItems);
             document.getElementById('pageInfo').innerText = `Hiển thị ${s}-${e} trong số ${totalItems}`;
 
-            // Render buttons
+   
             const totalPages = Math.ceil(totalItems / pageSize) || 1;
             let btnHtml = "";
-            
-            // Prev button
+        
             btnHtml += `<button class="btn ghost" onclick="renderPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled style="opacity:0.5"' : ''}>&laquo; Trước</button>`;
-            
-            // Page numbers
+          
             for (let i = 1; i <= totalPages; i++) {
                 if (totalPages > 7) {
                     if (i !== 1 && i !== totalPages && Math.abs(i - currentPage) > 1) {
@@ -500,7 +483,7 @@ let globalWarehouseCache = {};
                 btnHtml += `<button class="btn ghost" style="${activeStyle}" onclick="renderPage(${i})">${i}</button>`;
             }
 
-            // Next button
+  
             btnHtml += `<button class="btn ghost" onclick="renderPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled style="opacity:0.5"' : ''}>Sau &raquo;</button>`;
             
             document.getElementById('pageButtons').innerHTML = btnHtml;

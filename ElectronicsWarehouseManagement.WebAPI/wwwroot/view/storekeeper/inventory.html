@@ -99,7 +99,7 @@
             return await res.json();
         }
 
-        // load components and warehouses list on page load
+
         async function loadInventory() {
             try {
                 const compRes = await api("/storekeeper/components");
@@ -111,7 +111,7 @@
                     return Object.assign({}, c, { _stock: qty });
                 });
 
-                // Fetch component-bin entries and aggregate stock per component client-side so frontend shows stock
+              
                 try {
                     const binsRes = await api('/storekeeper/bins/components');
                     if (binsRes && binsRes.success && Array.isArray(binsRes.data)) {
@@ -124,7 +124,7 @@
                                 agg[key] = (agg[key] || 0) + qty;
                             }
                         }
-                        // apply aggregated stock to fullData
+                     
                         fullData.forEach(c => {
                             const cid = String(c.id ?? c.ID ?? c.componentId ?? c.ComponentId ?? '');
                             if (cid && agg[cid] !== undefined) c._stock = agg[cid];
@@ -132,7 +132,7 @@
                     }
                 } catch (e) { console.warn('failed to load component bins for stock aggregation', e); }
 
-                // warehouses for selection
+              
                 const wRes = await api('/storekeeper/warehouses');
                 warehouses = (wRes && wRes.success) ? (wRes.data || []) : [];
                 populateWarehouseSelect();
@@ -152,7 +152,7 @@
                 sel.appendChild(opt);
             });
             const binSel = document.getElementById('binSelect');
-            // when warehouse changes populate bin select
+           
             sel.addEventListener('change', async () => {
                 const wid = sel.value;
                 binSel.innerHTML = '<option value="">-- All bins --</option>';
@@ -179,14 +179,13 @@
             });
         }
 
-        // load inventory for selected warehouse and display 3 columns: id, name, quantity
-        // optional binId: when provided, show inventory only for that bin
+      
         async function loadSelectedWarehouseInventory(warehouseId, binId = null) {
             const area = document.getElementById('warehouseInventoryArea');
             area.innerHTML = '<div style="padding:18px;text-align:center"><div class="spinner-border text-primary"></div></div>';
 
             try {
-                // fetch transfers once to compute finished 'From' movements per bin
+               
                 let finishedByBin = {};
                 try {
                     const transfersRes = await api('/storekeeper/transfers');
@@ -197,7 +196,7 @@
                             for (const fc of fins) {
                                 const type = fc.type ?? fc.Type ?? null;
                                 if (type === undefined || type === null) continue;
-                                if (Number(type) !== 1) continue; // only "From" movements
+                                if (Number(type) !== 1) continue; 
                                 const binIdKey = String(fc.bin_id ?? fc.binId ?? fc.bin?.id ?? '');
                                 const compIdKey = String(fc.component_id ?? fc.componentId ?? fc.component?.id ?? '');
                                 const fq = Number(fc.quantity ?? fc.Quantity ?? 0) || 0;
@@ -209,22 +208,22 @@
                     }
                 } catch (e) { console.warn('failed to load transfers', e); }
 
-                // fetch warehouse detail to get bins
+             
                 const whRes = await api('/storekeeper/warehouses/' + warehouseId);
                 if (!whRes.success || !whRes.data) { area.innerHTML = '<div class="text-danger p-3">Cannot load warehouse bins</div>'; return; }
                 const bins = whRes.data.bins ?? whRes.data ?? [];
-                // if a specific bin is requested, restrict to that bin
+          
                 let binsToProcess = bins;
                 if (binId) {
                     const found = bins.find(bb => String(bb.id ?? bb.ID ?? bb.binId) === String(binId));
                     if (found) binsToProcess = [found];
-                    else binsToProcess = [{ id: binId }]; // fallback: still try to query bin endpoint by id
+                    else binsToProcess = [{ id: binId }]; 
                 }
 
-                // aggregated qty per component id
+               
                 const aggregated = {};
 
-                // prepare a lookup map for names from previously loaded components
+              
                 const fullMap = {};
                 fullData.forEach(c => { const cid = c.id ?? c.ID ?? c.componentId ?? c.ComponentId; if (cid !== undefined && cid !== null) fullMap[String(cid)] = c; });
 
@@ -261,7 +260,6 @@
                     } catch (e) { console.warn('failed to load bin', bid, e); }
                 }
 
-                // build table HTML with 3 columns: id, name, quantity
                 let rows = '';
                 for (const [compId, qty] of Object.entries(aggregated)) {
                     const meta = fullMap[compId];
@@ -277,7 +275,7 @@
 
         function escapeHtml(s) { if (!s) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 
-        function renderTable() { /* keep existing main table logic for overall components */
+        function renderTable() { 
             const tbody = document.getElementById("inventoryBody");
             const search = document.getElementById("searchInput").value.toLowerCase();
             let filtered = fullData.filter(c => (c.metadata?.name ?? "").toLowerCase().includes(search));
