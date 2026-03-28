@@ -173,10 +173,6 @@
                     <option value="">-- Not selected --</option>
                 </select>
             </div>
-            <div style="width:320px">
-                <label>Recipient</label>
-                <input id="recipientInput" placeholder="Enter recipient name (optional)" />
-            </div>
         </div>
 
         <button class="add" onclick="openModal()">+ Add product</button>
@@ -449,8 +445,7 @@ Unit: ${unit} · Available: ${aggAvail}
             if (rows.length === 0) return alert("No products added");
 
             const sel = document.getElementById('customerSelect');
-            const recip = document.getElementById('recipientInput');
-            if (!sel || !sel.value || !recip || !recip.value || !recip.value.trim()) return alert('Please select a customer and enter recipient before saving.');
+            if (!sel || !sel.value) return alert('Please select a customer before saving.');
 
             const payloadBody = {
                 desc: document.getElementById("desc").value,
@@ -479,7 +474,6 @@ Unit: ${unit} · Available: ${aggAvail}
                     const id = parseInt(sel.value);
                     if (!isNaN(id)) payloadBody.customer_id = id;
                 }
-                if (recip && recip.value) payloadBody.recipient = recip.value;
                 try {
                     const opt = sel.options[sel.selectedIndex];
                     if (opt && opt.dataset && opt.dataset.raw) payloadBody.customer_info_json = JSON.parse(opt.dataset.raw);
