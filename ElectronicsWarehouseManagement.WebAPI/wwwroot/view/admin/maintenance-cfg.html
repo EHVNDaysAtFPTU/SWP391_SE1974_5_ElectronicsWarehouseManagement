@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Maintenance Configuration</title>
+    <link rel="stylesheet" href="maintenance-cfg.css">
+</head>
+
+<body>
+    <div class="layout">
+        <aside class="sidebar">
+            <div class="brand">ECWMS</div>
+            <nav>
+                <a class="active">Maintenance Configuration</a>
+            </nav>
+            <div class="menu">
+                <p onclick="goBack()">← Back</p>
+            </div>
+        </aside>
+        <main class="main">
+            <section class="content">
+                <div class="box">
+                    <div class="box-header">
+                        <h2>Maintenance Configuration</h2>
+                    </div>
+                    <div class="form">
+                        <label>Maintenance Message</label>
+                        <input type="text" id="maintenanceMessage">
+                        <label>Minutes Before Shutdown</label>
+                        <input type="number" id="minutesBeforeShutdown" min="1" step="1" placeholder="10">
+                        <button id="scheduleBtn" class="btn-primary">Schedule maintenance</button>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        const messageInput = document.getElementById("maintenanceMessage");
+        const minutesInput = document.getElementById("minutesBeforeShutdown");
+        const scheduleBtn = document.getElementById("scheduleBtn");
+
+        async function scheduleMaintenance() {
+            const message = messageInput.value.trim();
+            const minutesRaw = minutesInput.value.trim();
+            let minutes = null;
+            if (minutesRaw !== "") {
+                const parsedMinutes = Number(minutesRaw);
+                if (!Number.isInteger(parsedMinutes) || parsedMinutes <= 0) {
+                    alert("Minutes before shutdown must be an integer > 0.");
+                    minutesInput.focus();
+                    return;
+                }
+                minutes = parsedMinutes;
+            }
+            const originalText = scheduleBtn.innerText;
+            scheduleBtn.disabled = true;
+            scheduleBtn.innerText = "Scheduling...";
+            try {
+                const res = await fetch("/api/admin/maintenance", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        message: message || null,
+                        minutes_before_shutdown: minutes
+                    })
+                });
+                let responseData = null;
+                const contentType = res.headers.get("content-type") || "";
+                if (contentType.includes("application/json")) {
+                    responseData = await res.json();
+                }
+                if (!res.ok) {
+                    const errMsg = responseData?.msg || "Failed to schedule maintenance.";
+                    alert(errMsg);
+                    return;
+                }
+                alert("Maintenance scheduled successfully.");
+                window.location.reload();
+            } catch (error) {
+                console.error(error);
+                alert("Could not connect to maintenance API.");
+            } finally {
+                scheduleBtn.disabled = false;
+                scheduleBtn.innerText = originalText;
+            }
+        }
+        
+        function goBack() {
+            window.history.back();
+        }
+
+        scheduleBtn.addEventListener("click", scheduleMaintenance);
+    </script>
+
+</body>
+
+</html>

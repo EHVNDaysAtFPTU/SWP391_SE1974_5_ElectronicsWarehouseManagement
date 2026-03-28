@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Admin | System Info</title>
+	<link rel="stylesheet" href="systeminfo.css">
+</head>
+
+<body>
+	<div class="layout">
+		<aside class="sidebar">
+			<div>
+				<h2 class="brand">ECWMS</h2>
+				<div class="menu">
+					<p onclick="goUser()">User Management</p>
+					<p onclick="goMaintenance()">Maintenance Config</p>
+					<p class="active" onclick="goSystemInfo()">System Info</p>
+				</div>
+			</div>
+			<div class="menu">
+				<p onclick="logout()">Logout</p>
+			</div>
+		</aside>
+
+		<main class="content">
+			<div class="header">
+				<h2>System Information</h2>
+				<div class="actions">
+					<span id="statusBadge" class="status-badge">Waiting data...</span>
+					<button id="refreshBtn" class="btn-primary" type="button">Refresh</button>
+				</div>
+			</div>
+
+			<p class="refresh-hint">Auto refresh every 15 seconds. Last update: <span id="lastUpdated">-</span></p>
+
+			<div id="errorBox" class="error-box hidden"></div>
+
+			<section class="grid">
+				<article class="card">
+					<p class="label">CPU Usage</p>
+					<p id="cpuUsage" class="value">-</p>
+				</article>
+				<article class="card">
+					<p class="label">Machine CPU Usage</p>
+					<p id="machineCpuUsage" class="value">-</p>
+				</article>
+				<article class="card">
+					<p class="label">Process Memory</p>
+					<p id="processMemory" class="value">-</p>
+				</article>
+				<article class="card">
+					<p class="label">Process Paged Memory</p>
+					<p id="processPagedMemory" class="value">-</p>
+				</article>
+				<article class="card">
+					<p class="label">Machine Memory</p>
+					<p id="machineMemory" class="value">-</p>
+				</article>
+				<article class="card">
+					<p class="label">Machine Paged Memory</p>
+					<p id="machinePagedMemory" class="value">-</p>
+				</article>
+				<article class="card">
+					<p class="label">Uptime</p>
+					<p id="systemUptime" class="value">-</p>
+				</article>
+			</section>
+
+			<section class="table-card">
+				<h3>System Details</h3>
+				<table class="details-table">
+					<tbody>
+						<tr>
+							<th>Operating System</th>
+							<td id="osName">-</td>
+						</tr>
+						<tr>
+							<th>OS Version</th>
+							<td id="osVersion">-</td>
+						</tr>
+						<tr>
+							<th>Vendor</th>
+							<td id="vendor">-</td>
+						</tr>
+						<tr>
+							<th>CPU Model</th>
+							<td id="cpuModel">-</td>
+						</tr>
+						<tr>
+							<th>Physical Cores</th>
+							<td id="physicalCores">-</td>
+						</tr>
+						<tr>
+							<th>Logical Cores</th>
+							<td id="logicalCores">-</td>
+						</tr>
+						<tr>
+							<th>Total Machine Memory</th>
+							<td id="machineTotalMemory">-</td>
+						</tr>
+						<tr>
+							<th>Total Machine Paged Memory</th>
+							<td id="machineTotalMemoryPaged">-</td>
+						</tr>
+					</tbody>
+				</table>
+
+				<div class="memory-usage-wrap">
+					<div class="memory-usage-head">
+						<span>Machine Memory Ratio</span>
+						<span id="machineMemoryPercent">-</span>
+					</div>
+					<div class="memory-usage-track">
+						<div id="machineMemoryBar" class="memory-usage-bar"></div>
+					</div>
+				</div>
+			</section>
+		</main>
+	</div>
+
+	<script>
+		const REFRESH_INTERVAL_MS = 15000;
+		const refreshBtn = document.getElementById("refreshBtn");
+		const statusBadge = document.getElementById("statusBadge");
+		const errorBox = document.getElementById("errorBox");
+
+		let pollTimer = null;
+		let requestInFlight = false;
+
+		function setText(id, value) {
+			const element = document.getElementById(id);
+			element.textContent = value;
+		}
+
+		function setStatus(text, isError = false) {
+			statusBadge.textContent = text;
+			statusBadge.classList.toggle("error", isError);
+		}
+
+		function showError(message) {
+			errorBox.textContent = message;
+			errorBox.classList.remove("hidden");
+		}
+
+		function hideError() {
+			errorBox.textContent = "";
+			errorBox.classList.add("hidden");
+		}
+
+		function toNumber(value) {
+			const parsed = Number(value);
+			if (!Number.isFinite(parsed)) return null;
+			return parsed;
+		}
+
+		function formatDecimal(value, digits = 2) {
+			const parsed = toNumber(value);
+			if (parsed === null) return "-";
+			return parsed.toLocaleString("en-US", {
+				minimumFractionDigits: 0,
+				maximumFractionDigits: digits
+			});
+		}
+
+		function formatInteger(value) {
+			const parsed = toNumber(value);
+			if (parsed === null) return "-";
+			return parsed.toLocaleString("en-US", {
+				minimumFractionDigits: 0,
+				maximumFractionDigits: 0
+			});
+		}
+
+		function formatMb(value) {
+			const formatted = formatDecimal(value, 2);
+			return formatted === "-" ? "-" : `${formatted} MB`;
+		}
+
+		function formatMbInteger(value) {
+			const formatted = formatInteger(value);
+			return formatted === "-" ? "-" : `${formatted} MB`;
+		}
+
+		function formatPercent(value) {
+			const formatted = formatDecimal(value, 2);
+			return formatted === "-" ? "-" : `${formatted}%`;
+		}
+
+		function formatPercentInteger(value) {
+			const formatted = formatInteger(value);
+			return formatted === "-" ? "-" : `${formatted}%`;
+		}
+
+		function formatUptime(value) {
+			if (typeof value !== "string" || value.length === 0) return "-";
+			const match = /^(?:(\d+)\.)?(\d{1,2}):(\d{2}):(\d{2})(?:\.\d+)?$/.exec(value);
+			if (!match) return value;
+
+			const days = Number(match[1] || 0);
+			const hours = Number(match[2]);
+			const minutes = Number(match[3]);
+			const seconds = Number(match[4]);
+
+			const parts = [];
+			if (days > 0) parts.push(`${days}d`);
+			if (hours > 0 || days > 0) parts.push(`${hours}h`);
+			parts.push(`${minutes}m`);
+			parts.push(`${seconds}s`);
+			return parts.join(" ");
+		}
+
+		function updateMemoryBar(usedMemory, totalMemory) {
+			const used = toNumber(usedMemory);
+			const total = toNumber(totalMemory);
+			const percent = used !== null && total !== null && total > 0
+				? Math.max(0, Math.min(100, (used / total) * 100))
+				: null;
+
+			const bar = document.getElementById("machineMemoryBar");
+			if (percent === null) {
+				bar.style.width = "0%";
+				setText("machineMemoryPercent", "-");
+				return;
+			}
+
+			bar.style.width = `${percent.toFixed(2)}%`;
+			setText("machineMemoryPercent", `${percent.toFixed(2)}%`);
+		}
+
+		async function fetchSystemInfo() {
+			const response = await fetch("/api/admin/systeminfo", {
+				method: "GET",
+				headers: { "Content-Type": "application/json" },
+				credentials: "include"
+			});
+
+			const contentType = response.headers.get("content-type") || "";
+			const payload = contentType.includes("application/json")
+				? await response.json()
+				: null;
+
+			if (response.status === 401 || response.status === 403) {
+				window.location.href = "/login";
+				throw new Error("Unauthorized");
+			}
+
+			if (!response.ok || payload?.success !== true) {
+				throw new Error(payload?.msg || `Cannot load system info (${response.status}).`);
+			}
+
+			return payload.data;
+		}
+
+		function render(data) {
+			setText("cpuUsage", formatPercent(data?.cpu_usage));
+			setText("machineCpuUsage", formatPercentInteger(data?.machine_cpu_usage));
+			setText("processMemory", formatMb(data?.memory_usage));
+			setText("processPagedMemory", formatMb(data?.memory_usage_paged));
+			setText("machineMemory", formatMb(data?.machine_memory_usage));
+			setText("machinePagedMemory", formatMb(data?.machine_memory_usage_paged));
+			setText("systemUptime", formatUptime(data?.uptime));
+
+			setText("osName", data?.os || "-");
+			setText("osVersion", data?.os_ver || "-");
+			setText("vendor", data?.vendor || "-");
+			setText("cpuModel", data?.cpu_model || "-");
+			setText("physicalCores", formatInteger(data?.p_cores));
+			setText("logicalCores", formatInteger(data?.l_cores));
+			setText("machineTotalMemory", formatMbInteger(data?.machine_total_memory));
+			setText("machineTotalMemoryPaged", formatMbInteger(data?.machine_total_memory_paged));
+
+			updateMemoryBar(data?.machine_memory_usage, data?.machine_total_memory);
+			setText("lastUpdated", new Date().toLocaleString("vi-VN"));
+		}
+
+		async function loadSystemInfo() {
+			if (requestInFlight) return;
+
+			requestInFlight = true;
+			refreshBtn.disabled = true;
+			setStatus("Updating...");
+
+			try {
+				const data = await fetchSystemInfo();
+				render(data);
+				hideError();
+				setStatus("Online");
+			} catch (error) {
+				const msg = error instanceof Error ? error.message : "Unexpected error.";
+				showError(msg);
+				setStatus("Update failed", true);
+			} finally {
+				requestInFlight = false;
+				refreshBtn.disabled = false;
+			}
+		}
+
+		function startPolling() {
+			if (pollTimer !== null) return;
+			loadSystemInfo();
+			pollTimer = setInterval(loadSystemInfo, REFRESH_INTERVAL_MS);
+		}
+
+		function stopPolling() {
+			if (pollTimer === null) return;
+			clearInterval(pollTimer);
+			pollTimer = null;
+		}
+
+		function goUser() {
+			window.location.href = "/home.html";
+		}
+
+		function goMaintenance() {
+			window.location.href = "/maintenance-cfg.html";
+		}
+
+		function goSystemInfo() {
+			window.location.href = "/systeminfo.html";
+		}
+
+		async function logout() {
+			try {
+				await fetch("/api/auth/logout", {
+					method: "POST",
+					credentials: "include"
+				});
+			} finally {
+				window.location.href = "/login";
+			}
+		}
+
+		refreshBtn.addEventListener("click", loadSystemInfo);
+
+		document.addEventListener("visibilitychange", () => {
+			if (document.hidden)
+				stopPolling();
+			else
+				startPolling();
+		});
+
+		window.addEventListener("beforeunload", stopPolling);
+		document.addEventListener("DOMContentLoaded", startPolling);
+	</script>
+</body>
+
+</html>

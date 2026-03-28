@@ -16,33 +16,33 @@
     color: white;
     height: 100vh;
     padding: 20px;
-    box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
 }
 
-    .sidebar .brand {
-        font-size: 22px;
-        font-weight: bold;
-        margin-bottom: 30px;
-    }
+.sidebar .brand {
+    font-size: 22px;
+    font-weight: bold;
+    margin-bottom: 30px;
+}
 
-    .sidebar nav a {
-        display: block;
-        padding: 12px 14px;
-        border-radius: 8px;
-        margin-bottom: 6px;
-        cursor: pointer;
-        text-decoration: none;
-        color: white;
-        transition: 0.2s;
-    }
+.sidebar nav a {
+    display: block;
+    padding: 12px 14px;
+    border-radius: 8px;
+    margin-bottom: 6px;
+    cursor: pointer;
+    text-decoration: none;
+    color: white;
+    transition: 0.2s;
+}
 
-        .sidebar nav a:hover {
-            background: #374151;
-        }
+.sidebar nav a:hover {
+    background: #374151;
+}
 
-        .sidebar nav a.active {
-            background: #374151;
-        }
+.sidebar nav a.active {
+    background: #374151;
+}
 
 .menu {
     margin-top: 20px;
@@ -66,9 +66,9 @@
     margin-bottom: 20px;
 }
 
-    .topbar h1 {
-        margin: 0;
-    }
+.topbar h1 {
+    margin: 0;
+}
 
 /* ================= STATUS ================= */
 .status {
@@ -78,15 +78,15 @@
     font-weight: bold;
 }
 
-    .status.live {
-        background: #dcfce7;
-        color: #16a34a;
-    }
+.status.live {
+    background: #dcfce7;
+    color: #16a34a;
+}
 
-    .status.maintenance {
-        background: #fee2e2;
-        color: #dc2626;
-    }
+.status.maintenance {
+    background: #fee2e2;
+    color: #dc2626;
+}
 
 /* ================= CONTENT ================= */
 .content {
@@ -101,7 +101,7 @@
     border-radius: 16px;
     width: 100%;
     max-width: 900px;
-    box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
 }
 
 /* HEADER */
@@ -112,20 +112,20 @@
     margin-bottom: 20px;
 }
 
-    .box-header h2 {
-        margin: 0;
-    }
+.box-header h2 {
+    margin: 0;
+}
 
 /* ================= FORM ================= */
-.form label {
-    display: block;
-    margin-top: 15px;
-    margin-bottom: 5px;
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
     font-weight: 500;
 }
 
 input {
-    width: 100%;
+    width: -webkit-fill-available;
     padding: 10px;
     border-radius: 8px;
     border: 1px solid #ccc;
@@ -133,9 +133,9 @@ input {
     transition: 0.2s;
 }
 
-    input:focus {
-        border-color: #2563eb;
-    }
+input:focus {
+    border-color: #2563eb;
+}
 
 /* ================= ROW ================= */
 .row {
@@ -154,8 +154,10 @@ input {
     border-radius: 10px;
     cursor: pointer;
     font-weight: 500;
+    font-size: 1.1rem;
     transition: 0.2s;
     box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+    height: 3rem;
 }
 
 .btn-danger {
@@ -184,9 +186,9 @@ button:active {
     height: 28px;
 }
 
-    .switch input {
-        display: none;
-    }
+.switch input {
+    display: none;
+}
 
 .slider {
     background: #ccc;
@@ -197,25 +199,25 @@ button:active {
     transition: 0.3s;
 }
 
-    .slider:before {
-        content: "";
-        position: absolute;
-        width: 22px;
-        height: 22px;
-        left: 3px;
-        top: 3px;
-        background: white;
-        border-radius: 50%;
-        transition: 0.3s;
-    }
+.slider:before {
+    content: "";
+    position: absolute;
+    width: 22px;
+    height: 22px;
+    left: 3px;
+    top: 3px;
+    background: white;
+    border-radius: 50%;
+    transition: 0.3s;
+}
 
-input:checked + .slider {
+input:checked+.slider {
     background: #22c55e;
 }
 
-    input:checked + .slider:before {
-        transform: translateX(26px);
-    }
+input:checked+.slider:before {
+    transform: translateX(26px);
+}
 
 /* ================= COUNTDOWN ================= */
 #countdown {
@@ -230,20 +232,20 @@ input:checked + .slider {
     margin-top: 15px;
 }
 
-    .countdown-box div {
-        flex: 1;
-        background: linear-gradient(135deg, #eef2ff, #e0f2fe);
-        padding: 20px;
-        border-radius: 14px;
-        text-align: center;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-    }
+.countdown-box div {
+    flex: 1;
+    background: linear-gradient(135deg, #eef2ff, #e0f2fe);
+    padding: 20px;
+    border-radius: 14px;
+    text-align: center;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+}
 
-    .countdown-box span {
-        font-size: 26px;
-        font-weight: bold;
-        display: block;
-    }
+.countdown-box span {
+    font-size: 26px;
+    font-weight: bold;
+    display: block;
+}
 
 /* ================= RESPONSIVE ================= */
 @media (max-width: 768px) {

@@ -37,7 +37,7 @@
         "ASPNETCORE_ENVIRONMENT": "Development"
       }
     },
-    "Deploy": {
+    "Lên thớt": {
       "commandName": "Project",
       "dotnetRunMessages": true,
       "launchBrowser": true,

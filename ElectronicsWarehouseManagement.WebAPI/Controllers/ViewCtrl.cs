@@ -46,10 +46,17 @@ public sealed class ViewCtrl : ControllerBase
     [HttpGet("/{**path}")]
     public async Task<IActionResult> GetView([FromRoute] string path, [FromServices] IWebHostEnvironment env)
     {
-        // Allow serving public/shared pages (login, maintenance) without authentication
-        if (path.StartsWith("view/shared/", StringComparison.InvariantCultureIgnoreCase) ||
-            path.StartsWith("view/login", StringComparison.InvariantCultureIgnoreCase) ||
-            string.Equals(path, "login", StringComparison.InvariantCultureIgnoreCase))
+        if (path.EndsWith("maintenance.html", StringComparison.InvariantCultureIgnoreCase))
+        {
+            string filePath = Path.Combine(env.WebRootPath, "maintenance.html");
+            if (!System.IO.File.Exists(filePath))
+                return NotFound();
+            var provider = new FileExtensionContentTypeProvider();
+            if (!provider.TryGetContentType(filePath, out var contentType))
+                contentType = "text/html; charset=utf-8";
+            return PhysicalFile(filePath, contentType);
+        }
+        if (string.Equals(path, "login", StringComparison.InvariantCultureIgnoreCase))
         {
             string filePath;
             if (string.Equals(path, "login", StringComparison.InvariantCultureIgnoreCase))
