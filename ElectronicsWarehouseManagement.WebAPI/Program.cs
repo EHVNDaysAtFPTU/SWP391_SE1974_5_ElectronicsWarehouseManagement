@@ -28,8 +28,8 @@ namespace ElectronicsWarehouseManagement.WebAPI
             })
                 .AddJsonOptions(options =>
                  {
-         options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
-                  });
+                     options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+                 });
 
             builder.Services.AddDistributedMemoryCache();
             builder.Services.AddSession(options =>
@@ -86,7 +86,6 @@ namespace ElectronicsWarehouseManagement.WebAPI
                 {
                     var identity = httpContext.User?.Identity?.Name;
                     var key = identity ?? httpContext.Connection.RemoteIpAddress?.ToString() ?? "anonymous";
-
                     if (httpContext.Request.HasFormContentType)
                     {
                         return RateLimitPartition.GetTokenBucketLimiter(
@@ -113,6 +112,12 @@ namespace ElectronicsWarehouseManagement.WebAPI
                                 QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
                                 QueueLimit = 0
                             });
+                    }
+
+                    if (httpContext.Request.Path.StartsWithSegments("/api/admin/systeminfo", StringComparison.OrdinalIgnoreCase)
+                        || httpContext.Request.Path.StartsWithSegments("/uploads", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return RateLimitPartition.GetNoLimiter(key);
                     }
 
                     return RateLimitPartition.GetFixedWindowLimiter(

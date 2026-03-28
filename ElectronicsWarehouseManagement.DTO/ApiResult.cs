@@ -101,6 +101,8 @@ public enum ApiResultCode
     RateLimited,
     [Description("Internal server error")]
     InternalError,
+    [Description("Scheduled maintenance")]
+    Maintenance,
     [Description("Unknown error")]
     UnknownError = -1,
 }

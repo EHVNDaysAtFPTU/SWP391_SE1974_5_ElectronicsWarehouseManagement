@@ -1,6 +1,7 @@
-﻿using ElectronicsWarehouseManagement.Repositories.DBContext;
+﻿using ElectronicsWarehouseManagement.DTO;
+using ElectronicsWarehouseManagement.Repositories.DBContext;
 using ElectronicsWarehouseManagement.Repositories.Entities;
-using ElectronicsWarehouseManagement.DTO;
+using ElectronicsWarehouseManagement.WebAPI.Helpers;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -17,6 +18,8 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
         Task<ApiResult<List<UserResp>>> SearchUsersAsync(string query);
         Task<ApiResult> SetStatusAsync(int userId, SetStatusReq setStatusReq);
         Task<ApiResult<int>> GetUserCountAsync();
+        Task<ApiResult<SystemInfoResp>> GetSystemInfoAsync();
+        Task<ApiResult> ScheduleMaintenanceAsync(ScheduleMaintenanceReq scheduleMaintenanceReq);
     }
 
     public class AdminService : IAdminService
@@ -150,6 +153,19 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
             int count = await _dbCtx.Users.CountAsync(u => u.StatusInt != (int)UserStatus.Deleted);
 #pragma warning restore CS0618 // Type or member is obsolete
             return new ApiResult<int>(count);
+        }
+
+        public async Task<ApiResult<SystemInfoResp>> GetSystemInfoAsync() => new ApiResult<SystemInfoResp>(SystemInfo.Get());
+
+        public async Task<ApiResult> ScheduleMaintenanceAsync(ScheduleMaintenanceReq scheduleMaintenanceReq)
+        {
+            if (!scheduleMaintenanceReq.Verify(out string failedReason))
+                return new ApiResult(ApiResultCode.InvalidRequest, failedReason);
+            TimeSpan? durationBeforeShutdown = null;
+            if (scheduleMaintenanceReq.MinutesBeforeShutdown is not null)
+                durationBeforeShutdown = TimeSpan.FromMinutes((long)scheduleMaintenanceReq.MinutesBeforeShutdown);
+            MaintenanceSchedule.ScheduleMaintenance(scheduleMaintenanceReq.Message, durationBeforeShutdown);
+            return new ApiResult();
         }
     }
 }

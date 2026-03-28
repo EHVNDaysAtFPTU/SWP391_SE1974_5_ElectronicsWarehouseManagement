@@ -1,5 +1,4 @@
 ﻿using ElectronicsWarehouseManagement.DTO;
-using ElectronicsWarehouseManagement.WebAPI.Helpers;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 
@@ -9,52 +8,32 @@ namespace ElectronicsWarehouseManagement.WebAPI.Filters
     {
         public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
         {
-            SystemConfigHelper.CheckAndDisableMaintenance();
-
-            if (!SystemRuntimeConfig.MaintenanceMode)
+            if (!MaintenanceSchedule.IsMaintenance)
             {
                 await next();
                 return;
             }
-
-            var httpContext = context.HttpContext;
-            var path = httpContext.Request.Path.Value?.ToLower();
-
-            bool isAdmin = httpContext.User?.IsInRole("1") ?? false;
-
-            bool isAllowedPath =
-                path != null &&
-                (
-                    path.StartsWith("/api/auth/logout") ||
-                    path.StartsWith("/view/shared") ||
-                    path.StartsWith("/login")
-#if DEBUG
-                    || path.Contains("swagger")
-#endif
-                );
-
-            if (!isAdmin && !isAllowedPath)
+            string path = context.HttpContext.Request.Path.Value?.ToLower() ?? "";
+            bool isAllowedPath = false;
+            if (!string.IsNullOrWhiteSpace(path))
             {
-                if (path != null && path.StartsWith("/api"))
-                {
-                    context.Result = new ObjectResult(new
-                    {
-                        message = SystemRuntimeConfig.MaintenanceMessage ?? "System is under maintenance",
-                        scheduledEnd = SystemRuntimeConfig.ScheduledEnd?.ToLocalTime().ToString("yyyy-MM-ddTHH:mm")
-                    })
-                    {
-                        StatusCode = 503
-                    };
-                    return;
-                }
-                var scheduledLocal = SystemRuntimeConfig.ScheduledEnd?.ToLocalTime().ToString("yyyy-MM-ddTHH:mm");
-                var msg = SystemRuntimeConfig.MaintenanceMessage ?? "System is under maintenance";
-                var url = "/view/shared/maintenance.html";
-                context.Result = new RedirectResult(url);
+                isAllowedPath = path.StartsWith("/api/auth/logout") || path.EndsWith("maintenance.html");
+#if DEBUG
+                isAllowedPath |= path.Contains("swagger");
+#endif
+            }
+            if (isAllowedPath)
+            {
+                await next();
                 return;
             }
-
-            await next();
+            if (!path.StartsWith("/api"))
+            {
+                context.Result = new RedirectResult("/maintenance.html");
+                return;
+            }
+            TimeSpan timeBeforeShutdown = MaintenanceSchedule.DurationBeforeShutdown - (DateTime.UtcNow - MaintenanceSchedule.StartTime);
+            context.Result = new ObjectResult(new ApiResult(ApiResultCode.Maintenance, string.Format(MaintenanceSchedule.MaintenanceMessage, timeBeforeShutdown.ToString(@"hh\:mm\:ss")))) { StatusCode = StatusCodes.Status503ServiceUnavailable };
         }
     }
 }

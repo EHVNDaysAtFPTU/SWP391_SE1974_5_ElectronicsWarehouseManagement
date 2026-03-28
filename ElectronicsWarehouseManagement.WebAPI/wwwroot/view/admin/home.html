@@ -28,7 +28,8 @@
                 <!-- Menu -->
                 <div class="menu">
                     <p onclick="goUser()">User Management</p>
-                    <p onclick="goConfig()">System Config</p>
+                    <p onclick="goMaintenance()">Maintenance Config</p>
+                    <p onclick="goSystemInfo()">System Info</p>
                 </div>
             </div>
         </div>
@@ -332,8 +333,12 @@
             window.location.href = "/home.html";
         }
 
-        function goConfig() {
-            window.location.href = "/system.html";
+        function goMaintenance() {
+            window.location.href = "/maintenance-cfg.html";
+        }
+
+        function goSystemInfo() {
+            window.location.href = "/systeminfo.html";
         }
 
         document.addEventListener("DOMContentLoaded", loadUsers);

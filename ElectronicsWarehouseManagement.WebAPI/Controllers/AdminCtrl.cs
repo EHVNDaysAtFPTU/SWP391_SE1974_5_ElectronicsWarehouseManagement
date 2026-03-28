@@ -108,56 +108,22 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
             return BadRequest(result);
         }
 
-        [HttpGet("config")]
-        public IActionResult GetConfig()
+        [HttpPost("maintenance")]
+        public async Task<IActionResult> ScheduleMaintenance([FromBody] ScheduleMaintenanceReq scheduleMaintenanceReq)
         {
-            SystemConfigHelper.CheckAndDisableMaintenance();
-            return Ok(new ApiResult<object>(new
-            {
-                maintenanceMode = SystemRuntimeConfig.MaintenanceMode,
-                maintenanceMessage = SystemRuntimeConfig.MaintenanceMessage,
-                scheduledEnd = SystemRuntimeConfig.ScheduledEnd?.ToLocalTime().ToString("yyyy-MM-ddTHH:mm")
-            }));
+            var result = await _adminService.ScheduleMaintenanceAsync(scheduleMaintenanceReq);
+            if (result.Success)
+                return Ok(result);
+            return BadRequest(result);
         }
 
-        [HttpPost("config/save")]
-        public IActionResult SaveConfig([FromBody] SystemConfigReq req)
+        [HttpGet("systeminfo")]
+        public async Task<IActionResult> GetSystemInfo()
         {
-            // Validation: when enabling maintenance, scheduled end must be provided and in the future.
-            if (req.MaintenanceMode)
-            {
-                if (!req.ScheduledEnd.HasValue)
-                    return BadRequest(new ApiResult(ApiResultCode.InvalidRequest, "Scheduled end must be provided when enabling maintenance mode."));
-
-                var scheduledLocal = DateTime.SpecifyKind(req.ScheduledEnd.Value, DateTimeKind.Local);
-                var scheduledUtc = scheduledLocal.ToUniversalTime();
-
-                if (scheduledUtc <= DateTime.UtcNow)
-                    return BadRequest(new ApiResult(ApiResultCode.InvalidRequest, "Scheduled end must be in the future."));
-
-                SystemRuntimeConfig.MaintenanceMode = true;
-                SystemRuntimeConfig.ScheduledEnd = scheduledUtc;
-            }
-            else
-            {
-                SystemRuntimeConfig.MaintenanceMode = false;
-                SystemRuntimeConfig.ScheduledEnd = null;
-            }
-
-            SystemRuntimeConfig.MaintenanceMessage = req.MaintenanceMessage;
-
-            return Ok(new ApiResult());
+            var result = await _adminService.GetSystemInfoAsync();
+            if (result.Success)
+                return Ok(result);
+            return BadRequest(result);
         }
-
-        [HttpPost("config/reset")]
-        public IActionResult ResetConfig()
-        {
-            SystemRuntimeConfig.MaintenanceMode = false;
-            SystemRuntimeConfig.MaintenanceMessage = "System is under maintenance";
-            SystemRuntimeConfig.ScheduledEnd = null;
-
-            return Ok(new ApiResult());
-        }
-
     }
 }
