@@ -498,14 +498,18 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
                 return new ApiResult(ApiResultCode.InvalidRequest, "Phone already exists!");
             }
 
+            var timeZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
+            var vnTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, timeZone);
+
             var customer = new Customer
             {
                 CustomerName = customerReq.CustomerName,
                 Phone = customerReq.Phone,
                 Email = customerReq.Email,
                 Address = customerReq.Address,
-                CreatedAt = DateTime.UtcNow,
+                CreatedAt = vnTime,
             };
+
 
             _dbCtx.Customers.Add(customer);
             await _dbCtx.SaveChangesAsync();

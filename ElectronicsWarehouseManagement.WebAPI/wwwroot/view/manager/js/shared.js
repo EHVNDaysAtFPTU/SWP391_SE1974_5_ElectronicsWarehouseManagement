@@ -14,11 +14,10 @@ function formatDate(dateString) {
     return date.toLocaleDateString("vi-VN", {
         year: 'numeric',
         month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit'
+        day: '2-digit'
     });
 }
+
 
 function toggleProfileMenu() {
     const dropdown = document.getElementById("profileDropdown");
