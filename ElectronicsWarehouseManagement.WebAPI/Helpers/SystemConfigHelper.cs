@@ -1,4 +1,4 @@
-﻿using ElectronicsWarehouseManagement.WebAPI.DTO;
+﻿using ElectronicsWarehouseManagement.DTO;
 
 namespace ElectronicsWarehouseManagement.WebAPI.Helpers
 {

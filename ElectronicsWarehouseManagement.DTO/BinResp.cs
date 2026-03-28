@@ -1,0 +1,41 @@
+﻿using ElectronicsWarehouseManagement.Repositories.Entities;
+using System.Text.Json.Serialization;
+
+namespace ElectronicsWarehouseManagement.DTO
+{
+    public class BinResp
+    {
+        [JsonPropertyName("id")]
+        public int ID { get; set; }
+
+        [JsonPropertyName("location_in_warehouse")]
+        public string LocationInWarehouse { get; set; }
+
+        [JsonPropertyName("status")]
+        public BinStatus Status { get; set; }
+
+        [JsonPropertyName("warehouse_id")]
+        public int WarehouseId { get; set; }
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        [JsonPropertyName("warehouse")]
+        public WarehouseResp? Warehouse { get; set; }
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        [JsonPropertyName("components")]
+        public List<ComponentBinResp>? Components { get; set; }
+
+        public BinResp(Bin bin, bool fullInfo) 
+        {
+            ID = bin.BinId;
+            LocationInWarehouse = bin.LocationInWarehouse;
+            Status = bin.Status;
+            WarehouseId = bin.WarehouseId;
+            if (fullInfo)
+            {
+                Warehouse = new WarehouseResp(bin.Warehouse, false);
+                Components = bin.ComponentBins.Select(i => new ComponentBinResp(i, false)).ToList();
+            }
+        }
+    }
+}

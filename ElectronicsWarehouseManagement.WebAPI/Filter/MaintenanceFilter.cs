@@ -1,4 +1,4 @@
-﻿using ElectronicsWarehouseManagement.WebAPI.DTO;
+﻿using ElectronicsWarehouseManagement.DTO;
 using ElectronicsWarehouseManagement.WebAPI.Helpers;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;

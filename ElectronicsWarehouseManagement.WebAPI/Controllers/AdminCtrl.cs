@@ -1,4 +1,4 @@
-﻿using ElectronicsWarehouseManagement.WebAPI.DTO;
+﻿using ElectronicsWarehouseManagement.DTO;
 using ElectronicsWarehouseManagement.WebAPI.Helpers;
 using ElectronicsWarehouseManagement.WebAPI.Services;
 using Microsoft.AspNetCore.Authorization;

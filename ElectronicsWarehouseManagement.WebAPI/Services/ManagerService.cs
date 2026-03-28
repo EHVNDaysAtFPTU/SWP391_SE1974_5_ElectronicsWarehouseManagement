@@ -1,6 +1,6 @@
 using ElectronicsWarehouseManagement.Repositories.DBContext;
 using ElectronicsWarehouseManagement.Repositories.Entities;
-using ElectronicsWarehouseManagement.WebAPI.DTO;
+using ElectronicsWarehouseManagement.DTO;
 using ElectronicsWarehouseManagement.WebAPI.Helpers;
 using Microsoft.EntityFrameworkCore;
 
