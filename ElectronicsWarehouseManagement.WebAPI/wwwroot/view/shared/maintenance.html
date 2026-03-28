@@ -105,23 +105,85 @@
         <p>The system is currently in maintenance mode. Do you want to log out?</p>
         <div class="actions">
             <button class="btn btn-primary" onclick="doLogout()">Log Out</button>
-            <button class="btn btn-ghost" onclick="stayOnPage()">Stay</button>
         </div>
     </div>
 
     <script>
-        async function doLogout() {
+        const POLL_ENDPOINT = '/api/system/maintenance';
+        const POLL_INTERVAL_MS = 30000; 
+
+        const messageEl = document.querySelector('.card p');
+        const actionsEl = document.querySelector('.actions');
+
+        async function fetchMaintenanceInfo() {
             try {
-                await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+                const res = await fetch(POLL_ENDPOINT, { credentials: 'include' });
+                if (res.status === 503) {
+                    const j = await res.json();
+                    const msg = j.message ?? j.msg ?? 'System is under maintenance';
+                    const scheduled = j.scheduledEnd ?? j.scheduled_end ?? null;
+                    updateMessage(msg, scheduled);
+                    return true; 
+                }
+                window.location.href = '/';
+                return false;
             } catch (e) {
-                // ignore errors
+                console.warn('maintenance poll failed', e);
+                return true;
             }
+        }
+
+        function updateMessage(msg, scheduled) {
+            let html = `<div>${escapeHtml(msg)}</div>`;
+            if (scheduled) {
+                let dt = null;
+                try {
+                    dt = new Date(scheduled);
+                    if (isNaN(dt.getTime())) dt = null;
+                } catch (e) { dt = null; }
+                if (!dt && /T/.test(scheduled)) {
+                    dt = new Date(scheduled);
+                }
+                if (dt) {
+                    html += `<div style="margin-top:8px;font-size:13px;color:#374151">Scheduled end: ${dt.toLocaleString()}</div>`;
+                    html += `<div id="countdown" style="margin-top:6px;font-weight:600;color:#111827"></div>`;
+                    startCountdown(dt);
+                }
+            }
+            messageEl.innerHTML = html;
+        }
+
+        function startCountdown(target) {
+            const cd = document.getElementById('countdown');
+            if (!cd) return;
+            clearInterval(window._maintenanceCountdown);
+            function tick() {
+                const diff = target.getTime() - Date.now();
+                if (diff <= 0) {
+                    cd.innerText = 'Maintenance window ended — reloading...';
+                    clearInterval(window._maintenanceCountdown);
+                    setTimeout(() => window.location.reload(), 1500);
+                    return;
+                }
+                const mins = Math.floor(diff / 60000);
+                const secs = Math.floor((diff % 60000) / 1000);
+                cd.innerText = `Time remaining: ${mins}m ${secs}s`;
+            }
+            tick();
+            window._maintenanceCountdown = setInterval(tick, 1000);
+        }
+
+        async function doLogout() {
+            try { await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }); } catch (e) { }
             window.location.href = '/login';
         }
 
-        function stayOnPage() {
-            // do nothing — user remains on maintenance page
-        }
+        function escapeHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+
+        (async function initMaintenance() {
+            await fetchMaintenanceInfo();
+            window._maintenancePoll = setInterval(fetchMaintenanceInfo, POLL_INTERVAL_MS);
+        })();
     </script>
 </body>
 </html>
