@@ -268,7 +268,7 @@
                 let warehouse = '-';
                 let bin = '-';
                 if (Array.isArray(binFinishList) && binFinishList.length>0) {
-                    // show all finished bin locations and warehouses
+                  
                     const names = binFinishList.map(b => b?.warehouse?.name ?? b?.warehouse?.warehouseName ?? '').filter(x=>x);
                     warehouse = names.length ? Array.from(new Set(names)).join(', ') : (o._finishWarehouseName ?? (binTo?.warehouse?.name ?? binTo?.warehouse?.warehouseName) ?? '-');
                     bin = binFinishList.map(b => b?.location_in_warehouse ?? b?.locationInWarehouse ?? b?.binCode ?? '-').join(', ');
@@ -280,7 +280,7 @@
                     bin = binTo?.location_in_warehouse ?? binTo?.locationInWarehouse ?? binTo?.binCode ?? o.location_in_warehouse ?? o.locationInWarehouse ?? '-';
                 }
 
-                // treat only status 1 as pending (not allocated). Some backends use 2 for canceled/other meanings.
+                
                 const isPendingOrApproved = (o.status === 1 || o.Status === 1 || o.status === 2 || o.Status === 2);
                 if (isPendingOrApproved) bin = '<i>Not allocated</i>';
 
@@ -288,7 +288,7 @@
                 const totalItems = comps.reduce((s, c) => s + (c.quantity ?? c.Quantity ?? c.qty ?? 0), 0);
 
                 let action = `<button class="action-btn" onclick="goDetail('${getId(o)}')">Detail</button>`;
-                // show cancel when Pending (1)
+          
                 if ((o.status ?? o.Status) === 1) {
                     action += ` <button class="btn ghost" onclick="cancelInbound('${getId(o)}')" style="background:#fff1f0;border:1px solid #fdecec;color:#9f1239;padding:6px 10px;border-radius:8px;margin-left:6px">Cancel</button>`;
                 }
@@ -338,7 +338,7 @@
             } catch (e) { alert('Network error: ' + e.message); }
         }
 
-        // apply filter from search box and re-render
+  
         function applyFilter(){
             const q = document.getElementById('q')?.value?.trim().toLowerCase() || '';
             const all = window._inboundListData || [];
