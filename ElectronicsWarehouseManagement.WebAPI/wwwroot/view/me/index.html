@@ -10,12 +10,9 @@
 
     <div class="layout">
 
-        <!-- SIDEBAR -->
         <div class="sidebar">
             <div class="sidebar-top">
                 <h2 class="brand">ECWMS</h2>
-
-                <!-- Avatar -->
                 <div class="sidebar-user">
                     <div class="avatar-wrapper" onclick="toggleUserMenu(event)">
                         <img id="sidebarAvatar"
@@ -29,13 +26,11 @@
                     </div>
                 </div>
 
-                <!-- Menu -->
                 <div class="menu">
                     <p onclick="goBack()">← Back</p>
                 </div>
             </div>
         </div>
-        <!-- MAIN -->
         <div class="main">
             <div class="profile-container">
                 <h2>My Profile</h2>
@@ -78,7 +73,6 @@
 
     </div>
 
-    <!-- ===== CHANGE PASSWORD MODAL ===== -->
     <div id="changePwdModal" class="modal hidden" onclick="outsideClick(event)">
         <div class="modal-box">
             <h3>Change Password</h3>
@@ -202,7 +196,6 @@
 
             alert("Password changed successfully. Please login again.");
 
-            // clear input
             document.getElementById("oldPwd").value = "";
             document.getElementById("newPwd").value = "";
             document.getElementById("confirmPwd").value = "";

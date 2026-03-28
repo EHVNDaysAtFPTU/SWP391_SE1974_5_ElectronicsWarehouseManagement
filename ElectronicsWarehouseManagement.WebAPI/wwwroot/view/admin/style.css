@@ -1,4 +1,3 @@
-/* ===== RESET ===== */
 * {
     margin: 0;
     padding: 0;
@@ -10,13 +9,11 @@ body {
     background: #f4f6f9;
 }
 
-/* ===== LAYOUT ===== */
 .layout {
     display: flex;
     min-height: 100vh;
 }
 
-/* ===== SIDEBAR ===== */
 .sidebar {
     width: 230px;
     background: #1f2937;
@@ -55,7 +52,6 @@ body {
         background: #374151;
     }
 
-/* ===== MAIN CONTENT ===== */
 .main,
 .content {
     flex: 1;
@@ -66,7 +62,6 @@ body {
     overflow-y: auto;
 }
 
-/* ===== HEADER ===== */
 .header,
 .topbar,
 .box-header {
@@ -80,7 +75,6 @@ body {
         font-size: 26px;
     }
 
-/* ===== BUTTON SYSTEM ===== */
 button,
 .btn-primary,
 .btn-secondary,
@@ -106,13 +100,11 @@ button,
         padding: 4px 8px;
     }
 
-/* ===== ACTION BUTTON (ĐỒNG MÀU) ===== */
 .action-btn {
     min-width: 70px;
     margin-right: 6px;
 }
 
-/* ===== FILTER ===== */
 .filter-bar {
     display: flex;
     gap: 12px;
@@ -127,7 +119,6 @@ select {
     min-width: 180px;
 }
 
-/* ===== TABLE ===== */
 table {
     width: 100%;
     background: #fff;
@@ -160,7 +151,6 @@ tbody tr {
         background: #f9fafb;
     }
 
-/* ===== STATUS ===== */
 .status {
     padding: 5px 12px;
     border-radius: 20px;
@@ -183,7 +173,6 @@ tbody tr {
         color: #92400e;
     }
 
-/* ===== LINK BUTTON (Nếu còn dùng) ===== */
 .btn-link {
     background: none;
     border: none;
@@ -197,7 +186,6 @@ tbody tr {
         text-decoration: underline;
     }
 
-/* ===== BOX / CARD ===== */
 .box,
 .card {
     background: #fff;
@@ -213,7 +201,6 @@ tbody tr {
     gap: 20px;
 }
 
-/* ===== PAGINATION ===== */
 .pagination {
     margin-top: 20px;
     display: flex;
@@ -231,7 +218,7 @@ tbody tr {
             color: #fff;
             border-color: #4f46e5;
         }
-/* HEADER */
+
 .header {
     display: flex;
     justify-content: space-between;
@@ -243,7 +230,6 @@ tbody tr {
     margin-bottom: 20px;
 }
 
-/* TABLE */
 table {
     width: 100%;
     background: white;
@@ -269,7 +255,6 @@ tbody tr {
         background: #f9fafb;
     }
 
-/* STATUS BADGE */
 .status {
     padding: 5px 12px;
     border-radius: 20px;
@@ -292,7 +277,6 @@ tbody tr {
         color: #92400e;
     }
 
-/* MODAL */
 .modal {
     position: fixed;
     inset: 0;
@@ -322,7 +306,6 @@ tbody tr {
     display: none;
 }
 
-/* SIDEBAR LAYOUT FIX */
 .sidebar {
     width: 220px;
     background-color: #1f2937;
@@ -330,10 +313,9 @@ tbody tr {
     padding: 20px;
     display: flex;
     flex-direction: column;
-    justify-content: space-between; /* Đẩy logout xuống */
+    justify-content: space-between;
 }
 
-/* MENU */
 .menu p {
     padding: 12px;
     border-radius: 8px;
@@ -345,7 +327,6 @@ tbody tr {
         background-color: #374151;
     }
 
-/* LOGOUT */
 .logout-container {
     margin-top: auto;
 }
@@ -363,7 +344,6 @@ tbody tr {
         color: white;
     }
 
-/* ACTION BUTTON */
 td button {
     padding: 6px 14px;
     border-radius: 8px;
@@ -373,19 +353,17 @@ td button {
     font-weight: 500;
 }
 
-    /* View + Edit */
     td button:not(.btn-danger) {
         background: #4f46e5;
         color: white;
     }
 
         td button:not(.btn-danger):hover {
-            background: #2563eb; /* xanh sáng hơn */
+            background: #2563eb; 
             transform: translateY(-2px);
             box-shadow: 0 4px 10px rgba(37,99,235,0.3);
         }
 
-/* Delete */
 .btn-danger {
     background: #dc2626;
     color: white;
@@ -409,10 +387,10 @@ td button {
 }
 
 .avatar-large {
-    width: 40px; /* chỉnh kích thước bạn muốn */
+    width: 40px; 
     height: 40px;
-    border-radius: 50%; /* QUAN TRỌNG */
-    object-fit: cover; /* không méo ảnh */
+    border-radius: 50%; 
+    object-fit: cover; 
     display: block;
 }
 
@@ -424,8 +402,8 @@ td button {
 }
 .user-menu {
     position: absolute;
-    left: 0; /* canh theo avatar */
-    top: 70px; /* ngay dưới avatar */
+    left: 0; 
+    top: 70px; 
     background: #1e2a3a;
     border-radius: 10px;
     box-shadow: 0 8px 20px rgba(0,0,0,0.3);

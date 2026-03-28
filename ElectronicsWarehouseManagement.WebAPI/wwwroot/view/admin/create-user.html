@@ -143,6 +143,9 @@
             const email = newEmail.value;
             const password = newPassword.value;
             const roleId = parseInt(newRole.value);
+            if (!roleId) {
+                return showError("Please select a role");
+            }
 
             const r = await api("/admin/users/create", "POST", {
                 username, email, password, role_id: roleId
