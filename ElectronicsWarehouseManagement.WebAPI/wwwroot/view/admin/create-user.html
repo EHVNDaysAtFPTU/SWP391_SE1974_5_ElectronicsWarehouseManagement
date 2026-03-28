@@ -1,0 +1,164 @@
+﻿<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Create User | Admin</title>
+    <style>
+        body {
+            font-family: Inter, Arial, sans-serif;
+            background: #f6fbf7;
+            color: #0f172a;
+            padding: 24px;
+        }
+
+        .card {
+            max-width: 720px;
+            margin: 24px auto;
+            background: #fff;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 8px 30px rgba(2,6,23,0.06);
+        }
+
+        h3 {
+            margin: 0 0 8px 0
+        }
+
+        .form-row {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 12px
+        }
+
+        .col {
+            flex: 1
+        }
+
+        label {
+            display: block;
+            font-size: 12px;
+            color: #6b7280;
+            margin-bottom: 6px
+        }
+
+        input, select {
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: 8px;
+            border: 1px solid #e6f6ee
+        }
+
+        .actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            margin-top: 10px
+        }
+
+        .btn {
+            padding: 10px 14px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer
+        }
+
+            .btn.primary {
+                background: #10b981;
+                color: #fff
+            }
+
+            .btn.ghost {
+                background: transparent;
+                border: 1px solid #e6f6ee
+            }
+
+        .msg {
+            margin-top: 12px;
+            font-size: 13px
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+            <div>
+                <h3>Create a new account</h3>
+                <p class="text-muted">Fill in your account information and choose a role.</p>
+            </div>
+        </div>
+
+        <div id="form">
+            <div class="form-row">
+                <div class="col">
+                    <label>Username</label>
+                    <input id="newUsername" type="text" placeholder="username" />
+                </div>
+                <div class="col">
+                    <label>Display name</label>
+                    <input id="displayName" type="text" placeholder="Display name" />
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="col">
+                    <label>Email</label>
+                    <input id="newEmail" type="email" placeholder="email@example.com" />
+                </div>
+                <div class="col">
+                    <label>Role</label>
+                    <select id="newRole">
+                        <option value="">-- Select role --</option>
+                        <option value="2">Manager</option>
+                        <option value="3">Storekeeper</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="col">
+                    <label>Password</label>
+                    <input id="newPassword" type="password" placeholder="Password" />
+                </div>
+            </div>
+            <div class="actions">
+                <button class="btn ghost" onclick="history.back()">Cancel</button>
+                <button class="btn primary" onclick="createUser()">Create</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+
+        async function api(endpoint, method = "GET", body = null) {
+            const opt = {
+                method,
+                headers: { "Content-Type": "application/json" },
+                credentials: "include"
+            };
+            if (body) opt.body = JSON.stringify(body);
+            const res = await fetch(`/api${endpoint}`, opt);
+            return await res.json();
+        }
+        async function createUser() {
+            const username = newUsername.value;
+            const email = newEmail.value;
+            const password = newPassword.value;
+            const roleId = parseInt(newRole.value);
+            if (!roleId) {
+                return showError("Please select a role");
+            }
+
+            const r = await api("/admin/users/create", "POST", {
+                username, email, password, role_id: roleId
+            });
+            if (!r.success) return showError(r.msg);
+
+            alert("Create success");
+            window.location.href = "/home.html";
+        }
+        function showError(msg) {
+            alert(msg || "Something went wrong!");
+        }
+
+    </script>
+</body>
+</html>
