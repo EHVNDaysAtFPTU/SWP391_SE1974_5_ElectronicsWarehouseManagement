@@ -38,7 +38,7 @@
         <div class="top-bar">
             <div class="title">
                 <h2>📦 Inventory</h2>
-                <p>Danh sách tồn kho — cảnh báo tồn thấp</p>
+               
             </div>
             <div style="display:flex;gap:8px;align-items:center">
                 <button class="btn ghost" onclick="goHome()">⬅ Back</button>
@@ -68,234 +68,242 @@
         </div>
 
         <div style="height:18px"></div>
-        <h3 style="margin:12px 0 6px 0">Inventory by Warehouse / Bin</h3>
-        <div id="warehousesContainer"></div>
+        <h3 style="margin:12px 0 6px 0">Inventory by Warehouse</h3>
+        <div class="table-card" style="padding:12px" id="warehousesContainer">
+            <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px">
+                <label class="small" style="margin:0">Select warehouse:</label>
+                <select id="warehouseSelect" style="padding:8px;border-radius:8px;border:1px solid #eef6f0;min-width:220px"></select>
+                <label class="small" style="margin:0">Select bin:</label>
+                <select id="binSelect" style="padding:8px;border-radius:8px;border:1px solid #eef6f0;min-width:220px">
+                    <option value="">-- All bins --</option>
+                </select>
+                <button class="btn primary" id="loadWarehouseBtn" style="padding:8px 12px">Show</button>
+            </div>
+            <div id="warehouseInventoryArea">Choose a warehouse to view its inventory (ID, Name, Quantity)</div>
+        </div>
     </div>
 
-    <script>
+        <script>
 
         const BASE = "https://localhost:7297/api";
 
         let fullData = [];
+        let warehouses = [];
         let currentPage = 1;
         const rowsPerPage = 5;
 
-        /* ================= BACK ================= */
-        function goHome() {
-            window.location.href = "home.html";
-        }
+        function goHome() { window.location.href = "home.html"; }
 
-        /* ================= API ================= */
         async function api(endpoint) {
             const res = await fetch(BASE + endpoint, { credentials: "include" });
             return await res.json();
         }
 
-        /* ================= LOAD ================= */
+
         async function loadInventory() {
             try {
-                // fetch components (components response includes aggregated quantity when available)
                 const compRes = await api("/storekeeper/components");
-                if (!compRes.success) {
-                    alert(compRes.msg || compRes.message || 'Failed to load components');
-                    return;
-                }
+                if (!compRes.success) { alert(compRes.msg || 'Failed to load components'); return; }
                 const components = compRes.data || [];
-
-                // attach normalized stock using quantity field returned by components API
                 fullData = components.map(c => {
                     const id = c.id ?? c.ID ?? c.componentId ?? c.ComponentId;
                     const qty = Number(c.quantity ?? c.Quantity ?? c.TotalQuantity ?? 0) || 0;
                     return Object.assign({}, c, { _stock: qty });
                 });
 
-                // build quick lookup map for components by id to resolve names in bin breakdown
-                const fullMap = {};
-                fullData.forEach(c => {
-                    const cid = (c.id ?? c.ID ?? c.componentId ?? c.ComponentId);
-                    if (cid !== undefined && cid !== null) fullMap[String(cid)] = c;
-                });
+              
+                try {
+                    const binsRes = await api('/storekeeper/bins/components');
+                    if (binsRes && binsRes.success && Array.isArray(binsRes.data)) {
+                        const agg = {};
+                        for (const cb of binsRes.data) {
+                            const compId = cb.component_id ?? cb.ComponentId ?? cb.componentId ?? cb.component?.id ?? cb.component?.ComponentId ?? cb.component?.ComponentId ?? cb.component?.ID ?? null;
+                            const qty = Number(cb.quantity ?? cb.Quantity ?? 0) || 0;
+                            if (compId !== null && compId !== undefined) {
+                                const key = String(compId);
+                                agg[key] = (agg[key] || 0) + qty;
+                            }
+                        }
+                     
+                        fullData.forEach(c => {
+                            const cid = String(c.id ?? c.ID ?? c.componentId ?? c.ComponentId ?? '');
+                            if (cid && agg[cid] !== undefined) c._stock = agg[cid];
+                        });
+                    }
+                } catch (e) { console.warn('failed to load component bins for stock aggregation', e); }
 
-                currentPage = 1;
-                // load per-warehouse/bin breakdown (we will update aggregated stock from bins)
-                await loadWarehousesBreakdown();
-                // render after breakdown so aggregated stock is reflected
-                renderTable();
-            } catch (e) {
-                console.error('loadInventory failed', e);
-                alert('Lỗi khi load inventory');
-            }
+              
+                const wRes = await api('/storekeeper/warehouses');
+                warehouses = (wRes && wRes.success) ? (wRes.data || []) : [];
+                populateWarehouseSelect();
+
+            } catch (e) { console.error('loadInventory failed', e); alert('Lỗi khi load inventory'); }
         }
 
-        async function loadWarehousesBreakdown() {
-            try {
-                // aggregated stock across all warehouses/bins (componentId -> qty)
-                const aggregatedStock = {};
-                // build lookup map from fullData (components list) so we can resolve names
-                const fullMap = {};
-                (fullData || []).forEach(c => {
-                    const cid = (c.id ?? c.ID ?? c.componentId ?? c.ComponentId);
-                    if (cid !== undefined && cid !== null) fullMap[String(cid)] = c;
-                });
-                const wRes = await api('/storekeeper/warehouses');
-                if (!wRes.success) return;
-                const warehouses = wRes.data || [];
-                const container = document.getElementById('warehousesContainer');
-                container.innerHTML = '';
-
-                for (const w of warehouses) {
-                    const wid = w.id ?? w.ID ?? w.warehouseId;
-                    const wname = w.name ?? w.WarehouseName ?? w.warehouseName ?? ('Warehouse ' + wid);
-                    const wbox = document.createElement('div');
-                    wbox.className = 'table-card';
-                    wbox.style.marginTop = '12px';
-                    wbox.innerHTML = `<h4 style="margin:6px 0">${wname}</h4><div id="wh-${wid}">Loading bins...</div>`;
-                    container.appendChild(wbox);
-
-                    // fetch warehouse full detail to get bins
+        function populateWarehouseSelect() {
+            const sel = document.getElementById('warehouseSelect');
+            sel.innerHTML = '<option value="">-- Select warehouse --</option>';
+            warehouses.forEach(w => {
+                const id = w.id ?? w.ID ?? w.warehouseId;
+                const name = w.name ?? w.WarehouseName ?? ('Warehouse ' + id);
+                const opt = document.createElement('option');
+                opt.value = id;
+                opt.text = `${id} - ${name}`;
+                sel.appendChild(opt);
+            });
+            const binSel = document.getElementById('binSelect');
+           
+            sel.addEventListener('change', async () => {
+                const wid = sel.value;
+                binSel.innerHTML = '<option value="">-- All bins --</option>';
+                if (!wid) return;
+                try {
                     const whRes = await api('/storekeeper/warehouses/' + wid);
-                    if (!whRes.success || !whRes.data) { document.getElementById('wh-' + wid).innerText = 'Cannot load bins'; continue; }
-                    const bins = whRes.data.bins ?? whRes.data;
-                    // build HTML table per warehouse
-                    let html = '<table style="width:100%;border-collapse:collapse"><thead><tr><th style="width:90px">Bin</th><th style="width:90px">ID</th><th>Name</th><th style="width:120px">Stock</th></tr></thead><tbody>';
+                    const bins = (whRes && whRes.success && whRes.data) ? (whRes.data.bins ?? whRes.data ?? []) : [];
                     for (const b of bins) {
                         const bid = b.id ?? b.ID ?? b.binId;
-                        const bname = b.location_in_warehouse ?? b.locationInWarehouse ?? b.binCode ?? ('Bin ' + bid);
-                        // get components in that bin using the public bins endpoint (debug endpoint may not exist)
-                        let rowsForBin = '';
-                        try {
-                            const cbRes = await api('/storekeeper/bins/' + bid);
-                            // cbRes.data may be an array or an object containing arrays under various keys
-                            let dataArr = null;
-                            if (cbRes && cbRes.success && cbRes.data) {
-                                if (Array.isArray(cbRes.data)) dataArr = cbRes.data;
-                                else {
-                                    // common property names
-                                    const props = ['components', 'ComponentBins', 'componentBins', 'items', 'data', 'componentsList'];
-                                    for (const p of props) {
-                                        if (Array.isArray(cbRes.data[p])) { dataArr = cbRes.data[p]; break; }
-                                    }
-                                    // fallback: find first array property that looks like component-bin entries
-                                    if (!dataArr) {
-                                        for (const k of Object.keys(cbRes.data)) {
-                                            const val = cbRes.data[k];
-                                            if (Array.isArray(val) && val.length > 0) {
-                                                const el = val[0];
-                                                if (el && (el.component_id !== undefined || el.quantity !== undefined || el.component !== undefined || el.Component !== undefined)) {
-                                                    dataArr = val; break;
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-
-                            if (Array.isArray(dataArr) && dataArr.length > 0) {
-                                // render one table row per component in the bin
-                                for (let i = 0; i < dataArr.length; i++) {
-                                    const x = dataArr[i];
-                                    // normalize component id from various shapes (many possible API shapes)
-                                    const compIdRaw = x.component_id ?? x.ComponentId ?? x.componentId ?? x.component?.id ?? x.Component?.id ?? x.component?.componentId ?? x.component?.component_id ?? x.component?.component?.id ?? x.Component?.component?.id ?? x.id ?? x.ID ?? x.component?.componentId ?? '';
-                                    const compIdKey = compIdRaw !== undefined && compIdRaw !== null ? String(compIdRaw) : '';
-                                    // lookup metadata from previously loaded components list
-                                    const compMeta = fullMap[compIdKey] || fullData.find(cc => String(cc.id ?? cc.ID ?? cc.componentId ?? cc.ComponentId) === compIdKey);
-                                    const name = compMeta?.metadata?.name ?? compMeta?.metadata?.Name ?? compMeta?.name ?? compMeta?.Name ?? (compIdKey ? ('#' + compIdKey) : 'Unknown');
-                                    const qty = Number(x.quantity ?? x.Quantity ?? x.qty ?? x.component?.quantity ?? x.Component?.quantity ?? x.component?.Quantity ?? 0) || 0;
-                                    // accumulate into aggregatedStock
-                                    if (compIdKey) {
-                                        aggregatedStock[compIdKey] = (aggregatedStock[compIdKey] || 0) + qty;
-                                    }
-                                    if (i === 0) {
-                                        rowsForBin += `<tr><td>${bname}</td><td>${bid}</td><td style="min-width:240px">${name}</td><td>${qty}</td></tr>`;
-                                    } else {
-                                        rowsForBin += `<tr><td></td><td></td><td style="min-width:240px">${name}</td><td>${qty}</td></tr>`;
-                                    }
-                                }
-                            } else {
-                                rowsForBin = `<tr><td>${bname}</td><td>${bid}</td><td style="min-width:240px">${b.description ?? ''}</td><td><i>Empty</i></td></tr>`;
-                            }
-                        } catch (e) {
-                            rowsForBin = `<tr><td>${bname}</td><td>${bid}</td><td style="min-width:240px">${b.description ?? ''}</td><td><i>Empty</i></td></tr>`;
-                        }
-                        html += rowsForBin;
+                        const name = b.location_in_warehouse ?? b.locationInWarehouse ?? b.binCode ?? ('Bin ' + bid);
+                        const opt = document.createElement('option');
+                        opt.value = bid;
+                        opt.text = `${bid} - ${name}`;
+                        binSel.appendChild(opt);
                     }
-                    html += '</tbody></table>';
-                    document.getElementById('wh-' + wid).innerHTML = html;
-                }
-                // update fullData aggregated stock values from aggregatedStock map
-                try {
-                    (fullData || []).forEach(c => {
-                        const key = String(c.id ?? c.ID ?? c.componentId ?? c.ComponentId ?? '');
-                        if (key && aggregatedStock[key] !== undefined) {
-                            c._stock = aggregatedStock[key];
-                        }
-                    });
-                } catch (e) { console.warn('failed to apply aggregated stock', e); }
-
-            } catch (e) { console.warn('loadWarehousesBreakdown error', e); }
-        }
-
-        /* ================= RENDER TABLE ================= */
-        function renderTable() {
-
-            const tbody = document.getElementById("inventoryBody");
-            const search = document.getElementById("searchInput").value.toLowerCase();
-
-            let filtered = fullData.filter(c =>
-                (c.metadata?.name ?? "").toLowerCase().includes(search)
-            );
-
-            const totalPages = Math.ceil(filtered.length / rowsPerPage);
-            if (currentPage > totalPages) currentPage = 1;
-
-            const start = (currentPage - 1) * rowsPerPage;
-            const end = start + rowsPerPage;
-            const pageData = filtered.slice(start, end);
-
-            tbody.innerHTML = "";
-
-            pageData.forEach(c => {
-
-                // prefer aggregated _stock computed from component-bins, fallback to other fields
-                const stock = (c._stock ?? c.quantity ?? c.Quantity ?? c.TotalQuantity ?? c.totalQuantity ?? c.stock_quantity ?? c.stock) ?? 0;
-                const isLow = stock <= 30;
-                const price = c.unit_price ?? c.unitPrice ?? c.UnitPrice ?? 0;
-
-                tbody.innerHTML += `
-            <tr>
-                <td>${c.id}</td>
-                <td>${c.metadata?.name ?? c.metadata?.Name ?? ''}</td>
-                <td>${c.unit ?? ''}</td>
-                <td class="${isLow ? "low-stock" : ""}">${stock}</td>
-                <td>${price}</td>
-            </tr>`;
+                } catch (e) { console.warn('failed to load bins for warehouse', wid, e); }
             });
 
+            document.getElementById('loadWarehouseBtn').addEventListener('click', () => {
+                const val = sel.value;
+                if (!val) { alert('Please select a warehouse'); return; }
+                const binVal = binSel.value;
+                loadSelectedWarehouseInventory(val, binVal || null);
+            });
+        }
+
+      
+        async function loadSelectedWarehouseInventory(warehouseId, binId = null) {
+            const area = document.getElementById('warehouseInventoryArea');
+            area.innerHTML = '<div style="padding:18px;text-align:center"><div class="spinner-border text-primary"></div></div>';
+
+            try {
+               
+                let finishedByBin = {};
+                try {
+                    const transfersRes = await api('/storekeeper/transfers');
+                    if (transfersRes && transfersRes.success && Array.isArray(transfersRes.data)) {
+                        for (const t of transfersRes.data) {
+                            const fins = t.finished_components ?? t.finishedComponents ?? t.FinishedTransferRequestComponents ?? [];
+                            if (!Array.isArray(fins)) continue;
+                            for (const fc of fins) {
+                                const type = fc.type ?? fc.Type ?? null;
+                                if (type === undefined || type === null) continue;
+                                if (Number(type) !== 1) continue; 
+                                const binIdKey = String(fc.bin_id ?? fc.binId ?? fc.bin?.id ?? '');
+                                const compIdKey = String(fc.component_id ?? fc.componentId ?? fc.component?.id ?? '');
+                                const fq = Number(fc.quantity ?? fc.Quantity ?? 0) || 0;
+                                if (!binIdKey) continue;
+                                finishedByBin[binIdKey] = finishedByBin[binIdKey] || {};
+                                finishedByBin[binIdKey][compIdKey] = (finishedByBin[binIdKey][compIdKey] || 0) + fq;
+                            }
+                        }
+                    }
+                } catch (e) { console.warn('failed to load transfers', e); }
+
+             
+                const whRes = await api('/storekeeper/warehouses/' + warehouseId);
+                if (!whRes.success || !whRes.data) { area.innerHTML = '<div class="text-danger p-3">Cannot load warehouse bins</div>'; return; }
+                const bins = whRes.data.bins ?? whRes.data ?? [];
+          
+                let binsToProcess = bins;
+                if (binId) {
+                    const found = bins.find(bb => String(bb.id ?? bb.ID ?? bb.binId) === String(binId));
+                    if (found) binsToProcess = [found];
+                    else binsToProcess = [{ id: binId }]; 
+                }
+
+               
+                const aggregated = {};
+
+              
+                const fullMap = {};
+                fullData.forEach(c => { const cid = c.id ?? c.ID ?? c.componentId ?? c.ComponentId; if (cid !== undefined && cid !== null) fullMap[String(cid)] = c; });
+
+                for (const b of binsToProcess) {
+                    const bid = b.id ?? b.ID ?? b.binId;
+                    try {
+                        const cbRes = await api('/storekeeper/bins/' + bid);
+                        let dataArr = null;
+                        if (cbRes && cbRes.success && cbRes.data) {
+                            if (Array.isArray(cbRes.data)) dataArr = cbRes.data;
+                            else {
+                                const props = ['components','ComponentBins','componentBins','items','data','componentsList'];
+                                for (const p of props) if (Array.isArray(cbRes.data[p])) { dataArr = cbRes.data[p]; break; }
+                                if (!dataArr) {
+                                    for (const k of Object.keys(cbRes.data)) {
+                                        const val = cbRes.data[k];
+                                        if (Array.isArray(val) && val.length>0) { const el = val[0]; if (el && (el.component_id!==undefined || el.quantity!==undefined)) { dataArr = val; break; } }
+                                    }
+                                }
+                            }
+                        }
+
+                        if (Array.isArray(dataArr) && dataArr.length>0) {
+                            for (const x of dataArr) {
+                                const compIdRaw = x.component_id ?? x.ComponentId ?? x.componentId ?? x.component?.id ?? x.Component?.id ?? x.id ?? x.ID ?? '';
+                                const compIdKey = compIdRaw !== undefined && compIdRaw !== null ? String(compIdRaw) : '';
+                                const qty = Number(x.quantity ?? x.Quantity ?? x.qty ?? 0) || 0;
+                                const finishedForBin = (finishedByBin[String(bid)] && finishedByBin[String(bid)][compIdKey]) ? Number(finishedByBin[String(bid)][compIdKey]||0) : 0;
+                                const displayedQty = Math.max(0, qty - finishedForBin);
+                                if (!compIdKey) continue;
+                                aggregated[compIdKey] = (aggregated[compIdKey] || 0) + displayedQty;
+                            }
+                        }
+                    } catch (e) { console.warn('failed to load bin', bid, e); }
+                }
+
+                let rows = '';
+                for (const [compId, qty] of Object.entries(aggregated)) {
+                    const meta = fullMap[compId];
+                    const name = meta?.metadata?.name ?? meta?.metadata?.Name ?? meta?.name ?? meta?.Name ?? ('#' + compId);
+                    rows += `<tr><td style="width:70px">${compId}</td><td>${escapeHtml(name)}</td><td style="width:120px">${qty}</td></tr>`;
+                }
+
+                if (!rows) area.innerHTML = '<div class="p-3 text-muted">No components found in this warehouse.</div>';
+                else area.innerHTML = `<table style="width:100%;border-collapse:collapse"><thead><tr><th style="width:70px">ID</th><th>Name</th><th style="width:120px">Quantity</th></tr></thead><tbody>${rows}</tbody></table>`;
+
+            } catch (e) { console.error('loadSelectedWarehouseInventory failed', e); area.innerHTML = '<div class="text-danger p-3">Error loading warehouse inventory</div>'; }
+        }
+
+        function escapeHtml(s) { if (!s) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+
+        function renderTable() { 
+            const tbody = document.getElementById("inventoryBody");
+            const search = document.getElementById("searchInput").value.toLowerCase();
+            let filtered = fullData.filter(c => (c.metadata?.name ?? "").toLowerCase().includes(search));
+            const totalPages = Math.ceil(filtered.length / rowsPerPage);
+            if (currentPage > totalPages) currentPage = 1;
+            const start = (currentPage - 1) * rowsPerPage;
+            const pageData = filtered.slice(start, start + rowsPerPage);
+            tbody.innerHTML = "";
+            pageData.forEach(c => {
+                const stock = (c._stock ?? c.quantity ?? c.Quantity ?? c.TotalQuantity ?? 0) ?? 0;
+                const isLow = stock <= 30;
+                const price = c.unit_price ?? c.unitPrice ?? 0;
+                tbody.innerHTML += `\n            <tr>\n                <td>${c.id}</td>\n                <td>${c.metadata?.name ?? ''}</td>\n                <td>${c.unit ?? ''}</td>\n                <td class="${isLow ? "low-stock" : ""}">${stock}</td>\n                <td>${price}</td>\n            </tr>`;
+            });
             renderPagination(totalPages);
         }
 
-        /* ================= PAGINATION ================= */
         function renderPagination(totalPages) {
-
             const pagination = document.getElementById("pagination");
             pagination.innerHTML = "";
-
             for (let i = 1; i <= totalPages; i++) {
-                pagination.innerHTML += `
-            <span class="page-btn ${i === currentPage ? "active-page" : ""}"
-                  onclick="changePage(${i})">
-                  ${i}
-            </span>`;
+                pagination.innerHTML += `\n            <span class="page-btn ${i === currentPage ? "active-page" : ""}"\n                  onclick="changePage(${i})">\n                  ${i}\n            </span>`;
             }
         }
 
-        function changePage(page) {
-            currentPage = page;
-            renderTable();
-        }
+        function changePage(page) { currentPage = page; renderTable(); }
 
-        /* ================= INIT ================= */
-        document.addEventListener("DOMContentLoaded", loadInventory);
+        document.addEventListener("DOMContentLoaded", async () => { await loadInventory(); renderTable(); });
 
     </script>
 

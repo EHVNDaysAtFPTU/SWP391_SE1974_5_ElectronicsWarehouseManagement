@@ -453,11 +453,11 @@
             }catch(e){ console.warn('loadSelectedBinsContents error', e); }
         }
 
-        /* MODAL */
+
         function openModal() { renderList(); document.getElementById("modal").style.display = "flex"; }
         function closeModal() { document.getElementById("modal").style.display = "none"; }
 
-        /* RENDER PRODUCT */
+
         function renderList() {
             const list = document.getElementById("productList");
             list.innerHTML = "";
@@ -470,10 +470,10 @@
                 const unit = c.unit ?? "N/A";
                 const totalAvail = c.quantity ?? c.TotalQuantity ?? c.totalQuantity ?? 0;
 
-                // If user selected any bins, only show components that have availability in selected bins
+                
                 const aggAvail = aggregatedAvailability[id] ?? aggregatedAvailability[id?.toString?.()] ?? 0;
                 if (selectedBinIds.length > 0) {
-                    if (!aggAvail || aggAvail <= 0) return; // skip items not present in selected bin(s)
+                    if (!aggAvail || aggAvail <= 0) return; 
                     list.innerHTML += `
 <div class="modal-item" 
 onclick="addItemAsync(${id},'${name}','${unit}', ${aggAvail})">
@@ -481,7 +481,7 @@ onclick="addItemAsync(${id},'${name}','${unit}', ${aggAvail})">
 Unit: ${unit} · Available: ${aggAvail}
 </div>`;
                 } else {
-                    // no bin selected: show all components with their total availability
+                  
                     list.innerHTML += `
 <div class="modal-item" 
 onclick="addItemAsync(${id},'${name}','${unit}', ${totalAvail})">
@@ -492,47 +492,21 @@ Unit: ${unit} · Available: ${totalAvail}
             });
         }
 
-        /* ADD ROW */
-        async function addItemAsync(id, name, unit, available) {
-            // refresh selected bins availability
-            await loadSelectedBinsContents();
-            const selected = getSelectedBins();
-            const aggAvail = aggregatedAvailability[id] ?? aggregatedAvailability[id?.toString?.()] ?? 0;
-            return addItem(id, name, unit, aggAvail, selected);
+      
+        function addItemAsync(id, name, unit, available) {
+           
+            return addItem(id, name, unit, available, []);
         }
 
         function addItem(id, name, unit, available, selectedBins) {
             count++;
-
-            let binCellHtml = '';
-            let initialAvail = available;
-            if (selectedBins && selectedBins.length > 1) {
-                // filter selected bins to those that actually contain this component
-                const filtered = selectedBins.filter(b => {
-                    const q = (binAvailabilityByBin[b.id] && binAvailabilityByBin[b.id][id]) ? binAvailabilityByBin[b.id][id] : 0;
-                    return q > 0;
-                });
-                    if (filtered.length === 0) {
-                    alert('Product "' + name + '" is not present in the selected bins. Please choose different bins.');
-                    return;
-                }
-                if (filtered.length > 1) {
-                    binCellHtml = '<select data-row-bin style="margin-right:8px" onchange="onRowBinChange(this)"><option value="">-- Tự động tối ưu --</option>';
-                    for (const b of filtered) binCellHtml += `<option value="${b.id}">${b.label}</option>`;
-                    binCellHtml += '</select>';
-                    initialAvail = available; // use aggregated availability when auto
-                } else {
-                    const firstBinId = filtered[0].id;
-                    initialAvail = (binAvailabilityByBin[firstBinId] && binAvailabilityByBin[firstBinId][id]) ? binAvailabilityByBin[firstBinId][id] : available;
-                }
-            }
-
+            const initialAvail = available;
             const row = `
 <tr data-available="${initialAvail}">
 <td>${count}</td>
 <td data-id="${id}">${name}</td>
 <td>${unit}</td>
-<td>${binCellHtml ? binCellHtml : ''}<input type="number" value="1" min="1" max="${initialAvail}" onchange="calc()" style="width:80px;margin-left:8px"></td>
+<td><input type="number" value="1" min="1" max="${initialAvail}" onchange="calc()" style="width:80px;margin-left:8px"></td>
 <td><button class="remove" onclick="removeRow(this)">X</button></td>
 </tr>`;
             document.getElementById("tableBody").insertAdjacentHTML("beforeend", row);
@@ -542,13 +516,13 @@ Unit: ${unit} · Available: ${totalAvail}
 
         function removeRow(btn) { btn.closest("tr").remove(); calc(); }
 
-        /* CALC */
+   
         function calc() {
             let total = 0;
             document.querySelectorAll("#tableBody tr").forEach(r => {
                 const inpEl = r.querySelector('input[type=number]');
                 const q = parseFloat(inpEl?.value) || 0;
-                // validate against available
+              
                 const avail = parseFloat(r.dataset.available) || Infinity;
                 if (q > avail) { if(inpEl) inpEl.style.borderColor = '#ef4444'; } else { if(inpEl) inpEl.style.borderColor = ''; }
                 total += q;
@@ -556,7 +530,7 @@ Unit: ${unit} · Available: ${totalAvail}
             document.getElementById("totalMoney").innerText = total;
         }
 
-        /* SUBMIT */
+   
         async function submitTransfer() {
 
             const selectedFrom = getSelectedBins().map(b => b.id);
@@ -568,9 +542,9 @@ Unit: ${unit} · Available: ${totalAvail}
             const rows = document.querySelectorAll("#tableBody tr");
             if (rows.length === 0) return alert("No products added");
 
-            // group by source bin and auto-distribute quantities if needed
+          
             const payloadByBin = {};
-            let binTracker = 0; // for round-robin distribution to naturally split rows across checked bins
+            let binTracker = 0;
 
             for (const r of rows) {
                 const compId = parseInt(r.cells[1].dataset.id);
@@ -582,7 +556,7 @@ Unit: ${unit} · Available: ${totalAvail}
 
                 const perRowBinSel = r.querySelector('select[data-row-bin]');
                 
-                // If user specifies a specific bin via dropdown, try to take from it first
+               
                 if (perRowBinSel && perRowBinSel.value) {
                     const cb = perRowBinSel.value;
                     const stockInCb = (binAvailabilityByBin[cb] && binAvailabilityByBin[cb][compId]) ? binAvailabilityByBin[cb][compId] : 0;
@@ -594,7 +568,7 @@ Unit: ${unit} · Available: ${totalAvail}
                     }
                 }
 
-                // If still quantity remaining, auto-distribute across other selected bins in round-robin fashion
+               
                 let startIdx = binTracker % selectedFrom.length;
                 let sfCount = selectedFrom.length;
 
@@ -623,10 +597,8 @@ Unit: ${unit} · Available: ${totalAvail}
                     }
                 }
                 
-                // advance round-robin so next row targets the next checked bin natively
                 binTracker++;
 
-                // fallback if somehow still remaining
                 if (qtyRemaining > 0) {
                     const fallbackBin = selectedFrom[0];
                     if (!payloadByBin[fallbackBin]) payloadByBin[fallbackBin] = { desc: document.getElementById('desc').value, bin_from_id: parseInt(fallbackBin), bin_to_id: binTo, warehouse_from_id: parseInt(document.getElementById('warehouseFrom').value) || null, warehouse_to_id: parseInt(document.getElementById('warehouseTo').value) || null, components: [] };
@@ -636,28 +608,43 @@ Unit: ${unit} · Available: ${totalAvail}
                 }
             }
 
-            // send one internal transfer request per source bin
-            for (const binId of Object.keys(payloadByBin)) {
-                const payload = payloadByBin[binId];
+            const compMap = {};
+            for (const r of rows) {
+                const compId = parseInt(r.cells[1].dataset.id);
+                const qty = Number(r.querySelector('input[type=number]').value) || 0;
+                if (!compMap[compId]) compMap[compId] = 0;
+                compMap[compId] += qty;
+            }
+            const componentsPayload = Object.keys(compMap).map(k => ({ component_id: parseInt(k), quantity: compMap[k] }));
+
+            const payload = {
+                desc: document.getElementById('desc').value || '',
+                warehouse_from_id: parseInt(document.getElementById('warehouseFrom').value) || null,
+                warehouse_to_id: parseInt(document.getElementById('warehouseTo').value) || null,
+                components: componentsPayload,
+                bin_from_ids: selectedFrom
+            };
+
+            try {
                 const res = await fetch(BASE + "/transfers/transfer/create", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     credentials: "include",
                     body: JSON.stringify(payload)
                 });
-                if(!res.ok){ const txt = await res.text().catch(()=>null); console.error('server error', txt || res.statusText); return alert('Creation failed for bin ' + binId + ': ' + (txt || res.statusText)); }
+                if(!res.ok){ const txt = await res.text().catch(()=>null); console.error('server error', txt || res.statusText); return alert('Creation failed: ' + (txt || res.statusText)); }
                 const json = await res.json().catch(()=>null);
-                if(!json || !json.success) return alert('Creation failed for bin ' + binId + ': ' + (json?.msg || 'unknown'));
+                if(!json || !json.success) return alert('Creation failed: ' + (json?.msg || 'unknown'));
+                alert('Transfer request created successfully.');
+                location.reload();
+            } catch(e) {
+                alert('Network error: ' + e.message);
             }
-            alert('Transfer request(s) created successfully for ' + Object.keys(payloadByBin).length + ' bin(s).');
-            location.reload();
         }
 
-        /* INIT */
         loadWarehouses();
         loadComponents();
 
-        // populate creator name and date from backend if available
         async function setCreatorAndDate(){
             try{
                 const apiRoot = BASE.replace('/storekeeper','');
@@ -675,7 +662,6 @@ Unit: ${unit} · Available: ${totalAvail}
                         return;
                     }
                 }
-                // fallback to cookies
                 function _getCookie(name){ const v = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)'); return v ? decodeURIComponent(v.pop()) : null; }
                 elBy.innerText = _getCookie('username') || _getCookie('displayName') || _getCookie('fullname') || elBy.innerText || 'Auto';
             }catch(e){ console.warn('setCreatorAndDate error', e); }

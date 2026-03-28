@@ -1,7 +1,9 @@
-﻿using ElectronicsWarehouseManagement.WebAPI.DTO;
+﻿using ElectronicsWarehouseManagement.DTO;
 using ElectronicsWarehouseManagement.WebAPI.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 
 namespace ElectronicsWarehouseManagement.WebAPI.Controllers
 {
@@ -13,9 +15,9 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
 
         private readonly ILogger<UserCtrl> _logger;
 
-        public UserCtrl(IUserService authService, ILogger<UserCtrl> logger)
+        public UserCtrl(IUserService userService, ILogger<UserCtrl> logger)
         {
-            _userService = authService;
+            _userService = userService;
             _logger = logger;
         }
 
@@ -23,15 +25,17 @@ namespace ElectronicsWarehouseManagement.WebAPI.Controllers
         [HttpPatch("password")]
         public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordReq request)
         {
+            string? idStr = HttpContext.Session.GetString("UserId");
+            if (idStr is null || !int.TryParse(idStr, out int id))
+                return Redirect("/");
             string username = HttpContext.Session.GetString("User") ?? "";
             ApiResult result = await _userService.ChangePasswordAsync(username, request);
-            if (result.Success)
-            {
-                HttpContext.Session.Remove("User");
-                HttpContext.Session.Remove("UserId");
-                return Ok(result);
-            }
-            return BadRequest(result);
+            if (!result.Success)
+                return BadRequest(result);
+            AuthService.Logout(id);
+            HttpContext.Session.Clear();
+            await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            return Ok(result);
         }
 
         [Authorize]

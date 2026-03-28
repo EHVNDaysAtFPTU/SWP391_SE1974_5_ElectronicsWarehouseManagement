@@ -1,6 +1,6 @@
 ﻿using ElectronicsWarehouseManagement.Repositories.DBContext;
 using ElectronicsWarehouseManagement.Repositories.Entities;
-using ElectronicsWarehouseManagement.WebAPI.DTO;
+using ElectronicsWarehouseManagement.DTO;
 using Microsoft.EntityFrameworkCore;
 
 namespace ElectronicsWarehouseManagement.WebAPI.Services
@@ -81,7 +81,7 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
 
         public async Task<ApiResult<ComponentResp>> GetComponentAsync(int componentId)
         {
-            var component = await _dbCtx.Components.AsNoTracking().Include(c => c.Categories).Where(c => c.ComponentId == componentId).Select(i => new ComponentResp(i, true)).FirstOrDefaultAsync();
+            var component = await _dbCtx.Components.AsNoTracking().Include(c => c.Categories).Include(c => c.ComponentBins).Where(c => c.ComponentId == componentId).Select(i => new ComponentResp(i, true)).FirstOrDefaultAsync();
             if (component is null)
                 return new ApiResult<ComponentResp>(ApiResultCode.NotFound);
             return new ApiResult<ComponentResp>(component);
@@ -287,6 +287,8 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
                         return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Unit price is required for component with ID '{componentReq.ComponentId}' in inbound transfer request.");
                     item.UnitPrice = componentReq.UnitPrice.Value;
                 }
+                else if (request.Type == TransferType.Outbound)
+                    item.UnitPrice = component.UnitPrice;
                 tComponents.Add(item);
             }
             var transferRequest = new TransferRequest
@@ -323,6 +325,18 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
                 return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Transfer request with ID '{request.RequestId}' cannot be confirmed.");
             // verify components in confirmation request to match those in original transfer request
             List<TransferRequestComponent> originalComponentsInTransferRequest = transferRequest.TransferRequestComponents.OrderBy(c => c.ComponentId).ToList();
+
+            if (request.BinsFrom != null && request.BinsTo != null)
+            {
+                foreach (ConfirmTransferBinReq ctBinTakeFrom in request.BinsFrom ?? [])
+                {
+                    foreach (ConfirmTransferBinReq ctBinAddTo in request.BinsTo ?? [])
+                    {
+                        if (ctBinTakeFrom.BinId == ctBinAddTo.BinId && ctBinTakeFrom.Components.All(cFrom => ctBinAddTo.Components.Any(cTo => cTo.ComponentId == cFrom.ComponentId && cTo.Quantity == cFrom.Quantity)))
+                            return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Bin with ID '{ctBinTakeFrom.BinId}' cannot be both source and destination with the same components and quantities.");
+                    }
+                }
+            }
 
             List<ConfirmTransferRequestComponentReq> confirmComponentsTakeFromBin = [];
             foreach (ConfirmTransferBinReq ctBinTakeFrom in request.BinsFrom ?? [])
@@ -523,6 +537,8 @@ namespace ElectronicsWarehouseManagement.WebAPI.Services
                             return new ApiResult<TransferRequestResp>(ApiResultCode.InvalidRequest, $"Unit price is required for component with ID '{componentReq.ComponentId}' in inbound transfer request.");
                         item.UnitPrice = componentReq.UnitPrice.Value;
                     }
+                    else if (transferRequest.Type == TransferType.Outbound)
+                        item.UnitPrice = component.UnitPrice;
                     tComponents.Add(item);
                 }
                 _dbCtx.TransferRequestComponents.RemoveRange(transferRequest.TransferRequestComponents);

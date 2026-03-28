@@ -186,7 +186,7 @@
 
                     <div id="avatarMenu" class="avatar-menu">
                         <div onclick="openProfile()">Profile</div>
-                        <div onclick="go('settings.html')">Settings</div>
+                        
                         <div onclick="logout()">Logout</div>
                     </div>
 
@@ -238,7 +238,7 @@
         }
 
         async function logout() {
-            // Robust logout: try multiple endpoints and fall back to clearing client state.
+         
             const attempts = [
                 { url: BASE + "/auth/logout", method: 'POST' },
                 { url: BASE.replace('/api','') + "/auth/logout", method: 'POST' },
@@ -251,33 +251,33 @@
                     const res = await fetch(a.url, { method: a.method, credentials: 'include' });
                     if (!res.ok) {
                         const txt = await res.text().catch(()=>'');
-                        // treat 'not logged in' as success
+                      
                         if ((txt || '').toLowerCase().includes('not logged in')) return gotoLogin();
-                        // try next endpoint on 404 or other server errors
+                  
                         continue;
                     }
 
-                    // if server returns JSON, inspect success flag
+                  
                     try {
                         const j = await res.json().catch(()=>null);
                         if (j && typeof j.success !== 'undefined' && !j.success) {
                             if ((j.msg || '').toLowerCase().includes('not logged in')) return gotoLogin();
-                            // non-success response, try next option
+                     
                             continue;
                         }
-                    } catch (e) { /* ignore parse errors */ }
+                    } catch (e) {  }
 
-                    // successful logout
+              
                     return gotoLogin();
                 } catch (e) {
                     console.warn('logout attempt failed', a.url, e);
-                    // try next
+                  
                 }
             }
 
-            // If all attempts failed, clear common auth storage and redirect anyway
+        
             try {
-                // remove cookies by setting expired (best-effort for client-set cookies)
+                
                 document.cookie.split(';').forEach(function(c) {
                     const name = c.split('=')[0].trim();
                     document.cookie = name + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/';
@@ -290,35 +290,12 @@
             gotoLogin();
 
             function gotoLogin(){
-                // navigate to app login page
+               
                 window.location.href = 'login.html';
             }
         }
-
-        // Open profile: fetch /me/info then navigate to profile page with cached data
-        async function openProfile(){
-            try{
-                const apiRoot = BASE; // BASE is already api root
-                const res = await fetch(apiRoot + '/me/info', { credentials: 'include' });
-                if(!res.ok){
-                    // if not authorized, go to login
-                    window.location.href = 'login.html';
-                    return;
-                }
-                const j = await res.json().catch(()=>null);
-                if(!j || !j.success || !j.data){
-                    window.location.href = 'login.html';
-                    return;
-                }
-                // store profile to localStorage for profile.html to read
-                try{ localStorage.setItem('me_profile', JSON.stringify(j.data)); }catch(e){/* ignore */}
-                // navigate to profile page
-                window.location.href = 'profile.html';
-            }catch(e){
-                console.error('openProfile error', e);
-                // fallback: navigate to profile page (it can try to load itself)
-                window.location.href = 'profile.html';
-            }
+        function openProfile() {
+            window.location.href = "/me/index.html";
         }
 
         async function load() {
@@ -329,7 +306,7 @@
                     { credentials: "include" }
                 );
 
-                // fetch components and transfers
+              
                 let itemRes = await fetch(
                     BASE + "/storekeeper/components",
                     { credentials: "include" }
@@ -357,15 +334,15 @@
         async function loadProfile() {
             try {
                 const res = await fetch(BASE + '/me/info', { credentials: 'include' });
-                if (!res.ok) return; // not logged in or no session
+                if (!res.ok) return; 
                 const json = await res.json();
                 if (!json.success || !json.data) return;
                 const user = json.data;
-                try{ localStorage.setItem('me_profile', JSON.stringify(user)); }catch(e){/* ignore */}
+                try{ localStorage.setItem('me_profile', JSON.stringify(user)); }catch(e){}
                 const display = user.display_name ?? user.DisplayName ?? user.username ?? user.Username ?? 'U';
                 const avatar = document.querySelector('.avatar');
                 if (avatar) avatar.innerText = (display[0] || 'U').toUpperCase();
-                // set tooltip
+       
                 if (avatar) avatar.title = display;
             } catch (e) { console.error('loadProfile error', e); }
         }

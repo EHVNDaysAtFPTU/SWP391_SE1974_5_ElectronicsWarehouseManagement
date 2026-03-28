@@ -41,8 +41,8 @@
     <div class="page">
         <div class="top-bar">
             <div class="title">
-                <h2>📦 Components</h2>
-                <p>Quản lý sản phẩm — xem, tạo hoặc tải ảnh mới cho component</p>
+                <h2>📦 Categorys</h2>
+                <p>Product management — view, create, or upload new images for the categorys.</p>
             </div>
             <div style="display:flex;gap:8px;align-items:center">
                 <button class="btn ghost" onclick="goHome()">⬅ Back</button>
@@ -67,8 +67,8 @@
             </div>
 
             <aside class="form-panel">
-                <h3>➕ Create Component</h3>
-                <div class="meta">Điền thông tin cơ bản của component rồi nhấn Create</div>
+                <h3>➕ Create Category</h3>
+                <div class="meta">Fill in the basic information for the category and then click Create.</div>
                 <div style="height:10px"></div>
                 <input id="name" placeholder="Name">
                 <input id="desc" placeholder="Description">
@@ -135,7 +135,7 @@
 
                 let imageUrl = c.metadata?.image_url ?? "";
 
-                // nếu backend trả /uploads/abc.jpg
+              
                 if (imageUrl && imageUrl.startsWith("/")) {
                     imageUrl = BASE.replace("/api", "") + imageUrl;
                 }
@@ -159,7 +159,7 @@
         /* ================= LOAD CATEGORY ================= */
         async function loadCategories() {
 
-            // controller endpoint is /storekeeper/components/categories
+         
             const result = await api("/storekeeper/components/categories");
             if (!result.success) return;
 
@@ -222,7 +222,7 @@
                 desc: description,
                 image_url: imageUrl,
                 manufacturer: manufacturer,
-                // only include manufacturing_date when specified to avoid deserialization errors
+              
                 unit: unit,
                 unit_price: unitPrice,
                 datasheet_url: datasheet,
@@ -231,7 +231,7 @@
 
             if (manufacturingDate) body.manufacturing_date = manufacturingDate;
 
-            // call correct controller route
+      
             const result = await api(
                 "/storekeeper/components/create",
                 "POST",
@@ -240,7 +240,7 @@
 
             if (result.success) {
                 alert("Created successfully");
-                // clear inputs in form-panel
+           
                 document.querySelectorAll('.form-panel input').forEach(i => { try { i.value = ''; } catch {} });
                 document.getElementById('categorySelect').selectedIndex = -1;
                 document.getElementById('imageFile').value = '';

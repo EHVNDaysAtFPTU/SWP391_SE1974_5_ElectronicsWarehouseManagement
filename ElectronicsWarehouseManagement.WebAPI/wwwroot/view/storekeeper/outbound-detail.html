@@ -105,6 +105,9 @@
             background: transparent;
             border: 1px solid #fdecec
         }
+        .modal{position:fixed;inset:0;background:rgba(2,6,23,0.4);display:none;justify-content:center;align-items:center;padding:20px}
+        .modal.show{display:flex}
+        .modal-box{background:#fff;width:100%;max-width:640px;border-radius:8px;padding:16px}
     </style>
 </head>
 
@@ -144,8 +147,7 @@
             </div>
 
             <div class="actions">
-                <button id="confirmBtn" class="btn danger" onclick="confirmOrder(false)" style="display:none">Confirm</button>
-                <button id="missingBtn" class="btn ghost" onclick="confirmOrder(true)" style="display:none;margin-left:8px;background:#f59e0b;color:#fff">Mark Missing</button>
+                <button id="confirmBtn" class="btn danger" onclick="confirmOrder()" style="display:none">Confirm</button>
                 <button class="btn ghost" onclick="location.href='outbound-list.html'">Back</button>
             </div>
         </div>
@@ -156,6 +158,14 @@
         const params = new URLSearchParams(window.location.search);
         const id = params.get('id');
         let transfer = null;
+    function getTransferRequestId(obj) {
+        if (!obj) return null;
+        const candidates = [obj.id, obj.ID, obj.request_id, obj.requestId, obj.RequestId];
+        for (const c of candidates) {
+            if (c !== undefined && c !== null && c !== '') return Number(c);
+        }
+        return null;
+    }
         const componentCache = {};
         const warehouseCache = {};
         const customerCache = {};
@@ -178,39 +188,14 @@
                 return;
             }
 
-            // find related transfers that likely belong to the same outbound (same description and close creation time)
+        
             let related = [];
-            try {
-                const listRes = await fetch(BASE + '/storekeeper/transfers', { credentials: 'include' });
-                if (listRes.ok) {
-                    const listJson = await listRes.json();
-                    if (listJson?.success && Array.isArray(listJson.data)) {
-                        const all = listJson.data.filter(t => t.type === 2);
-                        const baseDesc = (transfer.description ?? '').toString();
-                        const baseCreated = Date.parse(transfer.creation_date ?? transfer.creationDate ?? transfer.creationTime ?? transfer.CreationDate ?? '');
-                        const baseCreator = transfer.creator_id ?? transfer.CreatorId ?? transfer.creator ?? transfer.Creator ?? null;
-                        related = all.filter(t => {
-                            try {
-                                if ((t.description ?? '').toString() !== baseDesc) return false;
-                                const tCreator = (t.creator_id ?? t.CreatorId ?? t.creator ?? t.Creator ?? '').toString();
-                                const baseCreatorStr = (baseCreator ?? '').toString();
-                                if (baseCreatorStr && tCreator && baseCreatorStr !== tCreator) return false;
+            related = [];
 
-                                const tCreated = Date.parse(t.creation_date ?? t.creationDate ?? t.creationTime ?? '');
-                                if (!isNaN(baseCreated) && !isNaN(tCreated)) {
-                                    return Math.abs(baseCreated - tCreated) <= 60000;
-                                }
-                                return true;
-                            } catch (e) { return false; }
-                        });
-                    }
-                }
-            } catch (e) { /* ignore */ }
-
-            // fetch full details for related transfers and aggregate (dedupe by id)
+       
             const relatedDetails = [];
             const seen = new Set();
-            // include original transfer first
+         
             const mainId = transfer.request_id ?? transfer.RequestId ?? transfer.requestId ?? transfer.id ?? transfer.ID ?? null;
             if (mainId) { relatedDetails.push(transfer); seen.add(String(mainId)); }
             for (const r of related) {
@@ -223,18 +208,23 @@
                         const djson = await dres.json();
                         if (djson?.success && djson.data) { relatedDetails.push(djson.data); seen.add(String(idToFetch)); }
                     }
-                } catch (e) { /* ignore */ }
+                } catch (e) {  }
             }
-            // ensure transfer itself is present
+           
             if (!seen.has(String(mainId))) relatedDetails.unshift(transfer);
             transfer._related = relatedDetails;
 
-            // resolve warehouses and component names across all related transfers
+          
             const allComps = [];
             for (const t of relatedDetails) {
-                try { await resolveWarehouses(t); } catch (e) { /* ignore */ }
+                try { await resolveWarehouses(t); } catch (e) {  }
                 const compsT = getComponents(t) || [];
                 compsT.forEach(c => allComps.push(c));
+                
+                try {
+                    const finishedArr = t.finished_components ?? t.finishedComponents ?? t.finished_components_list ?? t.finishedComponentsList ?? t.FinishedTransferRequestComponents;
+                    if (Array.isArray(finishedArr)) finishedArr.forEach(fc => allComps.push(fc));
+                } catch (e) {  }
             }
             await resolveComponentNames(allComps);
             await resolveCustomers(relatedDetails);
@@ -245,17 +235,17 @@
                 document.getElementById('detail').innerHTML = '<div style="color:#b91c1c;font-weight:600;padding:12px">Lỗi khi hiển thị chi tiết: ' + (e?.message || e) + '</div>';
             }
 
-            // show confirm and missing buttons if status = 2 (Approved)
-            if (transfer.status === 2) {
+        
+            const anyApproved = Array.isArray(transfer._related) ? transfer._related.some(t => (t.status ?? t.Status) === 2) : (transfer.status === 2);
+            if (anyApproved) {
                 document.getElementById('confirmSection').style.display = 'block';
                 document.getElementById('confirmBtn').style.display = 'inline-block';
-                const mb = document.getElementById('missingBtn'); if (mb) mb.style.display = 'inline-block';
                 loadBinsForConfirm();
             }
 
             async function resolveCustomers(transfers) {
                 if (!Array.isArray(transfers) || transfers.length === 0) return;
-                // try to fetch all customers once
+             
                 try {
                     const res = await fetch(BASE + '/storekeeper/customers', { credentials: 'include' });
                     if (!res.ok) return;
@@ -263,25 +253,25 @@
 
                     if (!json?.success || !Array.isArray(json.data)) return;
                     json.data.forEach(c => { customerCache[c.id ?? c.customer_id ?? c.customerId] = c; });
-                } catch (e) { /* ignore */ }
+                } catch (e) {  }
                 transfers.forEach(t => {
                     const cid = t.customer_id ?? t.CustomerId ?? t.customerId ?? t.customer_id ?? null;
                     if (cid && customerCache[cid]) t._customerName = customerCache[cid].name ?? customerCache[cid].customer_name ?? customerCache[cid].displayName ?? customerCache[cid].fullName ?? null;
                 });
             }
-            // set created info (non-intrusive)
+            
             try {
                 const createdBy = transfer.created_by ?? transfer.createdBy ?? transfer.created_by_name ?? transfer.createdByName ?? transfer.owner ?? null;
                 const createdAt = transfer.creation_date ?? transfer.creationDate ?? transfer.created_at ?? transfer.createdAt ?? null;
                 if (document.getElementById('createdBy')) document.getElementById('createdBy').innerText = 'Người tạo: ' + (createdBy ?? 'Auto');
                 if (document.getElementById('createdAt')) document.getElementById('createdAt').innerText = 'Ngày tạo: ' + (createdAt ? new Date(createdAt).toLocaleString('vi-VN') : '-');
-            } catch (e) {/* ignore */ }
+            } catch (e) { }
         }
 
         async function resolveWarehouses(t) {
             if (!t) return;
             try {
-                // bin_from
+               
                 let binFrom = t.bin_from ?? t.binFrom ?? null;
                 const binFromId = binFrom?.id ?? binFrom?.ID ?? t.bin_from_id ?? t.binFromId;
                 if (binFromId && (!binFrom || !(binFrom.location_in_warehouse || binFrom.locationInWarehouse || binFrom.binCode))) {
@@ -310,7 +300,7 @@
                     if (warehouseCache[wid]) binFrom.warehouse = warehouseCache[wid];
                 }
 
-                // bin_to
+             
                 let binTo = t.bin_to ?? t.binTo ?? null;
                 const binToId = binTo?.id ?? binTo?.ID ?? t.bin_to_id ?? t.binToId;
                 if (binToId && (!binTo || !(binTo.location_in_warehouse || binTo.locationInWarehouse || binTo.binCode))) {
@@ -338,6 +328,48 @@
                     }
                     if (warehouseCache[wid3]) binTo.warehouse = warehouseCache[wid3];
                 }
+                
+                try {
+                    const finishedArr = t.finished_components ?? t.finishedComponents ?? t.finished_components_list ?? t.finishedComponentsList;
+                    if (Array.isArray(finishedArr) && finishedArr.length > 0) {
+                        t.bin_finish_from = null;
+                        t.bin_finish_to = null;
+                        const bins = [];
+                        for (const fc of finishedArr) {
+                            const binObj = fc.bin ?? fc.Bin ?? null;
+                            const binRef = binObj ? binObj : ((fc.bin_id || fc.binId) ? { id: fc.bin_id ?? fc.binId } : null);
+                            if (!binRef) continue;
+                            bins.push(binRef);
+                            if (fc.type === 1) t.bin_finish_from = binRef;
+                            else if (fc.type === 0) t.bin_finish_to = binRef;
+                            else if (!t.bin_finish_to) t.bin_finish_to = binRef;
+                        }
+                        if (bins.length > 1) t.bin_finish_list = bins;
+                        if (!t.bin_finish_from && bins.length === 1) t.bin_finish_to = bins[0];
+                       
+                        for (const bin of bins) {
+                            const bw = bin?.warehouse ?? bin?.warehouse_id ?? bin?.warehouseId ?? (typeof bin?.warehouse === 'object' ? bin.warehouse.id : null) ?? t.warehouse_from_id ?? t.warehouse_to_id;
+                            if (bw && (!bin?.warehouse || typeof bin.warehouse !== 'object')) {
+                                try {
+                                    const wres = await fetch(BASE + '/storekeeper/warehouses/' + bw, { credentials: 'include' });
+                                    if (wres.ok) {
+                                        const wjson = await wres.json();
+                                        if (wjson?.success && wjson.data) bin.warehouse = wjson.data;
+                                    }
+                                } catch (e) { console.error('bin finish warehouse fetch failed', e); }
+                            }
+                        }
+                       
+                        if (!t._fromWarehouseId && t.bin_finish_from) {
+                            const bf = t.bin_finish_from;
+                            t._fromWarehouseId = bf?.warehouse?.id ?? bf?.warehouse_id ?? bf?.warehouseId ?? null;
+                        }
+                        if (!t._toWarehouseId && t.bin_finish_to) {
+                            const bt = t.bin_finish_to;
+                            t._toWarehouseId = bt?.warehouse?.id ?? bt?.warehouse_id ?? bt?.warehouseId ?? null;
+                        }
+                    }
+                } catch(e) {  }
             } catch (e) { console.error('resolveWarehouses failed', e); }
         }
 
@@ -383,7 +415,7 @@
 
         function getCustomerInfo(t) {
             if (!t) return null;
-            // try several fields
+         
             const c = t.customer ?? t.customer_info_json ?? t.customer_info ?? t.customer_info_json_parsed ?? null;
             if (c) {
                 if (typeof c === 'string') {
@@ -391,13 +423,13 @@
                 }
                 return c.name ?? c.displayName ?? c.fullname ?? c.company ?? JSON.stringify(c);
             }
-            // fallback to customer_id
+            
             const id = t.customer_id ?? t.customerId ?? t.customerId ?? null;
             if (id) return 'Customer ID: ' + id;
             return null;
         }
 
-        let globalProductsMap = {}; // compId -> { name, total }
+        let globalProductsMap = {}; 
 
         function render() {
             if (!transfer) return;
@@ -411,47 +443,99 @@
                     default: return 'Completed';
                 }
             }
-            // If we have related transfers grouped (multiple source bins for one outbound), aggregate info
+            
             const related = transfer._related ?? [transfer];
 
             const statusSet = new Set(related.map(t => t.status ?? t.Status ?? 0));
             let statusText = statusSet.size === 1 ? getStatusText(Array.from(statusSet)[0]) : 'Multiple';
 
-            // collect bins and warehouses (deduped)
+           
             const binSet = new Set();
             const bins = [];
-            const productsMap = {}; // compId -> { name, total }
+           
+            const compRequestedTotals = {}; 
+            const compFinishedTotals = {}; 
+            const productsMap = {}; 
 
             related.forEach(t => {
+                
+                const binFinishFrom = t.bin_finish_from ?? t.binFinishFrom ?? null;
                 const binFrom = t.bin_from ?? t.binFrom ?? null;
-                const binName = binFrom ? (binFrom.location_in_warehouse ?? binFrom.locationInWarehouse ?? binFrom.binCode ?? binFrom.code ?? (binFrom.id ?? binFrom.ID)) : (t.bin_from_id ?? t.binFromId ?? '-');
-                const whName = (binFrom?.warehouse?.warehouseName ?? binFrom?.warehouse?.name ?? binFrom?.warehouse) ?? (t._fromWarehouseName ?? '-');
+                const binName = binFinishFrom ? (binFinishFrom.location_in_warehouse ?? binFinishFrom.locationInWarehouse ?? binFinishFrom.binCode ?? (binFinishFrom.id ?? binFinishFrom.ID)) : (binFrom ? (binFrom.location_in_warehouse ?? binFrom.locationInWarehouse ?? binFrom.binCode ?? binFrom.code ?? (binFrom.id ?? binFrom.ID)) : (t.bin_from_id ?? t.binFromId ?? '-'));
+                const whName = (t._finishFromWarehouseName ?? t._fromWarehouseName ?? (binFinishFrom?.warehouse?.name ?? binFinishFrom?.warehouse?.warehouseName ?? binFinishFrom?.warehouse) ?? (binFrom?.warehouse?.warehouseName ?? binFrom?.warehouse?.name ?? binFrom?.warehouse)) ?? '-';
                 const key = `${whName}||${binName}`;
                 if (!binSet.has(key)) { binSet.add(key); bins.push({ warehouse: whName, bin: binName }); }
 
                 const comps = getComponents(t);
                 comps.forEach(c => {
-                    const cid = c.component_id ?? c.componentId ?? c.component?.id ?? 'unknown';
+                    const cidRaw = c.component_id ?? c.componentId ?? c.component?.id ?? c.component?.componentId ?? 'unknown';
+                    const cid = String(cidRaw);
                     const name = getComponentName(c);
-                    const qty = parseFloat(c.quantity ?? c.Quantity ?? c.qty ?? 0) || 0;
-                    if (!productsMap[cid]) productsMap[cid] = { name: name, total: 0 };
-                    productsMap[cid].total += qty;
+                    const qty = Number(c.quantity ?? c.Quantity ?? c.qty ?? c.component?.quantity ?? 0) || 0;
+                    if (!compRequestedTotals[cid]) compRequestedTotals[cid] = { name: name, total: 0 };
+                    if (!compRequestedTotals[cid].name || compRequestedTotals[cid].name.startsWith('Component #')) compRequestedTotals[cid].name = name;
+                    compRequestedTotals[cid].total += qty;
                 });
+
+                try {
+                    const finishedArr = t.finished_components ?? t.finishedComponents ?? t.finished_components_list ?? t.finishedComponentsList ?? t.FinishedTransferRequestComponents;
+                    if (Array.isArray(finishedArr)) {
+                        finishedArr.forEach(fc => {
+                            const type = fc.type ?? fc.Type ?? null;
+                            if (type === undefined || type === null) return;
+                            if (Number(type) !== 1) return; 
+
+                            if (Number(type) !== 1) return; 
+                            const fcid = String(fc.component_id ?? fc.componentId ?? fc.component?.id ?? fc.component?.componentId ?? 'unknown');
+                            const fq = Number(fc.quantity ?? fc.Quantity ?? 0) || 0;
+                            compFinishedTotals[fcid] = (compFinishedTotals[fcid] || 0) + fq;
+                        });
+                    }
+                } catch (e) { }
             });
+
+       
+            Object.keys(compRequestedTotals).forEach(k => {
+                const req = Number(compRequestedTotals[k].total || 0);
+                const fin = Number(compFinishedTotals[k] || 0);
+                const remaining = Math.max(0, req - fin);
+                productsMap[k] = { name: compRequestedTotals[k].name, total: remaining };
+            });
+
             globalProductsMap = productsMap;
+
+           
+            let warehouseDisplayHtml = '';
+            if (bins.length > 0) {
+                warehouseDisplayHtml = bins.map(b => b.warehouse + ' / ' + b.bin).join('<br/>');
+            } else {
+                const wfName = transfer.warehouse_from?.name ?? transfer.warehouse_from_name ?? transfer.warehouse_from ?? transfer.warehouseFrom?.name ?? transfer.warehouse?.name ?? null;
+                const wtName = transfer.warehouse_to?.name ?? transfer.warehouse_to_name ?? transfer.warehouse_to ?? transfer.warehouseTo?.name ?? null;
+                if (wfName || wtName) warehouseDisplayHtml = (wfName ?? '-') + ' / ' + (wtName ?? '-'); else warehouseDisplayHtml = '- / -';
+            }
 
             let html = `
                 <div class="info-grid">
                     <div class="info-block">
-                        <div style="font-weight:700">Description</div>
-                        <div class="meta">${transfer.description ?? '-'}</div>
+                        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+                            <div>
+                                <div style="font-weight:700">Description</div>
+                                <div class="meta" id="descText">${transfer.description ?? '-'}</div>
+                            </div>
+                            <div style="margin-left:12px">
+                                <div style="display:flex;gap:8px">
+                                    <button id="editDescBtn" class="btn ghost" style="padding:6px 10px;font-size:13px" onclick="openEditDesc()">Edit</button>
+                                    <button id="editFullBtn" class="btn ghost" style="padding:6px 10px;font-size:13px" onclick="openFullEdit()">Edit Full</button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     <div class="info-block">
                         <div style="font-weight:700">Status</div>
                         <div class="meta">${statusText}</div>
                         <div style="height:8px"></div>
                         <div style="font-weight:700">From Warehouse / Bin(s)</div>
-                        <div class="meta">${bins.map(b => b.warehouse + ' / ' + b.bin).join('<br/>')}</div>
+                        <div class="meta">${warehouseDisplayHtml}</div>
                         <div style="height:6px"></div>
                         <div style="font-weight:700">Customer</div>
                         <div class="meta">${transfer._customerName ?? getCustomerInfo(transfer) ?? (transfer.customer_id ? ('Customer ID: ' + transfer.customer_id) : '-')}</div>
@@ -473,10 +557,54 @@
 
             html += `</tbody></table></div>`;
 
-            document.getElementById('detail').innerHTML = html;
+          
+            const finishedRows = [];
+            try {
+             
+                const relatedArr = transfer._related ?? [transfer];
+                const rowMap = new Map(); 
+                function _norm(v){ if (v === null || v === undefined) return ''; try { return String(v).replace(/<[^>]+>/g,'').trim().toLowerCase(); } catch(e){ return String(v); } }
+                relatedArr.forEach(t => {
+                    const finishedArr = t.finished_components ?? t.finishedComponents ?? t.finished_components_list ?? t.finishedComponentsList ?? t.FinishedTransferRequestComponents;
+                    if (!Array.isArray(finishedArr)) return;
+                    finishedArr.forEach(fc => {
+                        const name = getComponentName(fc) || getComponentName({ component_id: fc.component_id, component: fc.component });
+                        const qty = Number(fc.quantity ?? fc.Quantity ?? 0) || 0;
+                        const dir = (fc.type === 1) ? 'From' : (fc.type === 0 ? 'To' : '-');
+                        const bin = fc.bin ?? fc.Bin ?? null;
+                        const wh = bin?.warehouse?.name ?? bin?.warehouse?.warehouseName ?? t._fromWarehouseName ?? t._toWarehouseName ?? '-';
+                        const binLoc = bin?.location_in_warehouse ?? bin?.locationInWarehouse ?? bin?.binCode ?? '-';
+                        const key = `${_norm(name)}||${_norm(wh)}||${_norm(binLoc)}`;
+                        if (!rowMap.has(key)) {
+                            rowMap.set(key, { product: name, warehouse: wh, bin: binLoc, fromQty: 0, toQty: 0 });
+                        }
+                        const entry = rowMap.get(key);
+                        if (dir === 'From') entry.fromQty = (entry.fromQty || 0) + qty;
+                        else if (dir === 'To') entry.toQty = (entry.toQty || 0) + qty;
+                    });
+                });
+              
+                for (const v of rowMap.values()) {
+                    if ((v.fromQty || 0) > 0) finishedRows.push({ product: v.product, quantity: v.fromQty, direction: 'From', warehouse: v.warehouse, bin: v.bin });
+                    else if ((v.toQty || 0) > 0) finishedRows.push({ product: v.product, quantity: v.toQty, direction: 'To', warehouse: v.warehouse, bin: v.bin });
+                }
+            } catch(e) {  }
 
-            // show confirm button for statuses that require confirmation
-            if (transfer.status === 2) {
+            if (finishedRows.length > 0) {
+                html += `<h4 style="margin-top:18px">Movements</h4>`;
+                html += `<div class="table-card"><table><thead><tr><th>Product</th><th style="width:100px">Quantity</th><th style="width:80px">Direction</th><th>Warehouse</th><th style="width:120px">Bin</th></tr></thead><tbody>`;
+                finishedRows.forEach(r => {
+                    html += `<tr><td style="font-weight:500">${r.product}</td><td>${r.quantity}</td><td>${r.direction}</td><td>${r.warehouse}</td><td>${r.bin}</td></tr>`;
+                });
+                html += `</tbody></table></div>`;
+            }
+
+            document.getElementById('detail').innerHTML = html;
+         
+            try { const eb = document.getElementById('editDescBtn'); if (eb) eb.style.display = (transfer.status === 1 ? 'inline-block' : 'none'); const ef = document.getElementById('editFullBtn'); if(ef) ef.style.display = (transfer.status === 1 ? 'inline-block' : 'none'); } catch(e){}
+
+            
+            if (statusSet.has(2) || transfer.status === 2) {
                 document.getElementById('confirmBtn').style.display = 'inline-block';
             } else {
                 document.getElementById('confirmBtn').style.display = 'none';
@@ -489,14 +617,12 @@
 
         async function loadBinsForConfirm() {
             try {
-                // Populate orderProducts from productsMap
                 orderProducts = Object.keys(globalProductsMap).map(cid => ({
                     id: cid,
                     name: globalProductsMap[cid].name,
                     maxQty: globalProductsMap[cid].total
                 }));
 
-                // Add initial row for each product
                 document.getElementById('allocationBody').innerHTML = '';
                 orderProducts.forEach(p => addAllocationRow(p.id, p.maxQty));
 
@@ -514,11 +640,11 @@
                 if (!json.success || !json.data) return;
                 availableBins = json.data.bins ?? json.data;
                 
-                // Reload rows with populated bins
+ 
                 document.getElementById('allocationBody').innerHTML = '';
                 orderProducts.forEach(p => addAllocationRow(p.id, p.maxQty));
 
-                // Load stock for all available bins sequentially to allow validation later
+               
                 for (let b of availableBins) {
                     const binId = b.id ?? b.ID ?? b.binId;
                     if (!binId) continue;
@@ -570,20 +696,13 @@
             tbody.appendChild(row);
         }
 
-        async function confirmOrder(allowPartial = false) {
-            const confirmMsg = allowPartial ? 'Mark this outbound as MissingComponents and apply provided allocations?' : 'Confirm outbound with these allocations?';
-            if (!confirm(confirmMsg)) return;
-
-            const related = transfer._related ?? [transfer];
-            const isValidStatus = related.some(t => t.status === 2 || t.status === 1);
-            if (!isValidStatus) return alert('Phiếu này không ở trạng thái chờ xác nhận.');
-
+        async function confirmOrder() {
+      
             const rows = Array.from(document.querySelectorAll('#allocationBody tr'));
             if (rows.length === 0) return alert('Vui lòng thêm ít nhất 1 phân bổ.');
 
-            // Validate allocations
-            const allocationSummary = {}; // product_id -> total allocated
-            const globalBinsFromPayload = {}; // bin_id -> { component_id: qty }
+            const allocationSummary = {};
+            const globalBinsFromPayload = {};
 
             for (let i = 0; i < rows.length; i++) {
                 const r = rows[i];
@@ -595,7 +714,6 @@
                 if (!bId) return alert(`Dòng ${i+1}: Vui lòng chọn Bin.`);
                 if (qty <= 0) return alert(`Dòng ${i+1}: Số lượng phải lớn hơn 0.`);
 
-                // validate against stock
                 const stock = (binAvailabilityByBin[bId] && binAvailabilityByBin[bId][pId]) ? binAvailabilityByBin[bId][pId] : 0;
                 let alreadyAllocated = globalBinsFromPayload[bId]?.[pId] || 0;
                 if (qty + alreadyAllocated > stock) {
@@ -607,105 +725,248 @@
                 }
 
                 allocationSummary[pId] = (allocationSummary[pId] || 0) + qty;
-
                 if (!globalBinsFromPayload[bId]) globalBinsFromPayload[bId] = {};
                 globalBinsFromPayload[bId][pId] = (globalBinsFromPayload[bId][pId] || 0) + qty;
             }
 
-            // Check if allocations match request exactly unless partial allowed
+            const diffs = [];
             for (const p of orderProducts) {
-                const sum = allocationSummary[p.id] || 0;
-                if (!allowPartial && sum !== p.maxQty) {
-                    return alert(`Sản phẩm "${p.name}" được yêu cầu xuất ${p.maxQty}, nhưng bạn đã phân bổ tổng ${sum}. Vui lòng phân bổ cho khớp.`);
+                const requested = p.maxQty;
+                const allocated = allocationSummary[p.id] || 0;
+              
+                if (allocated > requested) {
+                    return alert(`Đã phân bổ (${allocated}) nhiều hơn yêu cầu (${requested}) cho "${p.name}". Vui lòng điều chỉnh phân bổ.`);
                 }
-                if (allowPartial && sum > p.maxQty) {
-                    return alert(`Sản phẩm "${p.name}" yêu cầu ${p.maxQty} nhưng bạn đã phân bổ tổng ${sum} (vượt quá). Vui lòng kiểm tra lại.`);
-                }
+                if (allocated !== requested) diffs.push({ id: p.id, name: p.name, requested, allocated });
             }
 
-            let errMsg = '';
-            let allSuccess = true;
-
-            // Fulfill the related transfers exactly using the global binsFromPayload
-            for (const t of related) {
-                const reqId = t.id ?? t.ID ?? t.request_id ?? t.requestId ?? t.RequestId;
-                if (!reqId || t.status === 4 || t.status === 0 || t.status === 3) continue;
-
-                const comps = getComponents(t) || [];
-                const compsPayload = comps.map(c => ({ component_id: c.component_id ?? c.componentId ?? c.component?.id, quantity: Number((c.quantity ?? c.qty ?? c.Quantity) || 0) }));
-
-                if (compsPayload.length === 0) continue;
-
-                const binsFrom = [];
-                for (const comp of compsPayload) {
-                    let qtyRemaining = comp.quantity;
-                    for (const [binId, compsMap] of Object.entries(globalBinsFromPayload)) {
-                        if (qtyRemaining <= 0) break;
-                        const avail = compsMap[comp.component_id] || 0;
-                        if (avail > 0) {
-                            const take = Math.min(qtyRemaining, avail);
-                            compsMap[comp.component_id] -= take;
-                            qtyRemaining -= take;
-
-                            let existingBin = binsFrom.find(b => b.bin_id === parseInt(binId));
-                            if (!existingBin) {
-                                existingBin = { bin_id: parseInt(binId), components: [] };
-                                binsFrom.push(existingBin);
-                            }
-                            existingBin.components.push({ component_id: parseInt(comp.component_id), quantity: take });
-                        }
-                    }
-                    if (qtyRemaining > 0) {
-                        if (!allowPartial) {
-                            errMsg = 'Hệ thống không thể khớp phân bổ với đơn hàng ban đầu. Vui lòng tải lại trang và thử lại.';
-                            allSuccess = false;
-                            break;
-                        } else {
-                            // partial allowed: proceed with whatever was allocated (qtyRemaining > 0 means some items missing)
-                            // continue to next component - server will mark MissingComponents for remaining
-                        }
-                    }
-                }
-                
-                if (!allSuccess) break;
-
-                const payload = { request_id: reqId, bins_from: binsFrom };
-
-                try {
-                    const res = await fetch(BASE + '/storekeeper/transfers/confirm', {
-                        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(payload)
-                    });
-                    if (!res.ok) {
-                        const txt = await res.text().catch(() => null);
-                        allSuccess = false;
-                        let msg = txt || res.statusText;
-                        try { const obj = JSON.parse(txt); if (obj.msg || obj.message) msg = obj.msg || obj.message; } catch (e) { }
-                        errMsg = msg;
-                        break;
-                    }
-                    const json = await res.json();
-                    if (!json?.success) {
-                        allSuccess = false;
-                        errMsg = json?.msg || json?.message || 'Lỗi xử lý';
-                        break;
-                    }
-                } catch (e) {
-                    allSuccess = false;
-                    errMsg = e.message;
-                    break;
-                }
-            }
-
-            if (allSuccess) {
-                alert(allowPartial ? 'Marked missing and updated inventory successfully!' : 'Outbound confirmed successfully!');
-                location.href = 'outbound-list.html';
+            if (diffs.length > 0) {
+                let msg = 'Phân bổ không khớp so với yêu cầu:\n';
+                diffs.forEach(d => msg += `- ${d.name}: yêu cầu ${d.requested}, đã phân bổ ${d.allocated}\n`);
+                msg += '\nBạn có chắc chỉ chuyển những sản phẩm này với số lượng này không?';
+                if (!confirm(msg)) return;
             } else {
-                alert('Confirmation failed: ' + errMsg);
-                location.reload();
+                if (!confirm('Xác nhận phân bổ và lưu kho?')) return;
             }
+
+            
+            const pairMap = {};
+            for (let i = 0; i < rows.length; i++) {
+                const r = rows[i];
+                const pId = parseInt(r.querySelector('.alloc-product').value) || 0;
+                const bId = parseInt(r.querySelector('.alloc-bin').value) || 0;
+                const qty = Number(r.querySelector('.alloc-qty').value) || 0;
+                if (!pairMap[bId]) pairMap[bId] = {};
+                pairMap[bId][pId] = (pairMap[bId][pId] || 0) + qty;
+            }
+
+           
+            const reqId = transfer.request_id ?? transfer.RequestId ?? transfer.requestId ?? transfer.id ?? transfer.ID;
+            if (reqId === null || reqId === undefined) return alert('Cannot determine transfer request ID to confirm.');
+
+           
+            const payload = { request_id: reqId, bins_from: [] };
+            for (const [binId, compsObj] of Object.entries(pairMap)) {
+                const compsArr = Object.keys(compsObj).map(cid => ({ component_id: parseInt(cid), quantity: compsObj[cid] }));
+                if (compsArr.length > 0) {
+                    payload.bins_from.push({ bin_id: parseInt(binId), components: compsArr });
+                }
+            }
+
+            console.debug('Confirm payload (single transfer):', payload);
+            if (payload.bins_from.length === 0) return alert('No bins selected that match this transfer.');
+
+            try {
+             
+                console.debug('Confirm payload (single transfer):', payload);
+                const res = await fetch(BASE + '/storekeeper/transfers/confirm', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(payload)
+                });
+                if (!res.ok) { const txt = await res.text().catch(()=>null); return alert('Operation failed: ' + (txt || res.statusText)); }
+                const j = await res.json(); if (!j?.success) return alert('Operation failed: ' + (j?.msg || j?.message || 'Error'));
+                alert('Outbound processed successfully'); location.href='outbound-list.html';
+            } catch (e) { alert('Operation failed: ' + e.message); location.reload(); }
         }
 
         load();
+    </script>
+    <!-- Full edit modal -->
+    <div id="editFullModal" class="modal">
+        <div class="modal-box">
+            <h3>Edit Transfer (Full)</h3>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px">
+                <div>
+                    <label>Description</label>
+                    <textarea id="fullDesc" style="width:100%;height:60px;padding:8px;border-radius:6px;border:1px solid #e6edf6"></textarea>
+                </div>
+                <div>
+                    <label>Customer / Supplier</label>
+                    <select id="fullCustomer" style="width:100%;padding:8px;border-radius:6px;border:1px solid #e6edf6"><option value="">-- None --</option></select>
+                </div>
+            </div>
+            <div style="margin-top:10px">
+                <label>Source Warehouse</label>
+                <select id="fullWarehouseFrom" style="width:100%;padding:8px;border-radius:6px;border:1px solid #e6edf6"><option value="">-- Select --</option></select>
+            </div>
+
+            <h4 style="margin-top:12px">Products</h4>
+            <div style="max-height:280px;overflow:auto;border:1px solid #fef0ef;border-radius:6px;padding:8px;margin-top:8px">
+                <table style="width:100%;border-collapse:collapse">
+                    <thead><tr><th>Product</th><th style="width:120px">Qty</th><th style="width:140px">Unit Price</th><th style="width:56px"></th></tr></thead>
+                    <tbody id="fullComponentsBody"></tbody>
+                </table>
+                <div style="margin-top:8px"><button class="btn ghost" onclick="addFullComponentRow()">+ Add product</button></div>
+            </div>
+
+            <div style="margin-top:12px;display:flex;gap:8px;justify-content:flex-end">
+                <button class="btn ghost" onclick="closeFullEdit()">Cancel</button>
+                <button class="btn danger" onclick="submitFullEdit()">Save changes</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function openFullEdit(){
+            if (!transfer) return alert('No transfer loaded');
+            if (transfer.status !== 1) return alert('Only pending transfers can be edited');
+            await loadEditResources();
+            document.getElementById('fullDesc').value = transfer.description ?? '';
+            try{ const wf = document.getElementById('fullWarehouseFrom'); if(wf) wf.value = transfer.warehouse_from_id ?? transfer.warehouseFromId ?? transfer._fromWarehouseId ?? (transfer.warehouse?.id ?? ''); }catch(e){}
+            try{ const sc = document.getElementById('fullCustomer'); if(sc){ const cid = transfer.customer_id ?? transfer.customerId ?? null; if(cid) sc.value = cid; }}catch(e){}
+            const body = document.getElementById('fullComponentsBody'); body.innerHTML = '';
+            const comps = getComponents(transfer) || [];
+        
+            comps.forEach(c => {
+                const cid = c.component_id ?? c.componentId ?? c.component?.id;
+                const name = getComponentName(c);
+                const qty = c.quantity ?? c.qty ?? c.Quantity ?? 0;
+                const price = c.unit_price ?? c.unitPrice ?? c.UnitPrice ?? 0;
+                addFullComponentRow(cid, qty, price, name);
+            });
+            document.getElementById('editFullModal').classList.add('show');
+        }
+
+        function closeFullEdit(){ document.getElementById('editFullModal').classList.remove('show'); }
+
+        let editComponentsCache = [];
+        async function loadEditResources(){
+            try{ const cres = await fetch(BASE + '/storekeeper/components', { credentials: 'include' }); if (cres.ok){ const cj = await cres.json(); if(cj?.success && Array.isArray(cj.data)) editComponentsCache = cj.data; }}catch(e){}
+            try{ const wres = await fetch(BASE + '/storekeeper/warehouses', { credentials: 'include' }); if (wres.ok){ const wj = await wres.json(); if(wj?.success && Array.isArray(wj.data)){ const wf = document.getElementById('fullWarehouseFrom'); const wt = document.getElementById('fullWarehouseTo'); if(wf) wf.innerHTML = '<option value="">-- Select --</option>'; if(wt) wt.innerHTML = '<option value="">-- Select --</option>'; wj.data.forEach(w => { const id = w.id ?? w.ID ?? w.warehouseId; const name = w.name ?? w.warehouseName ?? id; if(wf) wf.innerHTML += `<option value="${id}">${name}</option>`; if(wt) wt.innerHTML += `<option value="${id}">${name}</option>`; }); }}}catch(e){}
+            try{ const cres = await fetch(BASE + '/storekeeper/customers', { credentials: 'include' }); if (cres.ok){ const cj = await cres.json(); if(cj?.success && Array.isArray(cj.data)){ const sc = document.getElementById('fullCustomer'); if(sc){ sc.innerHTML = '<option value="">-- None --</option>'; cj.data.forEach(c => { const id = c.id ?? c.ID ?? c.customerId; const name = c.name ?? c.displayName ?? c.contact ?? id; const opt = document.createElement('option'); opt.value = id; opt.text = name; opt.dataset.raw = JSON.stringify(c); sc.appendChild(opt); }); }}}}catch(e){}
+        }
+
+        function addFullComponentRow(defaultComponentId = '', defaultQty = '', defaultPrice = 0, defaultName){
+            const tbody = document.getElementById('fullComponentsBody');
+            const tr = document.createElement('tr');
+            let productOptions = '<option value="">-- Select product --</option>';
+            (editComponentsCache || []).forEach(p => { const id = p.componentId ?? p.id; const name = p.metadata?.name ?? p.name ?? ('Product #' + id); const sel = (id == defaultComponentId) ? 'selected' : ''; productOptions += `<option value="${id}" ${sel}>${name}</option>`; });
+            if(defaultName && !Array.from((editComponentsCache||[]).map(x=>x.componentId??x.id)).includes(Number(defaultComponentId))){ productOptions += `<option value="${defaultComponentId}" selected>${defaultName}</option>`; }
+            tr.innerHTML = `
+                <td style="padding:8px"><select class="full-comp-select" style="width:100%;padding:6px;border-radius:4px;border:1px solid #ccc">${productOptions}</select></td>
+                <td style="padding:8px"><input type="number" class="full-comp-qty" value="${defaultQty}" min="1" style="width:100px;padding:6px;border-radius:4px;border:1px solid #ccc"></td>
+                <td style="padding:8px"><input type="number" class="full-comp-price" value="${defaultPrice}" min="0" step="0.01" style="width:120px;padding:6px;border-radius:4px;border:1px solid #ccc"></td>
+                <td style="padding:8px; text-align:center"><button class="btn ghost" style="color:#ef4444; border-color:#fca5a5; padding:4px 8px" onclick="this.closest('tr').remove()">X</button></td>
+            `;
+            tbody.appendChild(tr);
+        }
+
+        async function submitFullEdit(){
+            const desc = document.getElementById('fullDesc').value || '';
+            const wf = parseInt(document.getElementById('fullWarehouseFrom').value) || null;
+            const sc = document.getElementById('fullCustomer').value || null;
+            const rows = Array.from(document.querySelectorAll('#fullComponentsBody tr'));
+            if(rows.length === 0) return alert('Please add at least one product');
+
+            const raw = [];
+            for(let i=0;i<rows.length;i++){
+                const r = rows[i];
+                const compId = parseInt(r.querySelector('.full-comp-select').value) || 0;
+                const qty = parseFloat(r.querySelector('.full-comp-qty').value) || 0;
+                const price = parseFloat(r.querySelector('.full-comp-price').value) || null;
+                if(!compId) return alert(`Row ${i+1}: please select product`);
+                if(qty <= 0) return alert(`Row ${i+1}: quantity must be > 0`);
+                raw.push({ component_id: compId, quantity: qty, unit_price: price });
+            }
+
+
+            const compMap = {};
+            raw.forEach(x => {
+                const k = String(x.component_id);
+                if (!compMap[k]) compMap[k] = { component_id: x.component_id, quantity: 0, unit_price: x.unit_price };
+                compMap[k].quantity += Number(x.quantity) || 0;
+              
+                if ((compMap[k].unit_price === null || compMap[k].unit_price === undefined) && (x.unit_price !== null && x.unit_price !== undefined)) compMap[k].unit_price = x.unit_price;
+            });
+            const componentsPayload = Object.values(compMap).map(c => {
+                const out = { component_id: c.component_id, quantity: c.quantity };
+                if (c.unit_price !== null && c.unit_price !== undefined) out.unit_price = c.unit_price;
+                return out;
+            });
+
+            const payload = { desc: desc, components: componentsPayload };
+            if(wf) payload.warehouse_from_id = wf;
+            if(sc) payload.customer_id = parseInt(sc);
+
+            try{
+                const reqId = getTransferRequestId(transfer) ?? Number(id);
+                console.log('submitFullEdit: PATCH', reqId, payload);
+                const res = await fetch(BASE + '/storekeeper/transfers/' + reqId, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(payload) });
+                const rawText = await res.text().catch(()=>null);
+                console.log('submitFullEdit: raw response', res.status, rawText);
+                if(!res.ok){ return alert('Update failed: ' + (rawText || res.statusText)); }
+                const j = rawText ? JSON.parse(rawText) : null;
+                console.log('submitFullEdit: parsed response', j);
+                if(!j?.success) return alert(j?.msg || j?.message || 'Update failed');
+               
+                try {
+                    transfer.components = componentsPayload.map(c => ({ component_id: c.component_id, quantity: c.quantity, unit_price: c.unit_price }));
+                    await resolveComponentNames(getComponents(transfer));
+                    await resolveWarehouses(transfer);
+                } catch(e) {}
+                closeFullEdit(); alert('Updated'); try{ render(); }catch(e){}
+            }catch(e){ alert('Network error: ' + e.message); }
+        }
+    </script>
+    <!-- Edit description modal -->
+    <div id="editModal" class="modal">
+        <div class="modal-box">
+            <h3>Edit Description</h3>
+            <div style="margin-top:8px">
+                <textarea id="editDescInput" style="width:100%;height:80px;padding:8px;border-radius:6px;border:1px solid #e6edf6"></textarea>
+            </div>
+            <div style="margin-top:10px;display:flex;gap:8px;justify-content:flex-end">
+                <button class="btn ghost" onclick="closeEditDesc()">Cancel</button>
+                <button class="btn danger" onclick="submitEditDesc()">Save</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        function openEditDesc(){
+            const cur = transfer?.description ?? '';
+            document.getElementById('editDescInput').value = cur;
+            document.getElementById('editModal').classList.add('show');
+        }
+        function closeEditDesc(){ document.getElementById('editModal').classList.remove('show'); }
+        async function submitEditDesc(){
+            const val = document.getElementById('editDescInput').value || '';
+            const payload = { desc: val };
+            try{
+                const reqId = getTransferRequestId(transfer) ?? Number(id);
+                const res = await fetch(BASE + '/storekeeper/transfers/' + reqId, {
+                    method: 'PATCH', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(payload)
+                });
+                const rawText = await res.text().catch(()=>null);
+                console.log('submitEditDesc: raw response', res.status, rawText);
+                if (!res.ok) { return alert('Update failed: ' + (rawText || res.statusText)); }
+                const j = rawText ? JSON.parse(rawText) : null;
+                console.log('submitEditDesc: parsed response', j);
+                if (!j?.success) return alert(j?.msg || j?.message || 'Update failed');
+                transfer.description = val;
+                const el = document.getElementById('descText'); if (el) el.innerText = val || '-';
+                closeEditDesc();
+                alert('Updated');
+            }catch(e){ console.error('submitEditDesc: network error', e); alert('Network error: ' + e.message); }
+        }
     </script>
 </body>
 

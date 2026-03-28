@@ -1,6 +1,6 @@
 using ElectronicsWarehouseManagement.Repositories.DBContext;
 using ElectronicsWarehouseManagement.Repositories.Entities;
-using ElectronicsWarehouseManagement.WebAPI.DTO;
+using ElectronicsWarehouseManagement.DTO;
 using ElectronicsWarehouseManagement.WebAPI.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -20,7 +20,7 @@ internal class AuthService : IAuthService
     readonly IEmailService _emailService;
     readonly ILogger<AuthService> _logger;
 
-    static List<int> loggedInUsers = [];
+    static Dictionary<int, DateTime> loggedInUsers = [];
     static Dictionary<string, (int userId, DateTime expiration)> _passwordResetTokens = [];
 
     public AuthService(EWMDbCtx dbCtx, IEmailService emailService, ILogger<AuthService> logger)
@@ -60,20 +60,22 @@ internal class AuthService : IAuthService
             case UserStatus.Uninitialized:
                 return (new ApiResult(ApiResultCode.InvalidRequest, "Account not initialized."), null);
         }
-        if (loggedInUsers.Contains(user.UserId))
-            return (new ApiResult(ApiResultCode.MultipleSessions), null);
-        loggedInUsers.Add(user.UserId);
+        if (loggedInUsers.TryGetValue(user.UserId, out DateTime lastLoginTime))
+        {
+            if (DateTime.UtcNow - lastLoginTime < TimeSpan.FromMinutes(10))
+                return (new ApiResult(ApiResultCode.MultipleSessions), null);
+            loggedInUsers.Remove(user.UserId);
+        }
+        loggedInUsers.TryAdd(user.UserId, DateTime.UtcNow);
         return (new ApiResult(), user);
     }
 
     public async Task<ApiResult> LogoutAsync(int userId)
     {
-        if (!loggedInUsers.Contains(userId))
+        if (!loggedInUsers.Remove(userId))
             return new ApiResult(ApiResultCode.InvalidRequest, "User is not logged in.");
-        loggedInUsers.Remove(userId);
         return new ApiResult();
     }
-
     public async Task<ApiResult> ForgotPasswordAsync(ForgotPasswordReq request, string baseUrl)
     {
         if (!request.Verify(out string failedReason))
@@ -128,6 +130,18 @@ internal class AuthService : IAuthService
         _logger.LogInformation($"Password reset successfully for user {user.UserId}");
         return new ApiResult();
     }
+
+    public static bool UpdateLoginTime(int userId)
+    {
+        if (loggedInUsers.ContainsKey(userId))
+        {
+            loggedInUsers[userId] = DateTime.UtcNow;
+            return true;
+        }
+        return false;
+    }
+
+    public static bool Logout(int userId) => loggedInUsers.Remove(userId);
 
     static string GenerateResetToken()
     {

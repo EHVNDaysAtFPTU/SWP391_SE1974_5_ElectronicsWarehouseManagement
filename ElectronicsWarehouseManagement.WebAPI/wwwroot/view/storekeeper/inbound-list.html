@@ -106,13 +106,17 @@
             window.location = "home.html";
         }
 
+
         function getStatusText(status) {
             switch (status) {
                 case 0: return "Unknown";
                 case 1: return "Pending";
                 case 2: return "Approved - Waiting Confirm";
                 case 3: return "Rejected";
-                default: return "Completed";
+                case 4: return "Finished";
+                case 5: return "Missing components";
+                case 6: return "Canceled";
+                default: return "Unknown";
             }
         }
 
@@ -142,6 +146,62 @@
                                 }
                             }
                         }
+                        // If API provides finished_components with bin object, reuse it as bin_finish
+                        const finishedArr = t0.finished_components ?? t0.finishedComponents ?? t0.finished_components_list ?? t0.finishedComponentsList;
+                        if (Array.isArray(finishedArr) && finishedArr.length > 0) {
+                            // if multiple finished components, collect all finished bins
+                            const bins = finishedArr.map(fc => {
+                                const binObj = fc.bin ?? fc.Bin ?? null;
+                                return binObj ? binObj : ((fc.bin_id || fc.binId) ? { id: fc.bin_id ?? fc.binId } : null);
+                            }).filter(x => x !== null);
+                            if (bins.length === 1) {
+                                t0.bin_finish = bins[0];
+                            } else if (bins.length > 1) {
+                                t0.bin_finish_list = bins;
+                            }
+                            // resolve warehouse for each finished bin if needed
+                            if ((t0.bin_finish_list && t0.bin_finish_list.length>0) || t0.bin_finish) {
+                                const list = t0.bin_finish_list ?? [t0.bin_finish];
+                                const names = new Set();
+                                for (const bin of list) {
+                                    const bwId = bin?.warehouse ?? bin?.warehouse_id ?? bin?.warehouseId ?? (typeof bin?.warehouse === 'object' ? bin.warehouse.id : null) ?? t0.warehouse_to_id;
+                                    if (bwId && (!bin?.warehouse || typeof bin.warehouse !== 'object')) {
+                                        try {
+                                            const wresB = await fetch(BASE + "/storekeeper/warehouses/" + bwId, { credentials: 'include' });
+                                            if (wresB.ok) {
+                                                const wjsonB = await wresB.json();
+                                                if (wjsonB?.success && wjsonB.data) {
+                                                    bin.warehouse = wjsonB.data;
+                                                    names.add(wjsonB.data.name ?? wjsonB.data.warehouseName);
+                                                }
+                                            }
+                                        } catch (e) { console.error('bin finish warehouse fetch failed', e); }
+                                    } else if (bin?.warehouse && typeof bin.warehouse === 'object') {
+                                        names.add(bin.warehouse.name ?? bin.warehouse.warehouseName);
+                                    }
+                                }
+                                if (names.size === 1) t0._finishWarehouseName = Array.from(names)[0];
+                                else if (names.size > 1) t0._finishWarehouseName = Array.from(names).join(', ');
+                            }
+                        }
+                        // If the transfer is confirmed (status 4) there might be a "bin_finish"/"binFinish" field
+                        // that points to the final bin where items were placed. Try to load it so the list can show
+                        // the finished bin when status is 4.
+                        const binFinishId = t0.bin_finish_id ?? t0.binFinishId ?? t0.bin_finish?.id ?? t0.bin_finish?.ID;
+                        // If there's a binFinishId try to resolve it regardless of status (some environments mark canceled/other statuses differently)
+                        if (binFinishId && (!t0.bin_finish || t0.bin_finish.id === undefined)) {
+                            try {
+                                const bfres = await fetch(BASE + "/storekeeper/bins/" + binFinishId, { credentials: 'include' });
+                                if (bfres.ok) {
+                                    const bfjson = await bfres.json();
+                                    if (bfjson?.success && bfjson.data) {
+                                        t0.bin_finish = bfjson.data;
+                                    }
+                                }
+                            } catch (e) {
+                                console.error('bin_finish fetch failed', e);
+                            }
+                        }
                         
                         const wId = t0.bin_to?.warehouse ?? t0.bin_to?.warehouse_id ?? t0.bin_to?.warehouseId ?? (typeof t0.bin_to?.warehouse === 'object' ? t0.bin_to.warehouse.id : null) ?? t0.warehouse_to_id;
                         if (wId && (!t0.bin_to?.warehouse || typeof t0.bin_to.warehouse !== 'object')) {
@@ -155,6 +215,24 @@
                             }
                         } else if (t0.bin_to?.warehouse && typeof t0.bin_to.warehouse === 'object') {
                             t0._toWarehouseName = t0.bin_to.warehouse.name ?? t0.bin_to.warehouse.warehouseName;
+                        }
+                        // Also resolve warehouse name for bin_finish if present
+                        const bfWId = t0.bin_finish?.warehouse ?? t0.bin_finish?.warehouse_id ?? t0.bin_finish?.warehouseId ?? (typeof t0.bin_finish?.warehouse === 'object' ? t0.bin_finish.warehouse.id : null) ?? t0.warehouse_to_id;
+                        if (t0.bin_finish) {
+                            if (bfWId && (!t0.bin_finish?.warehouse || typeof t0.bin_finish.warehouse !== 'object')) {
+                                try {
+                                    const wres2 = await fetch(BASE + "/storekeeper/warehouses/" + bfWId, { credentials: 'include' });
+                                    if (wres2.ok) {
+                                        const wjson2 = await wres2.json();
+                                        if (wjson2?.success && wjson2.data) {
+                                            t0._finishWarehouseName = wjson2.data.name ?? wjson2.data.warehouseName;
+                                            t0.bin_finish.warehouse = wjson2.data;
+                                        }
+                                    }
+                                } catch (e) { console.error('bin_finish warehouse fetch failed', e); }
+                            } else if (t0.bin_finish?.warehouse && typeof t0.bin_finish.warehouse === 'object') {
+                                t0._finishWarehouseName = t0.bin_finish.warehouse.name ?? t0.bin_finish.warehouse.warehouseName;
+                            }
                         }
                         
                     } catch (e) {
@@ -183,17 +261,37 @@
                 let statusText = getStatusText(o.status ?? o.Status);
                 let statusClass = (o.status === 3 || o.Status === 3) ? "status-complete" : "status-pending";
 
+                // Prefer to show finished bins when available
                 const binTo = o['bin_to'] ?? o.bin_to ?? null;
-                let warehouse = o._toWarehouseName ?? (binTo?.warehouse?.name ?? binTo?.warehouse?.warehouseName) ?? '-';
-                let bin = binTo?.location_in_warehouse ?? binTo?.locationInWarehouse ?? binTo?.binCode ?? o.location_in_warehouse ?? o.locationInWarehouse ?? '-';
+                const binFinish = o['bin_finish'] ?? o.bin_finish ?? null;
+                const binFinishList = o['bin_finish_list'] ?? o.bin_finish_list ?? null;
+                let warehouse = '-';
+                let bin = '-';
+                if (Array.isArray(binFinishList) && binFinishList.length>0) {
+                  
+                    const names = binFinishList.map(b => b?.warehouse?.name ?? b?.warehouse?.warehouseName ?? '').filter(x=>x);
+                    warehouse = names.length ? Array.from(new Set(names)).join(', ') : (o._finishWarehouseName ?? (binTo?.warehouse?.name ?? binTo?.warehouse?.warehouseName) ?? '-');
+                    bin = binFinishList.map(b => b?.location_in_warehouse ?? b?.locationInWarehouse ?? b?.binCode ?? '-').join(', ');
+                } else if (binFinish) {
+                    warehouse = o._finishWarehouseName ?? (binFinish?.warehouse?.name ?? binFinish?.warehouse?.warehouseName) ?? '-';
+                    bin = binFinish?.location_in_warehouse ?? binFinish?.locationInWarehouse ?? binFinish?.binCode ?? '-';
+                } else {
+                    warehouse = o._toWarehouseName ?? (binTo?.warehouse?.name ?? binTo?.warehouse?.warehouseName) ?? '-';
+                    bin = binTo?.location_in_warehouse ?? binTo?.locationInWarehouse ?? binTo?.binCode ?? o.location_in_warehouse ?? o.locationInWarehouse ?? '-';
+                }
+
                 
-                const isPending = (o.status === 1 || o.Status === 1 || o.status === 2 || o.Status === 2);
-                if (isPending) bin = '<i>Not allocated</i>';
+                const isPendingOrApproved = (o.status === 1 || o.Status === 1 || o.status === 2 || o.Status === 2);
+                if (isPendingOrApproved) bin = '<i>Not allocated</i>';
 
                 const comps = getComponents(o);
                 const totalItems = comps.reduce((s, c) => s + (c.quantity ?? c.Quantity ?? c.qty ?? 0), 0);
 
                 let action = `<button class="action-btn" onclick="goDetail('${getId(o)}')">Detail</button>`;
+          
+                if ((o.status ?? o.Status) === 1) {
+                    action += ` <button class="btn ghost" onclick="cancelInbound('${getId(o)}')" style="background:#fff1f0;border:1px solid #fdecec;color:#9f1239;padding:6px 10px;border-radius:8px;margin-left:6px">Cancel</button>`;
+                }
 
                 html += `
                 <tr>
@@ -225,7 +323,22 @@
             window.location.href = `inbound-detail.html?id=${id}`;
         }
 
-        // apply filter from search box and re-render
+        async function cancelInbound(id) {
+            if (!id) return;
+            if (!confirm('Are you sure you want to cancel this inbound receipt?')) return;
+            try {
+                const res = await fetch(BASE + '/storekeeper/transfers/' + id + '/cancel', { method: 'POST', credentials: 'include' });
+                if (!res.ok) {
+                    const txt = await res.text().catch(()=>null);
+                    return alert('Cancel failed: ' + (txt || res.statusText));
+                }
+                const json = await res.json().catch(()=>null);
+                if (json?.success) { alert('Inbound canceled'); load(); }
+                else alert(json?.msg || json?.message || 'Error');
+            } catch (e) { alert('Network error: ' + e.message); }
+        }
+
+  
         function applyFilter(){
             const q = document.getElementById('q')?.value?.trim().toLowerCase() || '';
             const all = window._inboundListData || [];

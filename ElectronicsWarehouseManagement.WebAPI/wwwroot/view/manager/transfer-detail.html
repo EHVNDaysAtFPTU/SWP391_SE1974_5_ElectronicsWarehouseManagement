@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Transfer Detail | Manager</title>
+    <title>Request Detail | Manager</title>
 
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -31,8 +31,7 @@
     <!-- Header -->
     <header class="header d-flex justify-content-between align-items-center">
         <div>
-            <h5 class="mb-0">Transfer Request Details</h5>
-            <small class="text-muted">Review movement info and items</small>
+            <h5 class="mb-0">Request Details</h5>
         </div>
 
         <div class="profile-container position-relative">
@@ -42,7 +41,7 @@
             </div>
 
             <div class="profile-dropdown" id="profileDropdown">
-                <a href="profile.html">My Profile</a>
+                <a onclick="openProfile()">Profile</a>
                 <hr class="my-1">
                 <a href="#" onclick="logout()" class="text-danger">Logout</a>
             </div>
@@ -52,7 +51,7 @@
     <!-- Main Content -->
     <main class="main-content">
         <div class="container-fluid">
-            
+
             <div class="mb-4">
                 <button class="btn btn-sm btn-secondary" onclick="goBack()">Back to List</button>
             </div>
@@ -63,12 +62,12 @@
                     <div class="glass-card p-4 h-100">
                         <div class="d-flex justify-content-between align-items-start mb-4">
                             <div>
-                                <small class="text-muted text-uppercase fw-bold ls-1">Transfer ID</small>
+                                <small class="text-muted text-uppercase fw-bold ls-1">Request ID</small>
                                 <h3 class="fw-bold mb-0">#<span id="tId"></span></h3>
                             </div>
                             <div id="tStatusBadge"></div>
                         </div>
-                        
+
                         <div class="mb-4">
                             <label class="small text-muted text-uppercase d-block ls-1 mb-1">Description</label>
                             <p id="tDesc" class="mb-0 fs-5 fw-medium text-dark"></p>
@@ -102,7 +101,7 @@
                 <div class="col-md-5">
                     <div class="glass-card p-4 h-100">
                         <h6 class="fw-bold text-uppercase ls-1 text-muted mb-4">Logistics Route</h6>
-                        
+
                         <div class="route-step mb-4 ps-3 border-start border-2 border-primary">
                             <label class="small text-muted text-uppercase d-block ls-1">Origin Warehouse</label>
                             <div id="tOrigin" class="fw-bold"></div>
@@ -125,7 +124,7 @@
 
             <!-- Components Table -->
             <div id="componentsCard" class="glass-card p-4 mt-4 d-none">
-                <h6 class="fw-bold text-muted mb-3">Transfer Line Items</h6>
+                <h6 class="fw-bold text-muted mb-3">Request Line Items</h6>
                 <div class="table-responsive">
                     <table class="table table-hover align-middle" id="itemsTable">
                         <thead class="table-light">
@@ -159,9 +158,9 @@
             <!-- Loading indicator -->
             <div id="loader" class="text-center py-5">
                 <div class="spinner-border text-primary" role="status"></div>
-                <p class="mt-2 text-muted">Loading transfer data...</p>
+                <p class="mt-2 text-muted">Loading request data...</p>
             </div>
-            
+
         </div>
     </main>
 

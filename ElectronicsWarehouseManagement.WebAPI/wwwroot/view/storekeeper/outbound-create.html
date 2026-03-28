@@ -389,7 +389,6 @@ Unit: ${unit} · Available: ${aggAvail}
 <td style="text-align:center">${count}</td>
 <td data-id="${id}">${name}</td>
 <td style="text-align:center">${unit}</td>
-<td style="text-align:center"></td>
 <td style="text-align:center"><input type="number" value="1" min="1" max="${initialAvail}" onchange="onQtyChange(this)" style="width:100px;padding:6px;border-radius:6px;border:1px solid #d1d5db;text-align:center"></td>
 <td style="text-align:center"><button class="remove" onclick="removeRow(this)" style="background:#ef4444;color:#fff;border:none;padding:6px 10px;border-radius:6px;cursor:pointer">X</button></td>
 </tr>`;
@@ -472,7 +471,7 @@ Unit: ${unit} · Available: ${aggAvail}
                 payloadBody.components.push({ component_id: compId, quantity: qtyRemaining });
             }
 
-            // attach customer/recipient info
+         
             try {
                 const sel = document.getElementById('customerSelect');
                 const recip = document.getElementById('recipientInput');
@@ -485,7 +484,7 @@ Unit: ${unit} · Available: ${aggAvail}
                     const opt = sel.options[sel.selectedIndex];
                     if (opt && opt.dataset && opt.dataset.raw) payloadBody.customer_info_json = JSON.parse(opt.dataset.raw);
                 } catch (e) { }
-            } catch (e) { /* ignore */ }
+            } catch (e) {  }
 
             console.log("SEND:", payloadBody);
 

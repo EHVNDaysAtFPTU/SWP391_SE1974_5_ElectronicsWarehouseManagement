@@ -96,9 +96,7 @@
             for (const k of keys) {
                 if (Array.isArray(obj[k])) return obj[k];
             }
-            // sometimes components may be present on nested fields
             if (Array.isArray(obj.data)) return obj.data;
-            // fallback: try find any array of objects that look like components
             for (const k of Object.keys(obj)) {
                 if (Array.isArray(obj[k]) && obj[k].length>0 && (obj[k][0].quantity !== undefined || obj[k][0].component_id !== undefined))
                     return obj[k];
@@ -111,17 +109,23 @@
         }
 
         function getStatusText(status) {
-            // Match server TransferStatus enum: 0=Unknown,1=Pending,2=Approved - Waiting Confirm,3=Rejected,4=Confirmed
         switch (status) {
                 case 0: return "Unknown";
                 case 1: return "Pending";
                 case 2: return "Approved - Waiting Confirm";
                 case 3: return "Rejected";
-                case 4: return "Confirmed";
+                case 4: return "Finished";
                 case 5: return "Missing components";
+                case 6: return "Canceled";
                 default: return "Unknown";
             }
         }
+
+     
+        let globalGroups = [];
+        let filteredGroups = [];
+        let currentPage = 1;
+        const pageSize = 10;
 
         async function load() {
 
@@ -130,11 +134,10 @@
 
             let result = await res.json();
 
-            // 🔥 Transfer type = 3
             const listSummary = (result.data || []).filter(x => x.type === 3);
             const list = await Promise.all(listSummary.map(async t => {
                 try {
-                    // fetch full transfer detail first so we have components for total calculation
+                  
                     const reqId = t.id ?? t.ID ?? t.request_id ?? t.requestId ?? t.RequestId;
                     const dres = await fetch(BASE + "/storekeeper/transfers/" + reqId, { credentials: 'include' });
                     if (dres.ok) {
@@ -142,7 +145,7 @@
                         if (djson?.success && djson.data) t = djson.data;
                     }
 
-                    // ensure bin_from/bin_to objects available; if missing, try bins endpoint
+                  
                     const binFromId = t.bin_from_id ?? t.binFromId ?? t.bin_from?.id ?? t.bin_from?.ID;
                     const binToId = t.bin_to_id ?? t.binToId ?? t.bin_to?.id ?? t.bin_to?.ID;
 
@@ -166,11 +169,48 @@
                         } catch (e) { console.error('binTo fetch failed', e); }
                     }
 
-                    // resolve warehouse names for display (from bin or from direct fields)
+                    
+                    const finishedArr = t.finished_components ?? t.finishedComponents ?? t.finished_components_list ?? t.finishedComponentsList;
+                    if (Array.isArray(finishedArr) && finishedArr.length > 0) {
+                       
+                        t.bin_finish_from_list = [];
+                        t.bin_finish_to_list = [];
+                        for (const fc of finishedArr) {
+                            const binObj = fc.bin ?? fc.Bin ?? null;
+                            const binRef = binObj ? binObj : ((fc.bin_id || fc.binId) ? { id: fc.bin_id ?? fc.binId } : null);
+                            if (!binRef) continue;
+                            if (fc.type === 1) {
+                                t.bin_finish_from_list.push(binRef);
+                            } else if (fc.type === 0) {
+                                t.bin_finish_to_list.push(binRef);
+                            } else {
+                               
+                                t.bin_finish_to_list.push(binRef);
+                            }
+                        }
+                       
+                        if (!t.bin_finish_from_list.length) t.bin_finish_from = null;
+                        else t.bin_finish_from = t.bin_finish_from_list[0];
+                        if (!t.bin_finish_to_list.length) t.bin_finish_to = null;
+                        else t.bin_finish_to = t.bin_finish_to_list[0];
+                        
+                        if ((!t.bin_finish_from_list || t.bin_finish_from_list.length === 0) && (!t.bin_finish_to_list || t.bin_finish_to_list.length === 0)) {
+                            const fc = finishedArr.reduce((a, b) => ((b.quantity ?? 0) > (a.quantity ?? 0) ? b : a), finishedArr[0]);
+                            const binFromFinished = fc.bin ?? fc.Bin ?? null;
+                            if (binFromFinished) t.bin_finish_to = binFromFinished;
+                            else if (fc.bin_id || fc.binId) t.bin_finish_to = { id: fc.bin_id ?? fc.binId };
+                        }
+                    }
+
+               
                     try {
-                        // from
+                        
                         const bFrom = t.bin_from ?? t.binFrom;
                         let fromName = bFrom?.warehouse?.name ?? bFrom?.warehouse?.warehouseName ?? bFrom?.warehouse ?? bFrom?.warehouseName ?? null;
+                        if (!fromName) {
+                            
+                            fromName = t.warehouse_from?.name ?? t.warehouse_from?.warehouseName ?? t.warehouse_from ?? null;
+                        }
                         if (!fromName) {
                             const fromId = t.bin_from_id ?? t.binFromId ?? bFrom?.id ?? bFrom?.ID;
                             if (fromId) {
@@ -185,9 +225,13 @@
                     } catch (e) { console.error('resolve from warehouse failed', e); }
 
                     try {
-                        // to
+                    
                         const bTo = t.bin_to ?? t.binTo;
                         let toName = bTo?.warehouse?.name ?? bTo?.warehouse?.warehouseName ?? bTo?.warehouse ?? bTo?.warehouseName ?? null;
+                        if (!toName) {
+                         
+                            toName = t.warehouse_to?.name ?? t.warehouse_to?.warehouseName ?? t.warehouse_to ?? null;
+                        }
                         if (!toName) {
                             const toId = t.bin_to_id ?? t.binToId ?? bTo?.id ?? bTo?.ID;
                             if (toId) {
@@ -201,6 +245,45 @@
                         t._toWarehouseName = toName ?? null;
                     } catch (e) { console.error('resolve to warehouse failed', e); }
 
+                    
+                    try {
+                        if (t.bin_finish_from) {
+                            const bfFromId = t.bin_finish_from?.warehouse ?? t.bin_finish_from?.warehouse_id ?? t.bin_finish_from?.warehouseId ?? (typeof t.bin_finish_from?.warehouse === 'object' ? t.bin_finish_from.warehouse.id : null) ?? t.warehouse_from_id;
+                            if (bfFromId && (!t.bin_finish_from?.warehouse || typeof t.bin_finish_from.warehouse !== 'object')) {
+                                try {
+                                    const wresF = await fetch(BASE + "/storekeeper/warehouses/" + bfFromId, { credentials: 'include' });
+                                    if (wresF.ok) {
+                                        const wjsonF = await wresF.json();
+                                        if (wjsonF?.success && wjsonF.data) {
+                                            t._finishFromWarehouseName = wjsonF.data.name ?? wjsonF.data.warehouseName;
+                                            t.bin_finish_from.warehouse = wjsonF.data;
+                                        }
+                                    }
+                                } catch (e) { console.error('bin_finish_from warehouse fetch failed', e); }
+                            } else if (t.bin_finish_from?.warehouse && typeof t.bin_finish_from.warehouse === 'object') {
+                                t._finishFromWarehouseName = t.bin_finish_from.warehouse.name ?? t.bin_finish_from.warehouse.warehouseName;
+                            }
+                        }
+
+                        if (t.bin_finish_to) {
+                            const bfToId = t.bin_finish_to?.warehouse ?? t.bin_finish_to?.warehouse_id ?? t.bin_finish_to?.warehouseId ?? (typeof t.bin_finish_to?.warehouse === 'object' ? t.bin_finish_to.warehouse.id : null) ?? t.warehouse_to_id;
+                            if (bfToId && (!t.bin_finish_to?.warehouse || typeof t.bin_finish_to.warehouse !== 'object')) {
+                                try {
+                                    const wresT = await fetch(BASE + "/storekeeper/warehouses/" + bfToId, { credentials: 'include' });
+                                    if (wresT.ok) {
+                                        const wjsonT = await wresT.json();
+                                        if (wjsonT?.success && wjsonT.data) {
+                                            t._finishToWarehouseName = wjsonT.data.name ?? wjsonT.data.warehouseName;
+                                            t.bin_finish_to.warehouse = wjsonT.data;
+                                        }
+                                    }
+                                } catch (e) { console.error('bin_finish_to warehouse fetch failed', e); }
+                            } else if (t.bin_finish_to?.warehouse && typeof t.bin_finish_to.warehouse === 'object') {
+                                t._finishToWarehouseName = t.bin_finish_to.warehouse.name ?? t.bin_finish_to.warehouse.warehouseName;
+                            }
+                        }
+                    } catch (e) { console.error('resolve finish warehouses failed', e); }
+
                     return t;
                 } catch (e) {
                     console.error('detail/bin fetch failed', e);
@@ -208,55 +291,67 @@
                 }
             }));
 
-            // Group transfers by description and creation time to support multiple bins frontend-only
-            const groups = [];
-            list.forEach(t => {
+       
+            // Do not group transfers here. Show each transfer as its own item to avoid automatic merging.
+            const groups = list.map(t => {
                 const desc = (t.description ?? '').toString();
-                const createdTs = Date.parse(t.creation_date ?? t.creationDate ?? t.creationTime ?? '');
+                const createdTs = Date.parse(t.creation_date ?? t.creationDate ?? t.creationTime ?? '') || 0;
                 const creator = (t.creator_id ?? t.CreatorId ?? t.creator ?? t.Creator ?? '').toString();
-                
-                let foundGroup = groups.find(g => 
-                    g.desc === desc && 
-                    g.creator === creator && 
-                    (!isNaN(createdTs) && !isNaN(g.ts) ? Math.abs(g.ts - createdTs) <= 60000 : true)
-                );
-                
-                if (foundGroup) {
-                    foundGroup.items.push(t);
-                } else {
-                    groups.push({ desc, creator, ts: createdTs, items: [t] });
-                }
+                return { desc, creator, ts: createdTs, items: [t] };
             });
 
             globalGroups = groups;
             searchFilter();
         }
 
-        let globalGroups = [];
-        let filteredGroups = [];
-        let currentPage = 1;
-        const pageSize = 10;
-
         function searchFilter() {
             const q = (document.getElementById('q')?.value || '').toString().toLowerCase();
-            filteredGroups = globalGroups.filter(g => {
+                filteredGroups = globalGroups.filter(g => {
                 const group = g.items;
                 const fromWarehouses = new Set();
                 const fromBins = new Set();
                 const toWarehouses = new Set();
                 const toBins = new Set();
                 group.forEach(o => {
+                  
+                    const binFinishFromList = o.bin_finish_from_list ?? o.binFinishFromList ?? null;
+                    const binFinishToList = o.bin_finish_to_list ?? o.binFinishToList ?? null;
+                    const binFinishFrom = o.bin_finish_from ?? o.binFinishFrom ?? null; 
+                    const binFinishTo = o.bin_finish_to ?? o.binFinishTo ?? null;
                     const bFrom = o.bin_from ?? o.binFrom;
                     const bTo = o.bin_to ?? o.binTo;
-                    const fw = o._fromWarehouseName ?? (bFrom?.warehouse?.name ?? bFrom?.warehouse?.warehouseName ?? bFrom?.warehouse) ?? '-';
-                    const fb = bFrom?.location_in_warehouse ?? bFrom?.locationInWarehouse ?? bFrom?.binCode ?? '-';
-                    if (fw !== '-') fromWarehouses.add(fw);
-                    if (fb !== '-') fromBins.add(fb);
 
-                    const tw = o._toWarehouseName ?? (bTo?.warehouse?.name ?? bTo?.warehouse?.warehouseName ?? bTo?.warehouse) ?? '-';
-                    const tb = bTo?.location_in_warehouse ?? bTo?.locationInWarehouse ?? bTo?.binCode ?? '-';
-                    if (tw !== '-') toWarehouses.add(tw);
-                    if (tb !== '-') toBins.add(tb);
+                    const isPendingOrApproved = (o.status === 1 || o.Status === 1 || o.status === 2 || o.Status === 2);
+
+                   
+                    if (Array.isArray(binFinishFromList) && binFinishFromList.length>0) {
+                        binFinishFromList.forEach(bf => {
+                            const fw = (bf?.warehouse?.name ?? bf?.warehouse?.warehouseName ?? o._fromWarehouseName ?? o.warehouse_from?.name ?? '-') ;
+                            const fb = isPendingOrApproved ? '<i>Not allocated</i>' : (bf?.location_in_warehouse ?? bf?.locationInWarehouse ?? bf?.binCode ?? '-');
+                            if (fw !== '-') fromWarehouses.add(fw);
+                            if (fb !== '-') fromBins.add(fb);
+                        });
+                    } else {
+                        const fw = (o._finishFromWarehouseName ?? o._fromWarehouseName ?? (binFinishFrom?.warehouse?.name ?? binFinishFrom?.warehouse?.warehouseName ?? binFinishFrom?.warehouse) ?? (bFrom?.warehouse?.name ?? bFrom?.warehouse?.warehouseName ?? bFrom?.warehouse) ?? '-');
+                        const fb = isPendingOrApproved ? '<i>Not allocated</i>' : (binFinishFrom?.location_in_warehouse ?? binFinishFrom?.locationInWarehouse ?? binFinishFrom?.binCode ?? bFrom?.location_in_warehouse ?? bFrom?.locationInWarehouse ?? bFrom?.binCode ?? '-');
+                        if (fw !== '-') fromWarehouses.add(fw);
+                        if (fb !== '-') fromBins.add(fb);
+                    }
+
+                  
+                    if (Array.isArray(binFinishToList) && binFinishToList.length>0) {
+                        binFinishToList.forEach(bt => {
+                            const tw = (bt?.warehouse?.name ?? bt?.warehouse?.warehouseName ?? o._toWarehouseName ?? o.warehouse_to?.name ?? '-') ;
+                            const tb = isPendingOrApproved ? '<i>Not allocated</i>' : (bt?.location_in_warehouse ?? bt?.locationInWarehouse ?? bt?.binCode ?? '-');
+                            if (tw !== '-') toWarehouses.add(tw);
+                            if (tb !== '-') toBins.add(tb);
+                        });
+                    } else {
+                        const tw = (o._finishToWarehouseName ?? o._toWarehouseName ?? (binFinishTo?.warehouse?.name ?? binFinishTo?.warehouse?.warehouseName ?? binFinishTo?.warehouse) ?? (bTo?.warehouse?.name ?? bTo?.warehouse?.warehouseName ?? bTo?.warehouse) ?? '-');
+                        const tb = isPendingOrApproved ? '<i>Not allocated</i>' : (binFinishTo?.location_in_warehouse ?? binFinishTo?.locationInWarehouse ?? binFinishTo?.binCode ?? bTo?.location_in_warehouse ?? bTo?.locationInWarehouse ?? bTo?.binCode ?? '-');
+                        if (tw !== '-') toWarehouses.add(tw);
+                        if (tb !== '-') toBins.add(tb);
+                    }
                 });
                 const rowText = ((group[0].description ?? '') + ' ' + Array.from(fromWarehouses).join(' ') + ' ' + Array.from(fromBins).join(' ') + ' ' + Array.from(toWarehouses).join(' ') + ' ' + Array.from(toBins).join(' ')).toLowerCase();
                 return rowText.includes(q);
@@ -286,17 +381,43 @@
                     const statuses = new Set();
                     
                     group.forEach(o => {
+                        
+                        const binFinishFromList = o.bin_finish_from_list ?? o.binFinishFromList ?? null;
+                        const binFinishToList = o.bin_finish_to_list ?? o.binFinishToList ?? null;
+                        const binFinishFrom = o.bin_finish_from ?? o.binFinishFrom ?? null; 
+                        const binFinishTo = o.bin_finish_to ?? o.binFinishTo ?? null;
                         const bFrom = o.bin_from ?? o.binFrom;
                         const bTo = o.bin_to ?? o.binTo;
-                        const fw = o._fromWarehouseName ?? (bFrom?.warehouse?.name ?? bFrom?.warehouse?.warehouseName ?? bFrom?.warehouse) ?? '-';
-                        const fb = bFrom?.location_in_warehouse ?? bFrom?.locationInWarehouse ?? bFrom?.binCode ?? '-';
-                        if (fw !== '-') fromWarehouses.add(fw);
-                        if (fb !== '-') fromBins.add(fb);
 
-                        const tw = o._toWarehouseName ?? (bTo?.warehouse?.name ?? bTo?.warehouse?.warehouseName ?? bTo?.warehouse) ?? '-';
-                        const tb = bTo?.location_in_warehouse ?? bTo?.locationInWarehouse ?? bTo?.binCode ?? '-';
-                        if (tw !== '-') toWarehouses.add(tw);
-                        if (tb !== '-') toBins.add(tb);
+                        const isPendingOrApproved = (o.status === 1 || o.Status === 1 || o.status === 2 || o.Status === 2);
+
+                        if (Array.isArray(binFinishFromList) && binFinishFromList.length>0) {
+                            binFinishFromList.forEach(bf => {
+                                const fw = (bf?.warehouse?.name ?? bf?.warehouse?.warehouseName ?? o._fromWarehouseName ?? o.warehouse_from?.name ?? '-');
+                                const fb = isPendingOrApproved ? '<i>Not allocated</i>' : (bf?.location_in_warehouse ?? bf?.locationInWarehouse ?? bf?.binCode ?? '-');
+                                if (fw !== '-') fromWarehouses.add(fw);
+                                if (fb !== '-') fromBins.add(fb);
+                            });
+                        } else {
+                            const fw = (o._finishFromWarehouseName ?? o._fromWarehouseName ?? (o.warehouse_from?.name ?? o.warehouse_from?.warehouseName) ?? (binFinishFrom?.warehouse?.name ?? binFinishFrom?.warehouse?.warehouseName ?? binFinishFrom?.warehouse) ?? (bFrom?.warehouse?.name ?? bFrom?.warehouse?.warehouseName ?? bFrom?.warehouse) ?? '-');
+                            const fb = isPendingOrApproved ? '<i>Not allocated</i>' : (binFinishFrom?.location_in_warehouse ?? binFinishFrom?.locationInWarehouse ?? binFinishFrom?.binCode ?? bFrom?.location_in_warehouse ?? bFrom?.locationInWarehouse ?? bFrom?.binCode ?? '-');
+                            if (fw !== '-') fromWarehouses.add(fw);
+                            if (fb !== '-') fromBins.add(fb);
+                        }
+
+                        if (Array.isArray(binFinishToList) && binFinishToList.length>0) {
+                            binFinishToList.forEach(bt => {
+                                const tw = (bt?.warehouse?.name ?? bt?.warehouse?.warehouseName ?? o._toWarehouseName ?? o.warehouse_to?.name ?? '-');
+                                const tb = isPendingOrApproved ? '<i>Not allocated</i>' : (bt?.location_in_warehouse ?? bt?.locationInWarehouse ?? bt?.binCode ?? '-');
+                                if (tw !== '-') toWarehouses.add(tw);
+                                if (tb !== '-') toBins.add(tb);
+                            });
+                        } else {
+                            const tw = (o._finishToWarehouseName ?? o._toWarehouseName ?? (o.warehouse_to?.name ?? o.warehouse_to?.warehouseName) ?? (binFinishTo?.warehouse?.name ?? binFinishTo?.warehouse?.warehouseName ?? binFinishTo?.warehouse) ?? (bTo?.warehouse?.name ?? bTo?.warehouse?.warehouseName ?? bTo?.warehouse) ?? '-');
+                            const tb = isPendingOrApproved ? '<i>Not allocated</i>' : (binFinishTo?.location_in_warehouse ?? binFinishTo?.locationInWarehouse ?? binFinishTo?.binCode ?? bTo?.location_in_warehouse ?? bTo?.locationInWarehouse ?? bTo?.binCode ?? '-');
+                            if (tw !== '-') toWarehouses.add(tw);
+                            if (tb !== '-') toBins.add(tb);
+                        }
 
                         const comps = getComponents(o);
                         totalItems += comps.reduce((s, c) => s + (c.quantity ?? c.Quantity ?? c.qty ?? c.QuantityDouble ?? 0), 0);
@@ -308,6 +429,11 @@
                     if (statusText === "Unknown" || statusText === "Rejected") statusClass = "status-complete";
                     if (statusText.toLowerCase().includes('confirm') || statusText.toLowerCase().includes('complete') || Array.from(statuses).includes(4)) statusClass = "status-complete";
 
+                    let action = `<button class="detail-btn action-btn" onclick="viewDetail(${reqId})">Detail</button>`;
+                    if (Array.from(statuses).includes(1)) {
+                        action += ` <button class="btn ghost" onclick="cancelTransfer(${reqId})" style="background:#fff1f0;border:1px solid #fdecec;color:#9f1239;padding:6px 10px;border-radius:8px;margin-left:6px">Cancel</button>`;
+                    }
+
                     html += `<tr>
                         <td>${group[0].description}</td>
                         <td>${formatDate(group[0].creation_date ?? group[0].creationDate)}</td>
@@ -317,27 +443,26 @@
                         <td>${Array.from(toBins).join(', ') || '-'}</td>
                         <td>${totalItems}</td>
                         <td class="${statusClass}">${statusText}</td>
-                        <td><button class="detail-btn action-btn" onclick="viewDetail(${reqId})">Detail</button></td>
+                        <td>${action}</td>
                     </tr>`;
                 });
             }
 
             document.getElementById("data").innerHTML = html;
 
-            // Update stats
+      
             const totalItems = filteredGroups.length;
             const s = totalItems === 0 ? 0 : start + 1;
             const e = Math.min(start + pageSize, totalItems);
             document.getElementById('pageInfo').innerText = `Showing ${s}-${e} of ${totalItems}`;
 
-            // Render buttons
+      
             const totalPages = Math.ceil(totalItems / pageSize) || 1;
             let btnHtml = "";
-            
-            // Prev button
+
             btnHtml += `<button class="btn ghost" onclick="renderPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled style="opacity:0.5"' : ''}>&laquo; Prev</button>`;
             
-            // Page numbers
+
             for (let i = 1; i <= totalPages; i++) {
                 if (totalPages > 7) {
                     if (i !== 1 && i !== totalPages && Math.abs(i - currentPage) > 1) {
@@ -349,15 +474,31 @@
                 btnHtml += `<button class="btn ghost" style="${activeStyle}" onclick="renderPage(${i})">${i}</button>`;
             }
 
-            // Next button
+
             btnHtml += `<button class="btn ghost" onclick="renderPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled style="opacity:0.5"' : ''}>Next &raquo;</button>`;
             
             document.getElementById('pageButtons').innerHTML = btnHtml;
         }
 
         async function viewDetail(id) {
-            // chuyển sang trang chi tiết để có thể confirm
+          
             window.location.href = `transfer-detail.html?id=${id}`;
+        }
+
+        async function cancelTransfer(id) {
+            if (!confirm('Are you sure you want to cancel this transfer?')) return;
+            try {
+                const res = await fetch(BASE + '/storekeeper/transfers/' + id + '/cancel', { method: 'POST', credentials: 'include' });
+                if (!res.ok) {
+                    const txt = await res.text().catch(()=>null);
+                    return alert('Cancel failed: ' + (txt || res.statusText));
+                }
+                const json = await res.json();
+                if (json?.success) {
+                    alert('Transfer canceled');
+                    load();
+                } else alert(json?.msg || json?.message || 'Error');
+            } catch (e) { alert('Network error: ' + e.message); }
         }
 
         function closeModal() {

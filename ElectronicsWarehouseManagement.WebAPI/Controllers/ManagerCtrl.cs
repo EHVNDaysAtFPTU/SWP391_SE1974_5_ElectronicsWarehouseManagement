@@ -1,5 +1,5 @@
 using ElectronicsWarehouseManagement.Repositories.Entities;
-using ElectronicsWarehouseManagement.WebAPI.DTO;
+using ElectronicsWarehouseManagement.DTO;
 using ElectronicsWarehouseManagement.WebAPI.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
